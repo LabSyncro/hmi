@@ -1,3 +1,14 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Bars3Icon, ChevronLeftIcon } from '@heroicons/vue/24/outline'
+import Sidebar from './Sidebar.vue'
+
+const route = useRoute()
+const router = useRouter()
+const sidebarOpen = ref(false)
+</script> 
+
 <template>
   <div class="min-h-screen bg-gray-100">
     <!-- Sidebar -->
@@ -7,16 +18,28 @@
     <header class="bg-white shadow-sm">
       <div class="mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex h-16 items-center justify-between">
-          <!-- Left side with menu button -->
+          <!-- Left side with menu button or back button -->
           <div class="flex items-center">
-            <button
-              type="button"
-              class="text-gray-500 hover:text-gray-600 focus:outline-none"
-              @click="sidebarOpen = true"
-            >
-              <span class="sr-only">Open sidebar</span>
-              <Bars3Icon class="h-6 w-6" aria-hidden="true" />
-            </button>
+            <template v-if="route.name === 'device-detail'">
+              <button
+                type="button"
+                class="text-gray-500 hover:text-gray-600 focus:outline-none flex items-center"
+                @click="router.push('/')"
+              >
+                <ChevronLeftIcon class="h-6 w-6" />
+                <span class="ml-2 text-lg font-medium">Thông tin thiết bị</span>
+              </button>
+            </template>
+            <template v-else>
+              <button
+                type="button"
+                class="text-gray-500 hover:text-gray-600 focus:outline-none"
+                @click="sidebarOpen = true"
+              >
+                <span class="sr-only">Open sidebar</span>
+                <Bars3Icon class="h-6 w-6" aria-hidden="true" />
+              </button>
+            </template>
           </div>
 
           <!-- Right side -->
@@ -43,16 +66,9 @@
     <!-- Main content -->
     <main>
       <div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
-        <slot></slot>
+        <router-view></router-view>
       </div>
     </main>
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref } from 'vue'
-import { Bars3Icon } from '@heroicons/vue/24/outline'
-import Sidebar from './Sidebar.vue'
-
-const sidebarOpen = ref(false)
-</script> 

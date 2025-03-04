@@ -3,13 +3,12 @@ import MainLayout from './components/layout/MainLayout.vue'
 </script>
 
 <template>
-  <MainLayout>
-  </MainLayout>
+  <MainLayout />
 </template>
 
 <style>
 :root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-family: Aeonik Pro, sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;

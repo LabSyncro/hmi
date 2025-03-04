@@ -1,3 +1,30 @@
+<script setup lang="ts">
+import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue'
+import { useRoute } from 'vue-router'
+import {
+  XMarkIcon,
+  ChartPieIcon,
+  HandRaisedIcon,
+  CalculatorIcon,
+  TruckIcon,
+  WrenchScrewdriverIcon,
+} from '@heroicons/vue/24/outline'
+
+defineProps<{
+  isOpen: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'close'): void
+}>()
+
+const route = useRoute()
+
+const closeDrawer = () => {
+  emit('close')
+}
+</script> 
+
 <template>
   <TransitionRoot as="template" :show="isOpen">
     <Dialog as="div" class="relative z-50" @close="closeDrawer">
@@ -31,26 +58,27 @@
               </button>
             </div>
 
-            <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4">
-              <div class="flex h-16 shrink-0 items-center">
-                <img class="h-8 w-auto" src="/logo.svg" alt="Lab Syncro" />
+            <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white pb-4">
+              <div class="flex h-16 shrink-0 items-center px-6 bg-blue-500">
+                <img class="h-8 w-auto" src="/logo.png" alt="Lab Syncro" />
               </div>
               
               <!-- Navigation sections -->
-              <nav class="flex flex-1 flex-col">
+              <nav class="flex flex-1 flex-col px-6">
                 <ul role="list" class="flex flex-1 flex-col gap-y-7">
                   <!-- Primary navigation -->
                   <li>
                     <div class="text-xs font-semibold leading-6 text-gray-400">TỔNG QUAN</div>
                     <ul role="list" class="-mx-2 mt-2 space-y-1">
                       <li>
-                        <a
-                          href="#"
+                        <router-link
+                          to="/"
                           class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                          :class="{ 'text-blue-600 bg-gray-50': route.name === 'home' }"
                         >
                           <ChartPieIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
                           Dashboard
-                        </a>
+                        </router-link>
                       </li>
                     </ul>
                   </li>
@@ -60,13 +88,14 @@
                     <div class="text-xs font-semibold leading-6 text-gray-400">VẬN HÀNH</div>
                     <ul role="list" class="-mx-2 mt-2 space-y-1">
                       <li>
-                        <a
-                          href="#"
-                          class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-blue-600 bg-gray-50"
+                        <router-link
+                          to="/device/123"
+                          class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                          :class="{ 'text-blue-600 bg-gray-50': route.name === 'device-detail' }"
                         >
                           <HandRaisedIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
                           Mượn trả
-                        </a>
+                        </router-link>
                       </li>
                       <li>
                         <a
@@ -106,27 +135,3 @@
     </Dialog>
   </TransitionRoot>
 </template>
-
-<script setup lang="ts">
-import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue'
-import {
-  XMarkIcon,
-  ChartPieIcon,
-  HandRaisedIcon,
-  CalculatorIcon,
-  TruckIcon,
-  WrenchScrewdriverIcon,
-} from '@heroicons/vue/24/outline'
-
-defineProps<{
-  isOpen: boolean
-}>()
-
-const emit = defineEmits<{
-  (e: 'close'): void
-}>()
-
-const closeDrawer = () => {
-  emit('close')
-}
-</script> 
