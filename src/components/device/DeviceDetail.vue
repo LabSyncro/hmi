@@ -2,18 +2,21 @@
 import { ref } from 'vue'
 import { TransitionRoot } from '@headlessui/vue'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
+import { useRouter, useRoute } from 'vue-router'
 
 const showMore = ref(false)
+const router = useRouter()
+const route = useRoute()
 </script>
 
 <template>
-  <div class="bg-gray-50">
+  <div class="bg-gray-50 py-6 sm:px-6 lg:px-8">
     <div class="mx-auto max-w-7xl">
       <div class="bg-white rounded-lg shadow">
         <div class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="md:col-span-1">
-              <img src="/device-image.jpg" alt="Raspberry Pi 3 GPIO-232" class="w-full rounded-lg" />
+              <img src="/device-image.svg" alt="Raspberry Pi 3 GPIO-232" class="w-full rounded-lg" />
             </div>
 
             <div class="md:col-span-2">
@@ -28,39 +31,39 @@ const showMore = ref(false)
                 <dl class="grid grid-cols-1 gap-4">
                   <div class="grid grid-cols-4">
                     <dt class="text-sm font-medium text-gray-500">Tình trạng</dt>
-                    <dd class="mt-1 text-sm text-green-600 font-medium col-span-3">Tốt</dd>
+                    <dd class="text-sm text-green-600 font-medium col-span-3">Tốt</dd>
                   </div>
 
                   <div class="grid grid-cols-4">
                     <dt class="text-sm font-medium text-gray-500">Nơi chứa</dt>
-                    <dd class="mt-1 text-sm text-gray-900 col-span-3">601 H6, Dĩ An</dd>
+                    <dd class="text-sm text-gray-900 col-span-3">601 H6, Dĩ An</dd>
                   </div>
 
                   <div class="grid grid-cols-4">
                     <dt class="text-sm font-medium text-gray-500">Quyền mượn</dt>
-                    <dd class="mt-1 text-sm text-gray-900 col-span-3">Sinh viên, Giảng viên</dd>
+                    <dd class="text-sm text-gray-900 col-span-3">Sinh viên, Giảng viên</dd>
                   </div>
 
                   <TransitionRoot as="template" :show="showMore">
                     <div class="contents">
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Phân loại</dt>
-                        <dd class="mt-1 text-sm text-gray-900 col-span-3">Máy hàn, khò</dd>
+                        <dd class="text-sm text-gray-900 col-span-3">Máy hàn, khò</dd>
                       </div>
 
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Thương hiệu</dt>
-                        <dd class="mt-1 text-sm text-gray-900 col-span-3">OEM</dd>
+                        <dd class="text-sm text-gray-900 col-span-3">OEM</dd>
                       </div>
 
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Môn đang học</dt>
-                        <dd class="mt-1 text-sm text-gray-900 col-span-3">Đồ án Đa ngành</dd>
+                        <dd class="text-sm text-gray-900 col-span-3">Đồ án Đa ngành</dd>
                       </div>
 
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Môn đã học</dt>
-                        <dd class="mt-1 text-sm text-gray-900 col-span-3">N/A</dd>
+                        <dd class="text-sm text-gray-900 col-span-3">N/A</dd>
                       </div>
                     </div>
                   </TransitionRoot>
@@ -85,7 +88,9 @@ const showMore = ref(false)
               <p class="mt-2 text-sm text-gray-600">
                 Thiết bị đang sẵn sàng để được mượn.
               </p>
-              <button class="mt-4 w-full bg-blue-600 text-white rounded-md py-2 px-4 hover:bg-blue-700">
+              <button 
+                @click="router.push(`/device/${route.params.id}/borrow`)"
+                class="mt-4 w-full bg-blue-600 text-white rounded-md py-2 px-4 hover:bg-blue-700">
                 Mượn thiết bị
               </button>
             </div>

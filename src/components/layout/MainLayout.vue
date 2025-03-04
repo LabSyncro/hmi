@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Bars3Icon, ChevronLeftIcon } from '@heroicons/vue/24/outline'
 import Sidebar from './Sidebar.vue'
@@ -7,7 +7,28 @@ import Sidebar from './Sidebar.vue'
 const route = useRoute()
 const router = useRouter()
 const sidebarOpen = ref(false)
-</script> 
+
+const showBackButton = computed(() => {
+  return route.name === 'device-detail' || route.name === 'device-borrow'
+})
+
+const headerTitle = computed(() => {
+  if (route.name === 'device-detail') {
+    return 'Thông tin thiết bị'
+  } else if (route.name === 'device-borrow') {
+    return 'Ghi nhận mượn'
+  }
+  return ''
+})
+
+const handleBack = () => {
+  if (route.name === 'device-borrow') {
+    router.push(`/device/${route.params.id}`)
+  } else {
+    router.push('/')
+  }
+}
+</script>
 
 <template>
   <div class="min-h-screen bg-gray-100">
@@ -16,59 +37,33 @@ const sidebarOpen = ref(false)
 
     <!-- Header -->
     <header class="bg-white shadow-sm">
-      <div class="mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex h-16 items-center justify-between">
-          <!-- Left side with menu button or back button -->
-          <div class="flex items-center">
-            <template v-if="route.name === 'device-detail'">
-              <button
-                type="button"
-                class="text-gray-500 hover:text-gray-600 focus:outline-none flex items-center"
-                @click="router.push('/')"
-              >
-                <ChevronLeftIcon class="h-6 w-6" />
-                <span class="ml-2 text-lg font-medium">Thông tin thiết bị</span>
-              </button>
-            </template>
-            <template v-else>
-              <button
-                type="button"
-                class="text-gray-500 hover:text-gray-600 focus:outline-none"
-                @click="sidebarOpen = true"
-              >
-                <span class="sr-only">Open sidebar</span>
-                <Bars3Icon class="h-6 w-6" aria-hidden="true" />
-              </button>
-            </template>
-          </div>
+      <div class="flex h-14 items-center justify-between px-4 border-b">
+        <div class="flex items-center">
+          <button v-if="showBackButton" @click="handleBack" class="flex items-center text-gray-900 hover:text-gray-600">
+            <ChevronLeftIcon class="h-6 w-6" />
+            <span class="ml-2 text-lg">{{ headerTitle }}</span>
+          </button>
+          <button v-else @click="sidebarOpen = true" class="text-gray-500 hover:text-gray-600">
+            <Bars3Icon class="h-6 w-6" />
+          </button>
+        </div>
 
-          <!-- Right side -->
-          <div class="flex items-center space-x-4">
-            <!-- Profile dropdown -->
-            <div class="relative">
-              <button
-                type="button"
-                class="flex rounded-full bg-white text-sm focus:outline-none"
-              >
-                <span class="sr-only">Open user menu</span>
-                <img
-                  class="h-8 w-8 rounded-full"
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                  alt=""
-                />
-              </button>
-            </div>
-          </div>
+        <!-- Profile dropdown -->
+        <div class="flex items-center">
+          <button class="flex items-center">
+            <img class="h-8 w-8 rounded-full"
+              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+              alt="" />
+          </button>
         </div>
       </div>
     </header>
 
     <!-- Main content -->
     <main>
-      <div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-7xl">
         <router-view></router-view>
       </div>
     </main>
   </div>
 </template>
-
