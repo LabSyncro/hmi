@@ -71,11 +71,6 @@ const stats = {
     good: 15,
     damaged: 5
 }
-
-const returnDate = ref(new Date())
-const masks = {
-    input: 'DD/MM/YYYY'
-}
 </script>
 
 <template>
