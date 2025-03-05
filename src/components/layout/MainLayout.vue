@@ -9,7 +9,7 @@ const router = useRouter()
 const sidebarOpen = ref(false)
 
 const showBackButton = computed(() => {
-  return route.name === 'device-detail' || route.name === 'device-borrow'
+  return route.name === 'device-detail' || route.name === 'device-borrow' || route.name === 'confirm-borrow' || route.name === 'borrow-invoice'
 })
 
 const headerTitle = computed(() => {
@@ -17,6 +17,10 @@ const headerTitle = computed(() => {
     return 'Thông tin thiết bị'
   } else if (route.name === 'device-borrow') {
     return 'Ghi nhận mượn'
+  } else if (route.name === 'confirm-borrow') {
+    return 'Xác nhận mượn'
+  } else if (route.name === 'borrow-invoice') {
+    return 'Thông tin đơn mượn'
   }
   return ''
 })
@@ -24,6 +28,10 @@ const headerTitle = computed(() => {
 const handleBack = () => {
   if (route.name === 'device-borrow') {
     router.push(`/device/${route.params.id}`)
+  } else if (route.name === 'confirm-borrow') {
+    router.push(`/device/${route.params.id}/borrow`)
+  } else if (route.name === 'borrow-invoice') {
+    router.push('/')
   } else {
     router.push('/')
   }

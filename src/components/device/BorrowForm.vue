@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { TransitionRoot } from '@headlessui/vue'
+import { useRouter, useRoute } from 'vue-router'
 import {
     ChevronDownIcon,
     ChevronUpIcon,
@@ -8,6 +9,8 @@ import {
     TrashIcon
 } from '@heroicons/vue/24/outline'
 
+const router = useRouter()
+const route = useRoute()
 const showMore = ref(false)
 </script>
 
@@ -291,7 +294,8 @@ const showMore = ref(false)
                     </div>
                 </div>
                 <button type="button"
-                    class="bg-white text-tertiary-darker font-bold rounded-lg px-8 py-2 hover:bg-white/80">
+                    class="bg-white text-tertiary-darker font-bold rounded-lg px-8 py-2 hover:bg-white/80"
+                    @click="router.push(`/device/${route.params.id}/borrow/confirm`)">
                     Tiếp tục
                 </button>
             </div>

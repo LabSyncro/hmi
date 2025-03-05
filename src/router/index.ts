@@ -2,7 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../components/Home.vue'
 import DeviceDetail from '../components/device/DeviceDetail.vue'
 import BorrowForm from '../components/device/BorrowForm.vue'
-
+import ConfirmBorrowForm from '../components/device/ConfirmBorrowForm.vue'
+import BorrowInvoice from '../components/device/BorrowInvoice.vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -20,6 +21,16 @@ const router = createRouter({
       path: '/device/:id/borrow',
       name: 'device-borrow',
       component: BorrowForm
+    },
+    {
+      path: '/device/:id/borrow/confirm',
+      name: 'confirm-borrow',
+      component: ConfirmBorrowForm
+    },
+    {
+      path: '/device/borrow-invoice',
+      name: 'borrow-invoice',
+      component: BorrowInvoice
     }
   ]
 })
