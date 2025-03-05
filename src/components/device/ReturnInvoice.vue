@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const formId = '#BR_12-03-2025/123-123'
+const formId = '#RT_18-03-2025/123-123'
 
 const devices = [
     {
@@ -46,6 +46,13 @@ const devices = [
     }
 ]
 
+const stats = {
+    onTime: 17,
+    late: 3,
+    good: 15,
+    damaged: 5
+}
+
 </script>
 
 <template>
@@ -55,22 +62,31 @@ const devices = [
             <div class="w-2/3">
                 <h2 class="text-2xl font-medium text-gray-900 mb-2">Danh sách thiết bị</h2>
 
-                <!-- Info Cards -->
-                <div class="bg-white rounded-lg p-4 mb-4">
-                    <div class="grid grid-cols-3 gap-8">
-                        <div>
-                            <h3 class="text-base text-gray-500">Quyền mượn:</h3>
-                            <p class="mt-1 text-base text-gray-900">Sinh viên (Năm Ba)</p>
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-lg">
+                        <h3 class="text-base font-medium text-gray-500 px-4 pt-4">Tiến độ</h3>
+                        <div class="px-4 pb-4">
+                            <div class="flex flex-col">
+                                <div class="flex flex-col">
+                                    <p class="text-lg text-gray-900">Đúng hạn: {{ stats.onTime }} cái</p>
+                                </div>
+                                <div class="flex flex-col">
+                                    <p class="text-lg text-red-600">Trễ hạn: {{ stats.late }} cái</p>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-base text-gray-500">Môn đã học:</h3>
-                            <p class="mt-1 text-base text-gray-900">Mạch điện - Điện tử</p>
-                        </div>
-                        <div>
-                            <h3 class="text-base text-gray-500">Môn đang học:</h3>
-                            <div class="mt-1 text-base text-gray-900">
-                                <p>Đồ án Đa ngành</p>
-                                <p>Hệ thống số</p>
+                    </div>
+                    <div class="bg-white rounded-lg">
+                        <h3 class="text-base font-medium text-gray-500 px-4 pt-4">Tình trạng</h3>
+                        <div class="px-4 pb-4">
+                            <div class="flex flex-col">
+                                <div class="flex flex-col">
+                                    <p class="text-lg text-green-600">Tốt: {{ stats.good }} cái</p>
+                                </div>
+                                <div class="flex flex-col">
+                                    <p class="text-lg text-red-600">Hư: {{ stats.damaged }} cái</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -108,7 +124,7 @@ const devices = [
             <!-- Right Panel - Borrow Form -->
             <div class="w-1/3 rounded-xl space-y-4">
                 <div class="bg-white p-6 rounded-xl h-fit">
-                    <h2 class="text-xl font-medium text-gray-900 mb-1">Đơn mượn</h2>
+                    <h2 class="text-xl font-medium text-gray-900 mb-1">Đơn trả</h2>
 
                     <div class="mb-8">
                         <p class="text-base text-gray-500">{{ formId }}</p>
@@ -122,6 +138,10 @@ const devices = [
                             </div>
                             <div class="grid grid-cols-2">
                                 <label class="block text-sm text-gray-500">Nơi mượn</label>
+                                <p class="text-base font-medium text-gray-900">601 H6, Dĩ An</p>
+                            </div>
+                            <div class="grid grid-cols-2">
+                                <label class="block text-sm text-gray-500">Nơi trả</label>
                                 <p class="text-base font-medium text-gray-900">601 H6, Dĩ An</p>
                             </div>
                             <div class="grid grid-cols-2">
@@ -142,7 +162,7 @@ const devices = [
 
                 <!-- Borrower Info -->
                 <div class="space-y-4 bg-white p-6 rounded-xl">
-                    <h3 class="text-xl font-medium text-gray-900">Người mượn</h3>
+                    <h3 class="text-xl font-medium text-gray-900">Người trả</h3>
 
                     <div class="space-y-2">
                         <div class="grid grid-cols-2">

@@ -173,10 +173,10 @@ const showMore = ref(false)
 
             <!-- Right Panel -->
             <div class="w-2/3 bg-gray-100 p-6">
-                <h2 class="text-2xl font-medium text-gray-900 mb-8">Danh sách thiết bị</h2>
+                <h2 class="text-2xl font-medium text-gray-900 mb-2">Danh sách thiết bị</h2>
 
                 <!-- Info Cards -->
-                <div class="bg-white rounded-lg p-6 mb-6 ">
+                <div class="bg-white rounded-lg p-4 mb-4 ">
                     <div class="grid grid-cols-3 gap-8">
                         <div>
                             <h3 class="text-base text-gray-500">Quyền mượn:</h3>

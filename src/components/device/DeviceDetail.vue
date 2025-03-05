@@ -93,6 +93,11 @@ const route = useRoute()
                 class="mt-4 w-full bg-blue-600 text-white rounded-md py-2 px-4 hover:bg-blue-700">
                 Mượn thiết bị
               </button>
+              <button
+                @click="router.push(`/device/${route.params.id}/return`)"
+                class="mt-4 w-full bg-blue-600 text-white rounded-md py-2 px-4 hover:bg-blue-700">
+                Trả thiết bị
+              </button>
             </div>
 
             <div class="md:col-span-2 bg-white rounded-lg border p-6">

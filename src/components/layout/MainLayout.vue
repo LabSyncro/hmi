@@ -9,7 +9,13 @@ const router = useRouter()
 const sidebarOpen = ref(false)
 
 const showBackButton = computed(() => {
-  return route.name === 'device-detail' || route.name === 'device-borrow' || route.name === 'confirm-borrow' || route.name === 'borrow-invoice'
+  return route.name === 'device-detail' 
+        || route.name === 'device-borrow' 
+        || route.name === 'confirm-borrow' 
+        || route.name === 'borrow-invoice'
+        || route.name === "device-return"
+        || route.name === "confirm-return"
+        || route.name === "return-invoice"
 })
 
 const headerTitle = computed(() => {
@@ -21,6 +27,12 @@ const headerTitle = computed(() => {
     return 'Xác nhận mượn'
   } else if (route.name === 'borrow-invoice') {
     return 'Thông tin đơn mượn'
+  } else if (route.name === 'device-return') {
+    return 'Ghi nhận trả'
+  } else if (route.name === 'confirm-return') {
+    return 'Xác nhận trả'
+  } else if (route.name === 'return-invoice') {
+    return 'Thông tin đơn trả'
   }
   return ''
 })
@@ -31,6 +43,12 @@ const handleBack = () => {
   } else if (route.name === 'confirm-borrow') {
     router.push(`/device/${route.params.id}/borrow`)
   } else if (route.name === 'borrow-invoice') {
+    router.push('/')
+  } else if (route.name === 'device-return') {
+    router.push(`/device/${route.params.id}`)
+  } else if (route.name === 'confirm-return') {
+    router.push(`/device/${route.params.id}/return`)
+  } else if (route.name === 'return-invoice') {
     router.push('/')
   } else {
     router.push('/')
