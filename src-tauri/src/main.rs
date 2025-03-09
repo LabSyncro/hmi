@@ -13,23 +13,30 @@ use db::schema::DatabaseSchema;
 
 #[tokio::main]
 async fn main() {
+    // Initialize database
     let db = Database::new()
         .await
         .expect("Failed to initialize database");
 
-    // Sync schema during startup in development
-    #[cfg(debug_assertions)]
-    {
-        if let Err(e) = sync_schema_cli().await {
-            eprintln!("Warning: Failed to sync schema: {}", e);
-        }
+    // Sync schema and generate TypeScript types
+    if let Err(e) = sync_schema_cli().await {
+        eprintln!("Warning: Failed to sync schema: {}", e);
     }
 
+    // Initialize schema for the application state
+    let schema = DatabaseSchema::fetch(&db)
+        .await
+        .expect("Failed to fetch database schema");
+
+    println!("Database schema fetched successfully!");
+
+    // Create state with initialized schema
     let state = AppState {
         db,
-        schema: Arc::new(Mutex::new(None)),
+        schema: Arc::new(Mutex::new(Some(schema))),
     };
 
+    // Build and run the Tauri application
     tauri::Builder::default()
         .manage(state)
         .invoke_handler(tauri::generate_handler![

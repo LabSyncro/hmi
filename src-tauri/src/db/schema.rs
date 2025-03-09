@@ -5,7 +5,7 @@ use std::path::Path;
 
 use super::connection::{Database, DbResult};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ColumnInfo {
     pub name: String,
     pub type_name: String,
@@ -14,7 +14,7 @@ pub struct ColumnInfo {
     pub default_value: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TableInfo {
     pub name: String,
     pub schema: String,
@@ -59,7 +59,10 @@ impl DatabaseSchema {
         let rows = client.query(table_query, &[]).await?;
 
         let mut tables: HashMap<String, TableInfo> = HashMap::new();
+        let mut table_columns: HashMap<String, Vec<ColumnInfo>> = HashMap::new();
+        let mut table_primary_keys: HashMap<String, Vec<String>> = HashMap::new();
 
+        // First pass: collect all columns and primary keys
         for row in rows {
             let schema: String = row.get("table_schema");
             let table_name: String = row.get("table_name");
@@ -71,28 +74,49 @@ impl DatabaseSchema {
 
             let full_table_name = format!("{}.{}", schema, table_name);
 
-            let table = tables
+            // Add column
+            let column = ColumnInfo {
+                name: column_name.clone(),
+                type_name: data_type,
+                is_nullable: is_nullable == "YES",
+                is_primary: constraint_type.as_deref() == Some("PRIMARY KEY"),
+                default_value,
+            };
+
+            table_columns
                 .entry(full_table_name.clone())
-                .or_insert_with(|| TableInfo {
+                .or_default()
+                .push(column);
+
+            // Add primary key if applicable
+            if constraint_type.as_deref() == Some("PRIMARY KEY") {
+                table_primary_keys
+                    .entry(full_table_name.clone())
+                    .or_default()
+                    .push(column_name);
+            }
+
+            // Create table info if it doesn't exist
+            if !tables.contains_key(&full_table_name) {
+                let table_info = TableInfo {
                     name: table_name.clone(),
                     schema: schema.clone(),
                     columns: Vec::new(),
                     primary_keys: Vec::new(),
-                });
-
-            let is_primary = constraint_type.as_deref() == Some("PRIMARY KEY");
-
-            if is_primary {
-                table.primary_keys.push(column_name.clone());
+                };
+                tables.insert(full_table_name.clone(), table_info.clone());
+                tables.insert(table_name, table_info);
             }
+        }
 
-            table.columns.push(ColumnInfo {
-                name: column_name,
-                type_name: data_type,
-                is_nullable: is_nullable == "YES",
-                is_primary,
-                default_value,
-            });
+        // Second pass: populate tables with collected data
+        for (full_name, table) in tables.iter_mut() {
+            if let Some(columns) = table_columns.get(full_name) {
+                table.columns = columns.clone();
+            }
+            if let Some(primary_keys) = table_primary_keys.get(full_name) {
+                table.primary_keys = primary_keys.clone();
+            }
         }
 
         // Get database version
@@ -122,7 +146,12 @@ impl DatabaseSchema {
         let mut seen_tables = std::collections::HashMap::new();
         
         // Generate types for each table
-        for (_, table) in &self.tables {
+        for (full_name, table) in &self.tables {
+            // Skip if this is a duplicate table (without schema)
+            if !full_name.contains('.') && self.tables.contains_key(&format!("{}.{}", table.schema, table.name)) {
+                continue;
+            }
+            
             // Create a unique name for duplicate tables by appending the schema name
             let interface_name = if seen_tables.contains_key(&table.name) {
                 format!("{}_{}", pascal_case(&table.name), pascal_case(&table.schema))

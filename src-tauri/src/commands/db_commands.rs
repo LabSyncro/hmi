@@ -1,19 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tauri::State;
-use tokio::sync::Mutex;
 use tokio_postgres::types::ToSql;
 
-use crate::db::{
-    connection::{Database, DbError},
-    queries::builder::QueryBuilder,
-    schema::DatabaseSchema,
-};
+use crate::db::{connection::DbError, queries::builder::QueryBuilder, schema::DatabaseSchema};
 
-pub struct AppState {
-    pub db: Database,
-    pub schema: Arc<Mutex<Option<DatabaseSchema>>>,
-}
+use super::AppState;
 
 #[derive(Debug, Serialize)]
 pub struct CommandError {
@@ -71,11 +62,11 @@ pub async fn query_table(
 ) -> CommandResult<Vec<serde_json::Value>> {
     let schema_guard = state.schema.lock().await;
     let schema = schema_guard.as_ref().ok_or_else(|| CommandError {
-        message: "Schema not synchronized".to_string(),
+        message: "Database schema not initialized. Please restart the application.".to_string(),
     })?;
 
     let mut builder = QueryBuilder::new(schema, &params.table).ok_or_else(|| CommandError {
-        message: format!("Table {} not found", params.table),
+        message: format!("Table '{}' not found in the database schema", params.table),
     })?;
 
     if let Some(columns) = params.columns {

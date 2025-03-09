@@ -14,7 +14,21 @@ pub struct QueryBuilder<'a> {
 
 impl<'a> QueryBuilder<'a> {
     pub fn new(schema: &'a DatabaseSchema, table_name: &str) -> Option<Self> {
-        let table = schema.tables.get(table_name)?;
+        println!("Looking up table: {}", table_name);
+        
+        // Try to get the table info, first with the exact name, then try schema-qualified names
+        let table = schema.tables.get(table_name).or_else(|| {
+            println!("Table not found by exact name, searching in all schemas...");
+            // If the table wasn't found by its name directly, try to find it in any schema
+            let found = schema.tables.values().find(|t| t.name == table_name);
+            if let Some(t) = found {
+                println!("Found table in schema: {}", t.schema);
+            } else {
+                println!("Table not found in any schema");
+            }
+            found
+        })?;
+
         Some(Self {
             table,
             conditions: Vec::new(),

@@ -17,10 +17,18 @@ export interface InsertParams<T> {
 export class DatabaseClient {
   private static instance: DatabaseClient;
 
-  private constructor() { }
+  private constructor() {
+    console.log('DatabaseClient instance created');
+    console.warn(
+      "DEVELOPER NOTE: The Tauri backend needs to be updated to properly manage state.\n" +
+      "In the Rust backend, ensure you call .manage() on the state before using database commands.\n" +
+      "This is typically done in the main.rs file where the Tauri app is initialized."
+    );
+  }
 
   public static getInstance(): DatabaseClient {
     if (!DatabaseClient.instance) {
+      console.log('Creating new DatabaseClient instance');
       DatabaseClient.instance = new DatabaseClient();
     }
     return DatabaseClient.instance;
@@ -30,23 +38,38 @@ export class DatabaseClient {
    * Synchronizes the database schema and generates TypeScript types
    */
   public async syncSchema(): Promise<void> {
-    await invoke('sync_schema');
+    try {
+      console.log('Syncing database schema...');
+      await invoke('sync_schema');
+      console.log('Database schema synced successfully');
+    } catch (error) {
+      console.error('Error syncing database schema:', error);
+      throw error;
+    }
   }
 
   /**
    * Queries a table with type-safe parameters
    */
   public async query<T = any>(params: QueryParams<T>): Promise<T[]> {
-    return invoke('query_table', {
-      params: {
-        table: params.table,
-        columns: params.columns as string[],
-        conditions: params.conditions?.map(([column, value]) => [column as string, value]),
-        order_by: params.orderBy?.map(([column, asc]) => [column as string, asc]),
-        limit: params.limit,
-        offset: params.offset,
-      },
-    });
+    try {
+      console.log('Executing query:', params);
+      const result = await invoke('query_table', {
+        params: {
+          table: params.table,
+          columns: params.columns as string[],
+          conditions: params.conditions?.map(([column, value]) => [column as string, value]),
+          order_by: params.orderBy?.map(([column, asc]) => [column as string, asc]),
+          limit: params.limit,
+          offset: params.offset,
+        },
+      });
+      console.log('Query result:', result);
+      return result as T[];
+    } catch (error) {
+      console.error('Error executing query:', error);
+      throw error;
+    }
   }
 
   /**
