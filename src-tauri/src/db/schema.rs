@@ -62,7 +62,6 @@ impl DatabaseSchema {
         let mut table_columns: HashMap<String, Vec<ColumnInfo>> = HashMap::new();
         let mut table_primary_keys: HashMap<String, Vec<String>> = HashMap::new();
 
-        // First pass: collect all columns and primary keys
         for row in rows {
             let schema: String = row.get("table_schema");
             let table_name: String = row.get("table_name");
@@ -74,7 +73,6 @@ impl DatabaseSchema {
 
             let full_table_name = format!("{}.{}", schema, table_name);
 
-            // Add column
             let column = ColumnInfo {
                 name: column_name.clone(),
                 type_name: data_type,
@@ -88,7 +86,6 @@ impl DatabaseSchema {
                 .or_default()
                 .push(column);
 
-            // Add primary key if applicable
             if constraint_type.as_deref() == Some("PRIMARY KEY") {
                 table_primary_keys
                     .entry(full_table_name.clone())
@@ -96,7 +93,6 @@ impl DatabaseSchema {
                     .push(column_name);
             }
 
-            // Create table info if it doesn't exist
             if !tables.contains_key(&full_table_name) {
                 let table_info = TableInfo {
                     name: table_name.clone(),
@@ -109,7 +105,6 @@ impl DatabaseSchema {
             }
         }
 
-        // Second pass: populate tables with collected data
         for (full_name, table) in tables.iter_mut() {
             if let Some(columns) = table_columns.get(full_name) {
                 table.columns = columns.clone();
@@ -119,7 +114,6 @@ impl DatabaseSchema {
             }
         }
 
-        // Get database version
         let version: String = client.query_one("SELECT version()", &[]).await?.get(0);
 
         Ok(DatabaseSchema { tables, version })
@@ -138,39 +132,40 @@ impl DatabaseSchema {
 
     pub fn generate_typescript_types<P: AsRef<Path>>(&self, output_path: P) -> std::io::Result<()> {
         let mut typescript = String::new();
-        
-        // Add file header
+
         typescript.push_str("// This file is auto-generated. Do not edit manually.\n\n");
-        
-        // Track table names to handle duplicates
+
         let mut seen_tables = std::collections::HashMap::new();
-        
-        // Generate types for each table
+
         for (full_name, table) in &self.tables {
-            // Skip if this is a duplicate table (without schema)
-            if !full_name.contains('.') && self.tables.contains_key(&format!("{}.{}", table.schema, table.name)) {
+            if !full_name.contains('.')
+                && self
+                    .tables
+                    .contains_key(&format!("{}.{}", table.schema, table.name))
+            {
                 continue;
             }
-            
-            // Create a unique name for duplicate tables by appending the schema name
+
             let interface_name = if seen_tables.contains_key(&table.name) {
-                format!("{}_{}", pascal_case(&table.name), pascal_case(&table.schema))
+                format!(
+                    "{}_{}",
+                    pascal_case(&table.name),
+                    pascal_case(&table.schema)
+                )
             } else {
                 pascal_case(&table.name)
             };
             seen_tables.insert(table.name.clone(), interface_name.clone());
-            
+
             typescript.push_str(&format!("export interface {} {{\n", interface_name));
-            
-            // Track seen columns to handle duplicates
+
             let mut seen_columns = std::collections::HashSet::new();
-            
+
             for column in &table.columns {
                 if !seen_columns.insert(&column.name) {
-                    // Skip duplicate columns
                     continue;
                 }
-                
+
                 let ts_type = pg_type_to_typescript(&column.type_name);
                 let nullable = if column.is_nullable { " | null" } else { "" };
                 typescript.push_str(&format!(
@@ -180,10 +175,10 @@ impl DatabaseSchema {
                     nullable
                 ));
             }
-            
+
             typescript.push_str("}\n\n");
         }
-        
+
         fs::write(output_path, typescript)
     }
 }
@@ -221,7 +216,10 @@ fn pg_type_to_typescript(pg_type: &str) -> &'static str {
         "numeric" | "decimal" | "real" | "double precision" => "number",
         "character varying" | "text" | "character" | "varchar" => "string",
         "boolean" => "boolean",
-        "timestamp with time zone" | "timestamp without time zone" | "timestamp" | "timestamptz" => "Date",
+        "timestamp with time zone"
+        | "timestamp without time zone"
+        | "timestamp"
+        | "timestamptz" => "Date",
         "json" | "jsonb" => "any",
         "uuid" => "string",
         "bytea" => "unknown",

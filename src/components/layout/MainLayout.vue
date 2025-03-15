@@ -9,13 +9,13 @@ const router = useRouter()
 const sidebarOpen = ref(false)
 
 const showBackButton = computed(() => {
-  return route.name === 'device-detail' 
-        || route.name === 'device-borrow' 
-        || route.name === 'confirm-borrow' 
-        || route.name === 'borrow-invoice'
-        || route.name === "device-return"
-        || route.name === "confirm-return"
-        || route.name === "return-invoice"
+  return route.name === 'device-detail'
+    || route.name === 'device-borrow'
+    || route.name === 'confirm-borrow'
+    || route.name === 'borrow-invoice'
+    || route.name === "device-return"
+    || route.name === "confirm-return"
+    || route.name === "return-invoice"
 })
 
 const headerTitle = computed(() => {
@@ -58,10 +58,8 @@ const handleBack = () => {
 
 <template>
   <div class="min-h-screen bg-gray-100">
-    <!-- Sidebar -->
     <Sidebar :is-open="sidebarOpen" @close="sidebarOpen = false" />
 
-    <!-- Header -->
     <header class="bg-white shadow-sm">
       <div class="flex h-14 items-center justify-between px-4 border-b">
         <div class="flex items-center">
@@ -74,7 +72,6 @@ const handleBack = () => {
           </button>
         </div>
 
-        <!-- Profile dropdown -->
         <div class="flex items-center">
           <button class="flex items-center">
             <img class="h-8 w-8 rounded-full"
@@ -85,7 +82,6 @@ const handleBack = () => {
       </div>
     </header>
 
-    <!-- Main content -->
     <main>
       <div class="mx-auto max-w-7xl">
         <router-view></router-view>

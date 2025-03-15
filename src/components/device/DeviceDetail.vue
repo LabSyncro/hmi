@@ -17,28 +17,15 @@ const retrying = ref(false)
 async function loadDeviceDetails() {
   loading.value = true
   error.value = null
-  
+
   try {
-    const id = '1003' // Hardcoded ID for testing
+    const id = '1003'
     deviceDetail.value = await getDeviceById(id)
     if (!deviceDetail.value) {
       error.value = 'Device not found'
     }
   } catch (e) {
-    console.error('Failed to load device details:', e)
-    if (e instanceof Error && e.message.includes('state not managed')) {
-      error.value = `Database connection issue: The Tauri backend needs to be updated to properly manage state.
-      
-In the Rust backend (src-tauri/src/main.rs), you need to ensure the AppState is properly managed. 
-
-Look for the tauri::Builder::default() section and make sure it includes:
-.manage(state)
-before the .invoke_handler() call.
-
-This error occurs because the 'state' field is not managed for the 'query_table' command.`
-    } else {
-      error.value = e instanceof Error ? e.message : 'Failed to load device details'
-    }
+    error.value = e instanceof Error ? e.message : 'Failed to load device details'
   } finally {
     loading.value = false
     retrying.value = false
@@ -65,11 +52,9 @@ function retryLoading() {
 
       <div v-else-if="error" class="bg-red-50 p-4 rounded-md">
         <p class="text-red-700">{{ error }}</p>
-        <button 
-          @click="retryLoading" 
+        <button @click="retryLoading"
           class="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          :disabled="retrying"
-        >
+          :disabled="retrying">
           <span v-if="retrying">Retrying...</span>
           <span v-else>Retry</span>
         </button>
@@ -79,9 +64,8 @@ function retryLoading() {
         <div class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="md:col-span-1">
-              <img :src="deviceDetail.kind.image?.url || '/device-image.svg'" 
-                   :alt="deviceDetail.kind.name || 'Device Image'" 
-                   class="w-full rounded-lg" />
+              <img :src="deviceDetail.kind.image?.url || '/device-image.svg'"
+                :alt="deviceDetail.kind.name || 'Device Image'" class="w-full rounded-lg" />
             </div>
 
             <div class="md:col-span-2">
@@ -165,14 +149,12 @@ function retryLoading() {
             <div class="bg-white rounded-lg border p-6">
               <h3 class="text-lg font-semibold text-gray-900">Mượn trả</h3>
               <p class="mt-2 text-sm text-gray-600">
-                {{ deviceDetail.device.status === 'AVAILABLE' 
+                {{ deviceDetail.device.status === 'AVAILABLE'
                   ? 'Thiết bị đang sẵn sàng để được mượn.'
                   : 'Thiết bị hiện không khả dụng.' }}
               </p>
-              <button 
-                @click="router.push(`/device/${route.params.id}/borrow`)"
-                :disabled="deviceDetail.device.status !== 'AVAILABLE'"
-                :class="[
+              <button @click="router.push(`/device/${route.params.id}/borrow`)"
+                :disabled="deviceDetail.device.status !== 'AVAILABLE'" :class="[
                   'mt-4 w-full rounded-md py-2 px-4',
                   deviceDetail.device.status === 'AVAILABLE'
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -180,10 +162,8 @@ function retryLoading() {
                 ]">
                 Mượn thiết bị
               </button>
-              <button
-                @click="router.push(`/device/${route.params.id}/return`)"
-                :disabled="deviceDetail.device.status !== 'BORROWED'"
-                :class="[
+              <button @click="router.push(`/device/${route.params.id}/return`)"
+                :disabled="deviceDetail.device.status !== 'BORROWED'" :class="[
                   'mt-4 w-full rounded-md py-2 px-4',
                   deviceDetail.device.status === 'BORROWED'
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -198,9 +178,7 @@ function retryLoading() {
               <div class="mt-4 prose prose-sm max-w-none">
                 <p>{{ deviceDetail.kind.meta?.description }}</p>
                 <p v-if="deviceDetail.kind.datasheet">
-                  <a :href="deviceDetail.kind.datasheet" 
-                     target="_blank"
-                     class="text-blue-600 hover:text-blue-500">
+                  <a :href="deviceDetail.kind.datasheet" target="_blank" class="text-blue-600 hover:text-blue-500">
                     Xem datasheet
                   </a>
                 </p>

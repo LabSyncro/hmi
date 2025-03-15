@@ -97,15 +97,11 @@ const getProgressColor = (progress: string) => {
 
 <template>
     <div class="bg-gray-50">
-        <!-- Main Content -->
         <div class="flex overflow-hidden">
-            <!-- Left Panel -->
             <div class="w-1/3 border-r bg-white p-6">
                 <h2 class="text-2xl font-medium text-gray-900 mb-8">Chi tiết thiết bị</h2>
 
                 <div class="space-y-6">
-
-                    <!-- Device Header -->
                     <div class="space-y-2">
                         <div class="flex items-start space-x-4">
                             <img src="/device-image.svg" alt="" class="w-24 h-24 rounded-lg border p-1" />
@@ -118,7 +114,6 @@ const getProgressColor = (progress: string) => {
                         </div>
                     </div>
 
-                    <!-- Basic Info -->
                     <div class="space-y-4">
                         <div class="grid grid-cols-3 gap-2 text-base mb-4">
                             <span class="text-gray-500">Quyền mượn</span>
@@ -160,14 +155,18 @@ const getProgressColor = (progress: string) => {
                         </div>
                     </div>
 
-                    <!-- Device Status Table -->
                     <div class="border rounded-lg overflow-hidden">
                         <table class="w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-10 py-2 text-left text-sm font-medium text-gray-500 w-[45%]">Mã</th>
-                                    <th scope="col" class="px-3 py-2 text-left text-sm font-medium text-gray-500 w-[25%]">Tiến độ</th>
-                                    <th scope="col" class="px-3 py-2 text-left text-sm font-medium text-gray-500 w-[30%]">Tình trạng</th>
+                                    <th scope="col"
+                                        class="px-10 py-2 text-left text-sm font-medium text-gray-500 w-[45%]">Mã</th>
+                                    <th scope="col"
+                                        class="px-3 py-2 text-left text-sm font-medium text-gray-500 w-[25%]">Tiến độ
+                                    </th>
+                                    <th scope="col"
+                                        class="px-3 py-2 text-left text-sm font-medium text-gray-500 w-[30%]">Tình trạng
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 bg-white">
@@ -175,10 +174,12 @@ const getProgressColor = (progress: string) => {
                                     <td class="px-3 py-2 whitespace-nowrap text-sm">
                                         <div class="flex items-center">
                                             <TrashIcon class="h-4 w-4 text-red-500 mr-2 cursor-pointer shrink-0" />
-                                            <span class="text-gray-900 truncate">{{ device.code }}/{{ device.borrowId }}</span>
+                                            <span class="text-gray-900 truncate">{{ device.code }}/{{ device.borrowId
+                                                }}</span>
                                         </div>
                                     </td>
-                                    <td class="px-3 py-2 whitespace-nowrap text-sm" :class="getProgressColor(device.progress)">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm"
+                                        :class="getProgressColor(device.progress)">
                                         {{ device.progress }}
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap text-sm">
@@ -194,8 +195,7 @@ const getProgressColor = (progress: string) => {
                                                         <ChevronDownIcon class="ml-1 h-3 w-3" aria-hidden="true" />
                                                     </MenuButton>
                                                 </div>
-                                                <transition
-                                                    enter-active-class="transition ease-out duration-100"
+                                                <transition enter-active-class="transition ease-out duration-100"
                                                     enter-from-class="transform opacity-0 scale-95"
                                                     enter-to-class="transform opacity-100 scale-100"
                                                     leave-active-class="transition ease-in duration-75"
@@ -205,20 +205,20 @@ const getProgressColor = (progress: string) => {
                                                         class="absolute right-0 z-10 mt-1 w-24 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                                                         <div class="py-1">
                                                             <MenuItem v-slot="{ active }">
-                                                                <button :class="[
-                                                                    active ? 'bg-gray-50' : '',
-                                                                    'block w-full px-3 py-1 text-left text-sm text-gray-900'
-                                                                ]">
-                                                                    Tốt
-                                                                </button>
+                                                            <button :class="[
+                                                                active ? 'bg-gray-50' : '',
+                                                                'block w-full px-3 py-1 text-left text-sm text-gray-900'
+                                                            ]">
+                                                                Tốt
+                                                            </button>
                                                             </MenuItem>
                                                             <MenuItem v-slot="{ active }">
-                                                                <button :class="[
-                                                                    active ? 'bg-gray-50' : '',
-                                                                    'block w-full px-3 py-1 text-left text-sm text-gray-900'
-                                                                ]">
-                                                                    Hư
-                                                                </button>
+                                                            <button :class="[
+                                                                active ? 'bg-gray-50' : '',
+                                                                'block w-full px-3 py-1 text-left text-sm text-gray-900'
+                                                            ]">
+                                                                Hư
+                                                            </button>
                                                             </MenuItem>
                                                         </div>
                                                     </MenuItems>
@@ -233,11 +233,9 @@ const getProgressColor = (progress: string) => {
                 </div>
             </div>
 
-            <!-- Right Panel -->
             <div class="w-2/3 bg-gray-100 p-6">
                 <h2 class="text-2xl font-medium text-gray-900 mb-2">Danh sách thiết bị</h2>
 
-                <!-- Stats Cards -->
                 <div class="grid grid-cols-2 gap-6 mb-6">
                     <div class="bg-white rounded-lg">
                         <h3 class="text-base font-medium text-gray-500 px-4 pt-4">Tiến độ</h3>
@@ -267,7 +265,6 @@ const getProgressColor = (progress: string) => {
                     </div>
                 </div>
 
-                <!-- Device List Table -->
                 <div class="overflow-hidden border rounded-lg bg-white">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -296,7 +293,6 @@ const getProgressColor = (progress: string) => {
             </div>
         </div>
 
-        <!-- Bottom Bar -->
         <div class="fixed bottom-0 left-0 right-0 bg-tertiary-darker border-t">
             <div class="flex items-center justify-between px-6 py-4">
                 <div class="flex flex-col">

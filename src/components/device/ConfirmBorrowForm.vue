@@ -76,11 +76,9 @@ const masks = {
 <template>
     <div class="bg-gray-100 min-h-screen">
         <div class="flex py-6 sm:px-6 lg:px-8 gap-4">
-            <!-- Left Panel - Device List -->
             <div class="w-2/3">
                 <h2 class="text-2xl font-medium text-gray-900 mb-2">Danh sách thiết bị</h2>
 
-                <!-- Info Cards -->
                 <div class="bg-white rounded-lg p-4 mb-4">
                     <div class="grid grid-cols-3 gap-8">
                         <div>
@@ -101,7 +99,6 @@ const masks = {
                     </div>
                 </div>
 
-                <!-- Device Table -->
                 <div class="bg-white rounded-lg overflow-hidden border">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -130,7 +127,6 @@ const masks = {
                 </div>
             </div>
 
-            <!-- Right Panel - Borrow Form -->
             <div class="w-1/3 rounded-xl space-y-4">
                 <div class="bg-white p-6 rounded-xl h-fit">
                     <h2 class="text-xl font-medium text-gray-900 mb-1">Đơn mượn</h2>
@@ -151,7 +147,6 @@ const masks = {
                             </div>
                         </div>
 
-                        <!-- Date Selection -->
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm text-gray-500">Ngày mượn</label>
@@ -181,11 +176,9 @@ const masks = {
                     </div>
                 </div>
 
-                <!-- Borrower Info -->
                 <div class="space-y-4 bg-white p-6 rounded-xl">
                     <h3 class="text-xl font-medium text-gray-900">Người mượn</h3>
 
-                    <!-- Error Message -->
                     <div class="bg-red-50 border border-red-200 rounded-lg p-1">
                         <div>
                             <div class="flex items-center">
@@ -212,7 +205,6 @@ const masks = {
                     </div>
                 </div>
 
-                <!-- Confirm Button -->
                 <div class="mt-8">
                     <button type="button"
                         class="w-full bg-blue-600 text-white rounded-lg py-2 px-4 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -223,11 +215,11 @@ const masks = {
             </div>
         </div>
 
-        <!-- Success Modal -->
         <div v-if="showSuccessModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity">
             <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
                 <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                    <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                    <div
+                        class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
                         <div>
                             <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-green-100">
                                 <CheckIcon class="h-16 w-16 text-green-600" />

@@ -17,18 +17,8 @@ export interface InsertParams<T> {
 export class DatabaseClient {
   private static instance: DatabaseClient;
 
-  private constructor() {
-    console.log('DatabaseClient instance created');
-    console.warn(
-      "DEVELOPER NOTE: The Tauri backend needs to be updated to properly manage state.\n" +
-      "In the Rust backend, ensure you call .manage() on the state before using database commands.\n" +
-      "This is typically done in the main.rs file where the Tauri app is initialized."
-    );
-  }
-
   public static getInstance(): DatabaseClient {
     if (!DatabaseClient.instance) {
-      console.log('Creating new DatabaseClient instance');
       DatabaseClient.instance = new DatabaseClient();
     }
     return DatabaseClient.instance;
@@ -39,11 +29,8 @@ export class DatabaseClient {
    */
   public async syncSchema(): Promise<void> {
     try {
-      console.log('Syncing database schema...');
       await invoke('sync_schema');
-      console.log('Database schema synced successfully');
     } catch (error) {
-      console.error('Error syncing database schema:', error);
       throw error;
     }
   }
@@ -53,7 +40,6 @@ export class DatabaseClient {
    */
   public async query<T = any>(params: QueryParams<T>): Promise<T[]> {
     try {
-      console.log('Executing query:', params);
       const result = await invoke('query_table', {
         params: {
           table: params.table,
@@ -64,10 +50,8 @@ export class DatabaseClient {
           offset: params.offset,
         },
       });
-      console.log('Query result:', result);
       return result as T[];
     } catch (error) {
-      console.error('Error executing query:', error);
       throw error;
     }
   }
@@ -148,5 +132,4 @@ export class TableQueryBuilder<T> {
   }
 }
 
-// Export a singleton instance
 export const db = DatabaseClient.getInstance(); 

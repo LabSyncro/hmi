@@ -16,13 +16,10 @@ const showMore = ref(false)
 
 <template>
     <div class="bg-gray-50">
-        <!-- Main Content -->
         <div class="flex overflow-hidden">
-            <!-- Left Panel -->
             <div class="w-1/3 border-r bg-white p-6">
                 <h2 class="text-2xl font-medium text-gray-900 mb-8">Chi tiết thiết bị</h2>
                 <div class="space-y-6">
-                    <!-- Device Header -->
                     <div class="space-y-2">
                         <div class="flex items-start space-x-4">
                             <img src="/device-image.svg" alt="" class="w-24 h-24 rounded-lg border p-1" />
@@ -35,7 +32,6 @@ const showMore = ref(false)
                         </div>
                     </div>
 
-                    <!-- Basic Info -->
                     <div class="space-y-4">
                         <div class="grid grid-cols-3 gap-2 text-base mb-4">
                             <span class="text-gray-500">Quyền mượn</span>
@@ -77,7 +73,6 @@ const showMore = ref(false)
                         </div>
                     </div>
 
-                    <!-- Device Status Table -->
                     <div class="border rounded-lg overflow-hidden">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
@@ -171,11 +166,9 @@ const showMore = ref(false)
                 </div>
             </div>
 
-            <!-- Right Panel -->
             <div class="w-2/3 bg-gray-100 p-6">
                 <h2 class="text-2xl font-medium text-gray-900 mb-2">Danh sách thiết bị</h2>
 
-                <!-- Info Cards -->
                 <div class="bg-white rounded-lg p-4 mb-4 ">
                     <div class="grid grid-cols-3 gap-8">
                         <div>
@@ -196,7 +189,6 @@ const showMore = ref(false)
                     </div>
                 </div>
 
-                <!-- Device List Table -->
                 <div class="overflow-hidden border rounded-lg">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -280,7 +272,6 @@ const showMore = ref(false)
             </div>
         </div>
 
-        <!-- Bottom Bar -->
         <div class="fixed bottom-0 left-0 right-0 bg-tertiary-darker border-t">
             <div class="flex items-center justify-between px-6 py-4">
                 <div class="flex flex-col">

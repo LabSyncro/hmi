@@ -14,12 +14,7 @@ pub struct QueryBuilder<'a> {
 
 impl<'a> QueryBuilder<'a> {
     pub fn new(schema: &'a DatabaseSchema, table_name: &str) -> Option<Self> {
-        println!("Looking up table: {}", table_name);
-        
-        // Try to get the table info, first with the exact name, then try schema-qualified names
         let table = schema.tables.get(table_name).or_else(|| {
-            println!("Table not found by exact name, searching in all schemas...");
-            // If the table wasn't found by its name directly, try to find it in any schema
             let found = schema.tables.values().find(|t| t.name == table_name);
             if let Some(t) = found {
                 println!("Found table in schema: {}", t.schema);
@@ -150,7 +145,6 @@ impl<'a> QueryBuilder<'a> {
                     columns.push(column.name.clone());
                     param_positions.push(format!("${}", params.len() + 1));
 
-                    // Convert serde_json::Value to postgres parameter
                     match value {
                         serde_json::Value::String(s) => params.push(Box::new(s.clone())),
                         serde_json::Value::Number(n) => {
