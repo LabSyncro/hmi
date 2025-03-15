@@ -35,6 +35,14 @@ impl<'a> QueryBuilder<'a> {
         })
     }
 
+    pub fn get_column_type(&self, column_name: &str) -> Option<String> {
+        self.table
+            .columns
+            .iter()
+            .find(|col| col.name == column_name)
+            .map(|col| col.type_name.clone())
+    }
+
     pub fn select(mut self, columns: &[&str]) -> Self {
         self.selected_columns = Some(columns.iter().map(|&s| s.to_string()).collect());
         self

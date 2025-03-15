@@ -2,7 +2,7 @@ import { db } from './client'
 import type {
   Devices as DevicesType,
   DeviceKinds as DeviceKindsType,
-  Labs as LabsType
+  Labs as LabsType,
 } from '@/types/db/generated'
 
 export interface DeviceDetail {
@@ -25,9 +25,8 @@ export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
     try {
       const devices = await db.query<DevicesType>({
         table: 'public.devices',
-        conditions: [['id' as keyof DevicesType, id]]
+        conditions: [['id', id]]
       });
-
 
       if (devices.length === 0) {
         return null;
@@ -37,23 +36,28 @@ export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
 
       const kinds = await db.query<DeviceKindsType>({
         table: 'public.device_kinds',
-        conditions: [['id' as keyof DeviceKindsType, device.kind]]
+        conditions: [['id', device.kind]]
       });
 
       if (kinds.length === 0) {
         throw new Error('Device kind not found');
       }
 
-      const labs = device.labId ? await db.query<LabsType>({
-        table: 'public.labs',
-        conditions: [['id' as keyof LabsType, device.labId]]
-      }) : [];
+      let labs: LabsType[] = [];
+      if (device.labId) {
+        labs = await db.query<LabsType>({
+          table: 'public.labs',
+          conditions: [['id', device.labId]]
+        });
+      }
 
-      return {
+      const result = {
         device,
         kind: kinds[0],
         lab: labs[0] || null
       };
+
+      return result;
     } catch (error) {
       retries++;
 

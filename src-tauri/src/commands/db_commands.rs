@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use std::error::Error;
 use tauri::State;
-use tokio_postgres::types::{ToSql, Type};
+use tokio_postgres::types::{FromSql, ToSql, Type};
 
 use crate::db::{connection::DbError, queries::builder::QueryBuilder, schema::DatabaseSchema};
 
@@ -49,10 +50,28 @@ fn convert_json_keys_to_camel_case(value: JsonValue) -> JsonValue {
             }
             JsonValue::Object(new_obj)
         }
-        JsonValue::Array(arr) => {
-            JsonValue::Array(arr.into_iter().map(convert_json_keys_to_camel_case).collect())
-        }
+        JsonValue::Array(arr) => JsonValue::Array(
+            arr.into_iter()
+                .map(convert_json_keys_to_camel_case)
+                .collect(),
+        ),
         _ => value,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PostgresEnum(String);
+
+impl<'a> FromSql<'a> for PostgresEnum {
+    fn from_sql(_ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn Error + Sync + Send>> {
+        let s = String::from_utf8(raw.to_vec())?;
+        Ok(PostgresEnum(s))
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        // Check if the type is a PostgreSQL enum by checking its object ID range
+        // PostgreSQL custom types (including enums) have OIDs >= 16384
+        ty.oid() >= 16384
     }
 }
 
@@ -111,7 +130,24 @@ pub async fn query_table(
     if let Some(conditions) = params.conditions {
         for (column, value) in conditions {
             match value {
-                serde_json::Value::String(s) => builder = builder.where_eq(&column, s),
+                serde_json::Value::String(s) => {
+                    // Check if the column is a UUID type and convert the string to UUID
+                    let column_info = builder.get_column_type(&column);
+                    if let Some(type_name) = column_info {
+                        if type_name == "uuid" {
+                            if let Ok(uuid) = uuid::Uuid::parse_str(&s) {
+                                builder = builder.where_eq(&column, uuid);
+                            } else {
+                                println!("Failed to parse UUID: {}", s);
+                                continue;
+                            }
+                        } else {
+                            builder = builder.where_eq(&column, s);
+                        }
+                    } else {
+                        builder = builder.where_eq(&column, s);
+                    }
+                }
                 serde_json::Value::Number(n) => {
                     if let Some(i) = n.as_i64() {
                         builder = builder.where_eq(&column, i);
@@ -160,21 +196,21 @@ pub async fn query_table(
                         let s: Option<String> = row.get(i);
                         match s {
                             Some(val) => serde_json::Value::String(val),
-                            None => serde_json::Value::Null
+                            None => serde_json::Value::Null,
                         }
                     }
                     &Type::INT4 => {
                         let n: Option<i32> = row.get(i);
                         match n {
                             Some(val) => serde_json::Value::Number(val.into()),
-                            None => serde_json::Value::Null
+                            None => serde_json::Value::Null,
                         }
                     }
                     &Type::INT8 => {
                         let n: Option<i64> = row.get(i);
                         match n {
                             Some(val) => serde_json::Value::Number(val.into()),
-                            None => serde_json::Value::Null
+                            None => serde_json::Value::Null,
                         }
                     }
                     &Type::FLOAT8 => {
@@ -185,7 +221,7 @@ pub async fn query_table(
                         let b: Option<bool> = row.get(i);
                         match b {
                             Some(val) => serde_json::Value::Bool(val),
-                            None => serde_json::Value::Null
+                            None => serde_json::Value::Null,
                         }
                     }
                     &Type::TIMESTAMPTZ => {
@@ -202,30 +238,48 @@ pub async fn query_table(
                         let arr: Option<Vec<String>> = row.try_get(i).ok().flatten();
                         match arr {
                             Some(val) => serde_json::Value::Array(
-                                val.into_iter()
-                                    .map(serde_json::Value::String)
-                                    .collect()
+                                val.into_iter().map(serde_json::Value::String).collect(),
                             ),
-                            None => serde_json::Value::Null
+                            None => serde_json::Value::Null,
                         }
                     }
                     t => {
-                        // Handle both enum types and regular types
                         let type_name = t.to_string();
-                        if type_name.contains("enum") || type_name == "USER-DEFINED" {
-                            // For enum types, we need to ensure we get the string value
-                            let enum_val: Option<String> = row.try_get(i).ok().flatten();
-                            match enum_val {
-                                Some(val) => serde_json::Value::String(val),
-                                None => serde_json::Value::Null
+                        if type_name == "uuid" {
+                            // UUID handling remains the same
+                            match row.try_get::<_, Option<uuid::Uuid>>(i) {
+                                Ok(Some(uuid)) => serde_json::Value::String(uuid.to_string()),
+                                _ => {
+                                    let uuid_str: Option<String> = row.try_get(i).ok().flatten();
+                                    match uuid_str {
+                                        Some(val) => serde_json::Value::String(val),
+                                        None => serde_json::Value::Null,
+                                    }
+                                }
+                            }
+                        } else if t.oid() >= 16384 {
+                            // First try with our PostgresEnum type
+                            let enum_value: Result<Option<PostgresEnum>, _> = row.try_get(i);
+                            match enum_value {
+                                Ok(Some(PostgresEnum(val))) => {
+                                    println!("Successfully parsed enum value: {}", val);
+                                    serde_json::Value::String(val)
+                                }
+                                _ => {
+                                    let str_val: Option<String> = row.try_get(i).ok().flatten();
+                                    match str_val {
+                                        Some(val) => serde_json::Value::String(val),
+                                        None => serde_json::Value::Null,
+                                    }
+                                }
                             }
                         } else {
-                            // For other types (including VARCHAR used for labId), 
-                            // ensure we properly handle the value
+                            // For other types, try as string first
                             let val: Option<String> = row.try_get(i).ok().flatten();
+                            println!("Other type value: {:?}", val);
                             match val {
                                 Some(s) => serde_json::Value::String(s),
-                                None => serde_json::Value::Null
+                                None => serde_json::Value::Null,
                             }
                         }
                     }

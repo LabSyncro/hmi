@@ -20,7 +20,6 @@ async function loadDeviceDetails() {
   try {
     const id = '1003'
     deviceDetail.value = await getDeviceById(id)
-    console.log(deviceDetail.value);
     if (!deviceDetail.value) {
       error.value = 'Device not found'
     }
@@ -86,21 +85,29 @@ function retryLoading() {
                   </div>
 
                   <div class="grid grid-cols-4">
-                    <dt class="text-sm font-medium text-gray-500">Nơi chứa</dt>
+                    <dt class="text-sm font-medium text-gray-500">Hoạt động</dt>
                     <dd class="text-sm text-gray-900 col-span-3">
-                      {{ deviceDetail.lab?.name || 'N/A' }}
+                      {{ 'Mượn trả - Sẵn sàng' }}
                     </dd>
                   </div>
 
                   <div class="grid grid-cols-4">
-                    <dt class="text-sm font-medium text-gray-500">Quyền mượn</dt>
+                    <dt class="text-sm font-medium text-gray-500">Nơi chứa</dt>
                     <dd class="text-sm text-gray-900 col-span-3">
-                      {{ deviceDetail.kind.allowedBorrowRoles || 'Tất cả' }}
+                      {{ deviceDetail.lab?.room?.split('-')[1] + ' ' + deviceDetail.lab?.room?.split('-')[0] + ', ' +
+                      deviceDetail.lab?.branch }}
                     </dd>
                   </div>
 
                   <TransitionRoot as="template" :show="showMore">
                     <div class="contents">
+                      <div class="grid grid-cols-4">
+                        <dt class="text-sm font-medium text-gray-500">Quyền mượn</dt>
+                        <dd class="text-sm text-gray-900 col-span-3">
+                          {{ deviceDetail.kind.allowedBorrowRoles?.join(', ') || 'Tất cả' }}
+                        </dd>
+                      </div>
+
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Phân loại</dt>
                         <dd class="text-sm text-gray-900 col-span-3">
