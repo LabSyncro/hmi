@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { TransitionRoot } from '@headlessui/vue';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline';
 import { getDeviceById, type DeviceDetail } from '@/lib/db/device';
+import { DeviceStatus } from '@/types/db/generated';
 
 const showMore = ref(false)
 const router = useRouter()
@@ -63,7 +64,7 @@ function retryLoading() {
         <div class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="md:col-span-1">
-              <img :src="deviceDetail.kind.image?.main_image || '/device-image.svg'"
+              <img :src="deviceDetail.kind.image?.mainImage || '/device-image.svg'"
                 :alt="deviceDetail.kind.name || 'Device Image'" class="w-full rounded-lg" />
             </div>
 
@@ -148,23 +149,23 @@ function retryLoading() {
             <div class="bg-white rounded-lg border p-6">
               <h3 class="text-lg font-semibold text-gray-900">Mượn trả</h3>
               <p class="mt-2 text-sm text-gray-600">
-                {{ deviceDetail.device.status === 'AVAILABLE'
+                {{ deviceDetail.device.status === DeviceStatus.HEALTHY
                   ? 'Thiết bị đang sẵn sàng để được mượn.'
                   : 'Thiết bị hiện không khả dụng.' }}
               </p>
               <button @click="router.push(`/device/${route.params.id}/borrow`)"
-                :disabled="deviceDetail.device.status !== 'AVAILABLE'" :class="[
+                :disabled="deviceDetail.device.status !== DeviceStatus.HEALTHY" :class="[
                   'mt-4 w-full rounded-md py-2 px-4',
-                  deviceDetail.device.status === 'AVAILABLE'
+                  deviceDetail.device.status === DeviceStatus.HEALTHY
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 ]">
                 Mượn thiết bị
               </button>
               <button @click="router.push(`/device/${route.params.id}/return`)"
-                :disabled="deviceDetail.device.status !== 'BORROWED'" :class="[
+                :disabled="deviceDetail.device.status !== DeviceStatus.BORROWING" :class="[
                   'mt-4 w-full rounded-md py-2 px-4',
-                  deviceDetail.device.status === 'BORROWED'
+                  deviceDetail.device.status === DeviceStatus.BORROWING
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 ]">

@@ -22,6 +22,40 @@ impl From<DbError> for CommandError {
 
 type CommandResult<T> = Result<T, CommandError>;
 
+fn to_camel_case(snake_str: &str) -> String {
+    let mut result = String::with_capacity(snake_str.len());
+    let mut capitalize_next = false;
+
+    for c in snake_str.chars() {
+        if c == '_' {
+            capitalize_next = true;
+        } else if capitalize_next {
+            result.push(c.to_ascii_uppercase());
+            capitalize_next = false;
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
+fn convert_json_keys_to_camel_case(value: JsonValue) -> JsonValue {
+    match value {
+        JsonValue::Object(obj) => {
+            let mut new_obj = serde_json::Map::new();
+            for (key, val) in obj {
+                let camel_key = to_camel_case(&key);
+                new_obj.insert(camel_key, convert_json_keys_to_camel_case(val));
+            }
+            JsonValue::Object(new_obj)
+        }
+        JsonValue::Array(arr) => {
+            JsonValue::Array(arr.into_iter().map(convert_json_keys_to_camel_case).collect())
+        }
+        _ => value,
+    }
+}
+
 #[tauri::command]
 pub async fn sync_schema(state: State<'_, AppState>) -> CommandResult<()> {
     let schema = DatabaseSchema::fetch(&state.db).await?;
@@ -120,19 +154,28 @@ pub async fn query_table(
         .map(|row| {
             let mut obj = serde_json::Map::new();
             for (i, column) in row.columns().iter().enumerate() {
-                let name = column.name();
+                let name = to_camel_case(column.name());
                 let value = match column.type_() {
                     &Type::VARCHAR | &Type::TEXT => {
                         let s: Option<String> = row.get(i);
-                        serde_json::Value::String(s.unwrap_or_default())
+                        match s {
+                            Some(val) => serde_json::Value::String(val),
+                            None => serde_json::Value::Null
+                        }
                     }
                     &Type::INT4 => {
                         let n: Option<i32> = row.get(i);
-                        serde_json::Value::Number(n.unwrap_or_default().into())
+                        match n {
+                            Some(val) => serde_json::Value::Number(val.into()),
+                            None => serde_json::Value::Null
+                        }
                     }
                     &Type::INT8 => {
                         let n: Option<i64> = row.get(i);
-                        serde_json::Value::Number(n.unwrap_or_default().into())
+                        match n {
+                            Some(val) => serde_json::Value::Number(val.into()),
+                            None => serde_json::Value::Null
+                        }
                     }
                     &Type::FLOAT8 => {
                         let n: Option<f64> = row.get(i);
@@ -140,7 +183,10 @@ pub async fn query_table(
                     }
                     &Type::BOOL => {
                         let b: Option<bool> = row.get(i);
-                        serde_json::Value::Bool(b.unwrap_or_default())
+                        match b {
+                            Some(val) => serde_json::Value::Bool(val),
+                            None => serde_json::Value::Null
+                        }
                     }
                     &Type::TIMESTAMPTZ => {
                         let ts: Option<chrono::DateTime<chrono::Utc>> = row.get(i);
@@ -149,11 +195,42 @@ pub async fn query_table(
                     }
                     &Type::JSONB => {
                         let json: Option<JsonValue> = row.try_get(i).ok().flatten();
-                        json.unwrap_or(JsonValue::Null)
+                        convert_json_keys_to_camel_case(json.unwrap_or(JsonValue::Null))
                     }
-                    _ => serde_json::Value::Null,
+                    t if t.to_string().starts_with("_") => {
+                        // Handle array types
+                        let arr: Option<Vec<String>> = row.try_get(i).ok().flatten();
+                        match arr {
+                            Some(val) => serde_json::Value::Array(
+                                val.into_iter()
+                                    .map(serde_json::Value::String)
+                                    .collect()
+                            ),
+                            None => serde_json::Value::Null
+                        }
+                    }
+                    t => {
+                        // Handle both enum types and regular types
+                        let type_name = t.to_string();
+                        if type_name.contains("enum") || type_name == "USER-DEFINED" {
+                            // For enum types, we need to ensure we get the string value
+                            let enum_val: Option<String> = row.try_get(i).ok().flatten();
+                            match enum_val {
+                                Some(val) => serde_json::Value::String(val),
+                                None => serde_json::Value::Null
+                            }
+                        } else {
+                            // For other types (including VARCHAR used for labId), 
+                            // ensure we properly handle the value
+                            let val: Option<String> = row.try_get(i).ok().flatten();
+                            match val {
+                                Some(s) => serde_json::Value::String(s),
+                                None => serde_json::Value::Null
+                            }
+                        }
+                    }
                 };
-                obj.insert(name.to_string(), value);
+                obj.insert(name, value);
             }
             serde_json::Value::Object(obj)
         })
@@ -192,7 +269,7 @@ pub async fn insert_into_table(
 
     let mut obj = serde_json::Map::new();
     for (i, column) in row.columns().iter().enumerate() {
-        let name = column.name();
+        let name = to_camel_case(column.name());
         let value = match column.type_() {
             &Type::VARCHAR | &Type::TEXT => {
                 let s: Option<String> = row.get(i);
@@ -221,11 +298,11 @@ pub async fn insert_into_table(
             }
             &Type::JSONB => {
                 let json: Option<JsonValue> = row.try_get(i).ok().flatten();
-                json.unwrap_or(JsonValue::Null)
+                convert_json_keys_to_camel_case(json.unwrap_or(JsonValue::Null))
             }
             _ => serde_json::Value::Null,
         };
-        obj.insert(name.to_string(), value);
+        obj.insert(name, value);
     }
 
     Ok(serde_json::Value::Object(obj))
