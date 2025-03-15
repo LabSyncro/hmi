@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use tauri::State;
-use tokio_postgres::types::ToSql;
+use tokio_postgres::types::{ToSql, Type};
 
 use crate::db::{connection::DbError, queries::builder::QueryBuilder, schema::DatabaseSchema};
 
@@ -121,30 +122,34 @@ pub async fn query_table(
             for (i, column) in row.columns().iter().enumerate() {
                 let name = column.name();
                 let value = match column.type_() {
-                    &tokio_postgres::types::Type::VARCHAR | &tokio_postgres::types::Type::TEXT => {
+                    &Type::VARCHAR | &Type::TEXT => {
                         let s: Option<String> = row.get(i);
                         serde_json::Value::String(s.unwrap_or_default())
                     }
-                    &tokio_postgres::types::Type::INT4 => {
+                    &Type::INT4 => {
                         let n: Option<i32> = row.get(i);
                         serde_json::Value::Number(n.unwrap_or_default().into())
                     }
-                    &tokio_postgres::types::Type::INT8 => {
+                    &Type::INT8 => {
                         let n: Option<i64> = row.get(i);
                         serde_json::Value::Number(n.unwrap_or_default().into())
                     }
-                    &tokio_postgres::types::Type::FLOAT8 => {
+                    &Type::FLOAT8 => {
                         let n: Option<f64> = row.get(i);
                         serde_json::json!(n)
                     }
-                    &tokio_postgres::types::Type::BOOL => {
+                    &Type::BOOL => {
                         let b: Option<bool> = row.get(i);
                         serde_json::Value::Bool(b.unwrap_or_default())
                     }
-                    &tokio_postgres::types::Type::TIMESTAMPTZ => {
+                    &Type::TIMESTAMPTZ => {
                         let ts: Option<chrono::DateTime<chrono::Utc>> = row.get(i);
                         ts.map(|t| serde_json::Value::String(t.to_rfc3339()))
                             .unwrap_or(serde_json::Value::Null)
+                    }
+                    &Type::JSONB => {
+                        let json: Option<JsonValue> = row.try_get(i).ok().flatten();
+                        json.unwrap_or(JsonValue::Null)
                     }
                     _ => serde_json::Value::Null,
                 };
@@ -189,30 +194,34 @@ pub async fn insert_into_table(
     for (i, column) in row.columns().iter().enumerate() {
         let name = column.name();
         let value = match column.type_() {
-            &tokio_postgres::types::Type::VARCHAR | &tokio_postgres::types::Type::TEXT => {
+            &Type::VARCHAR | &Type::TEXT => {
                 let s: Option<String> = row.get(i);
                 serde_json::Value::String(s.unwrap_or_default())
             }
-            &tokio_postgres::types::Type::INT4 => {
+            &Type::INT4 => {
                 let n: Option<i32> = row.get(i);
                 serde_json::Value::Number(n.unwrap_or_default().into())
             }
-            &tokio_postgres::types::Type::INT8 => {
+            &Type::INT8 => {
                 let n: Option<i64> = row.get(i);
                 serde_json::Value::Number(n.unwrap_or_default().into())
             }
-            &tokio_postgres::types::Type::FLOAT8 => {
+            &Type::FLOAT8 => {
                 let n: Option<f64> = row.get(i);
                 serde_json::json!(n)
             }
-            &tokio_postgres::types::Type::BOOL => {
+            &Type::BOOL => {
                 let b: Option<bool> = row.get(i);
                 serde_json::Value::Bool(b.unwrap_or_default())
             }
-            &tokio_postgres::types::Type::TIMESTAMPTZ => {
+            &Type::TIMESTAMPTZ => {
                 let ts: Option<chrono::DateTime<chrono::Utc>> = row.get(i);
                 ts.map(|t| serde_json::Value::String(t.to_rfc3339()))
                     .unwrap_or(serde_json::Value::Null)
+            }
+            &Type::JSONB => {
+                let json: Option<JsonValue> = row.try_get(i).ok().flatten();
+                json.unwrap_or(JsonValue::Null)
             }
             _ => serde_json::Value::Null,
         };

@@ -3,7 +3,7 @@ import type {
   Devices as DevicesType,
   DeviceKinds as DeviceKindsType,
   Labs as LabsType
-} from '../../../src/types/db/generated'
+} from '@/types/db/generated'
 
 export interface DeviceDetail {
   device: DevicesType

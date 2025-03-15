@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { TransitionRoot } from '@headlessui/vue'
-import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
-import { useRouter, useRoute } from 'vue-router'
-import { getDeviceById } from '@/lib/db/device'
-import type { DeviceDetail } from '@/lib/db/device'
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { TransitionRoot } from '@headlessui/vue';
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline';
+import { getDeviceById, type DeviceDetail } from '@/lib/db/device';
 
 const showMore = ref(false)
 const router = useRouter()
@@ -17,10 +16,10 @@ const retrying = ref(false)
 async function loadDeviceDetails() {
   loading.value = true
   error.value = null
-
   try {
     const id = '1003'
     deviceDetail.value = await getDeviceById(id)
+    console.log(deviceDetail.value);
     if (!deviceDetail.value) {
       error.value = 'Device not found'
     }
@@ -64,7 +63,7 @@ function retryLoading() {
         <div class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="md:col-span-1">
-              <img :src="deviceDetail.kind.image?.url || '/device-image.svg'"
+              <img :src="deviceDetail.kind.image?.main_image || '/device-image.svg'"
                 :alt="deviceDetail.kind.name || 'Device Image'" class="w-full rounded-lg" />
             </div>
 
