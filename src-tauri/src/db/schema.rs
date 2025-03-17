@@ -40,7 +40,6 @@ impl DatabaseSchema {
     pub async fn fetch(db: &Database) -> DbResult<Self> {
         let client = db.get_client().await?;
 
-        // First, fetch all enum types and their values
         let enum_query = r#"
             SELECT 
                 t.typname as enum_name,
@@ -181,7 +180,6 @@ impl DatabaseSchema {
 
         typescript.push_str("// This file is auto-generated. Do not edit manually.\n\n");
 
-        // Generate enum types first
         for (enum_name, enum_info) in &self.enums {
             typescript.push_str(&format!("export enum {} {{\n", pascal_case(enum_name)));
             for value in &enum_info.values {
@@ -226,10 +224,8 @@ impl DatabaseSchema {
                 }
 
                 let ts_type = if let Some(_enum_values) = &column.enum_values {
-                    // If it's an enum type, use the enum name
                     pascal_case(&column.type_name)
                 } else if column.type_name.starts_with('_') || column.type_name.contains("ARRAY") {
-                    // Handle both PostgreSQL array notations (_type and type[])
                     let base_type = if column.type_name.starts_with('_') {
                         &column.type_name[1..]
                     } else {
@@ -289,7 +285,10 @@ fn pg_type_to_typescript(pg_type: &str) -> String {
         "numeric" | "decimal" | "real" | "double precision" => "number".to_string(),
         "character varying" | "text" | "character" | "varchar" => "string".to_string(),
         "boolean" => "boolean".to_string(),
-        "timestamp with time zone" | "timestamp without time zone" | "timestamp" | "timestamptz" => "Date".to_string(),
+        "timestamp with time zone"
+        | "timestamp without time zone"
+        | "timestamp"
+        | "timestamptz" => "Date".to_string(),
         "json" | "jsonb" => "any".to_string(),
         "uuid" => "string".to_string(),
         "bytea" => "unknown".to_string(),
@@ -297,7 +296,7 @@ fn pg_type_to_typescript(pg_type: &str) -> String {
         t if t.starts_with('_') => {
             let base_type = &t[1..];
             format!("{}[]", pg_type_to_typescript(base_type))
-        },
+        }
         _ => "string".to_string(), // Default to string for unknown types
     }
 }

@@ -79,24 +79,30 @@ impl<'a> FromSql<'a> for PostgresEnum {
 pub async fn sync_schema(state: State<'_, AppState>) -> CommandResult<()> {
     let schema = DatabaseSchema::fetch(&state.db).await?;
 
-    // Save schema to file
     schema
         .save_to_file("db-schema.json")
         .map_err(|e| CommandError {
             message: format!("Failed to save schema: {}", e),
         })?;
 
-    // Generate TypeScript types
     schema
         .generate_typescript_types("src/lib/db/types.ts")
         .map_err(|e| CommandError {
             message: format!("Failed to generate TypeScript types: {}", e),
         })?;
 
-    // Update schema in state
     *state.schema.lock().await = Some(schema);
 
     Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct JoinParams {
+    pub table: String,
+    pub left_column: String,
+    pub right_column: String,
+    pub kind: String, // "inner", "left", or "right"
+    pub alias: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -107,6 +113,7 @@ pub struct QueryParams {
     pub order_by: Option<Vec<(String, bool)>>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
+    pub joins: Option<Vec<JoinParams>>,
 }
 
 #[tauri::command]
@@ -127,18 +134,36 @@ pub async fn query_table(
         builder = builder.select(&columns.iter().map(|s| s.as_str()).collect::<Vec<_>>());
     }
 
+    if let Some(joins) = params.joins {
+        for join in joins {
+            builder = match join.kind.as_str() {
+                "inner" => builder.inner_join(
+                    &join.table,
+                    &join.left_column,
+                    &join.right_column,
+                    join.alias,
+                ),
+                "left" => builder.left_join(
+                    &join.table,
+                    &join.left_column,
+                    &join.right_column,
+                    join.alias,
+                ),
+                _ => builder, // Ignore unsupported join types
+            };
+        }
+    }
+
     if let Some(conditions) = params.conditions {
         for (column, value) in conditions {
             match value {
                 serde_json::Value::String(s) => {
-                    // Check if the column is a UUID type and convert the string to UUID
                     let column_info = builder.get_column_type(&column);
                     if let Some(type_name) = column_info {
                         if type_name == "uuid" {
                             if let Ok(uuid) = uuid::Uuid::parse_str(&s) {
                                 builder = builder.where_eq(&column, uuid);
                             } else {
-                                println!("Failed to parse UUID: {}", s);
                                 continue;
                             }
                         } else {
@@ -234,7 +259,6 @@ pub async fn query_table(
                         convert_json_keys_to_camel_case(json.unwrap_or(JsonValue::Null))
                     }
                     t if t.to_string().starts_with("_") => {
-                        // Handle array types
                         let arr: Option<Vec<String>> = row.try_get(i).ok().flatten();
                         match arr {
                             Some(val) => serde_json::Value::Array(
@@ -246,7 +270,6 @@ pub async fn query_table(
                     t => {
                         let type_name = t.to_string();
                         if type_name == "uuid" {
-                            // UUID handling remains the same
                             match row.try_get::<_, Option<uuid::Uuid>>(i) {
                                 Ok(Some(uuid)) => serde_json::Value::String(uuid.to_string()),
                                 _ => {
@@ -258,13 +281,9 @@ pub async fn query_table(
                                 }
                             }
                         } else if t.oid() >= 16384 {
-                            // First try with our PostgresEnum type
                             let enum_value: Result<Option<PostgresEnum>, _> = row.try_get(i);
                             match enum_value {
-                                Ok(Some(PostgresEnum(val))) => {
-                                    println!("Successfully parsed enum value: {}", val);
-                                    serde_json::Value::String(val)
-                                }
+                                Ok(Some(PostgresEnum(val))) => serde_json::Value::String(val),
                                 _ => {
                                     let str_val: Option<String> = row.try_get(i).ok().flatten();
                                     match str_val {
@@ -274,9 +293,7 @@ pub async fn query_table(
                                 }
                             }
                         } else {
-                            // For other types, try as string first
                             let val: Option<String> = row.try_get(i).ok().flatten();
-                            println!("Other type value: {:?}", val);
                             match val {
                                 Some(s) => serde_json::Value::String(s),
                                 None => serde_json::Value::Null,
@@ -360,4 +377,160 @@ pub async fn insert_into_table(
     }
 
     Ok(serde_json::Value::Object(obj))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RawQueryParams {
+    #[allow(dead_code)]
+    pub sql: String,
+    #[allow(dead_code)]
+    pub params: Option<Vec<serde_json::Value>>,
+}
+
+#[tauri::command]
+pub async fn query_raw(
+    state: State<'_, AppState>,
+    params: RawQueryParams,
+) -> CommandResult<Vec<serde_json::Value>> {
+    let client = state.db.get_client().await?;
+
+    let params_clone = params.params.clone();
+    let param_values: Vec<Box<dyn ToSql + Send + Sync>> = params_clone
+        .unwrap_or_default()
+        .into_iter()
+        .map(|v| match v {
+            serde_json::Value::String(s) => Box::new(s) as Box<dyn ToSql + Send + Sync>,
+            serde_json::Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    Box::new(i) as Box<dyn ToSql + Send + Sync>
+                } else if let Some(f) = n.as_f64() {
+                    Box::new(f) as Box<dyn ToSql + Send + Sync>
+                } else {
+                    Box::new(0i64) as Box<dyn ToSql + Send + Sync>
+                }
+            }
+            serde_json::Value::Bool(b) => Box::new(b) as Box<dyn ToSql + Send + Sync>,
+            serde_json::Value::Null => {
+                Box::new(Option::<String>::None) as Box<dyn ToSql + Send + Sync>
+            }
+            _ => Box::new("") as Box<dyn ToSql + Send + Sync>,
+        })
+        .collect();
+
+    let params_slice: Vec<&(dyn ToSql + Sync)> = param_values
+        .iter()
+        .map(|p| &**p as &(dyn ToSql + Sync))
+        .collect();
+
+    let rows = client
+        .query(&params.sql, params_slice.as_slice())
+        .await
+        .map_err(|e| CommandError {
+            message: format!(
+                "Query execution failed: {}. SQL: {}, Params: {:?}",
+                e, params.sql, params.params
+            ),
+        })?;
+
+    Ok(rows
+        .iter()
+        .map(|row| {
+            let mut obj = serde_json::Map::new();
+            for (i, column) in row.columns().iter().enumerate() {
+                let name = to_camel_case(column.name());
+                let value = match column.type_() {
+                    &Type::VARCHAR | &Type::TEXT => {
+                        let s: Option<String> = row.get(i);
+                        match s {
+                            Some(val) => serde_json::Value::String(val),
+                            None => serde_json::Value::Null,
+                        }
+                    }
+                    &Type::INT4 => {
+                        let n: Option<i32> = row.get(i);
+                        match n {
+                            Some(val) => serde_json::Value::Number(val.into()),
+                            None => serde_json::Value::Null,
+                        }
+                    }
+                    &Type::INT8 => {
+                        let n: Option<i64> = row.get(i);
+                        match n {
+                            Some(val) => serde_json::Value::Number(val.into()),
+                            None => serde_json::Value::Null,
+                        }
+                    }
+                    &Type::FLOAT8 => {
+                        let n: Option<f64> = row.get(i);
+                        match n {
+                            Some(val) => serde_json::json!(val),
+                            None => serde_json::Value::Null,
+                        }
+                    }
+                    &Type::BOOL => {
+                        let b: Option<bool> = row.get(i);
+                        match b {
+                            Some(val) => serde_json::Value::Bool(val),
+                            None => serde_json::Value::Null,
+                        }
+                    }
+                    &Type::TIMESTAMPTZ => {
+                        let ts: Option<chrono::DateTime<chrono::Utc>> = row.get(i);
+                        match ts {
+                            Some(t) => serde_json::Value::String(t.to_rfc3339()),
+                            None => serde_json::Value::Null,
+                        }
+                    }
+                    &Type::JSONB => {
+                        let json: Option<JsonValue> = row.try_get(i).ok().flatten();
+                        convert_json_keys_to_camel_case(json.unwrap_or(JsonValue::Null))
+                    }
+                    t if t.to_string().starts_with("_") => {
+                        let arr: Option<Vec<String>> = row.try_get(i).ok().flatten();
+                        match arr {
+                            Some(val) => serde_json::Value::Array(
+                                val.into_iter().map(serde_json::Value::String).collect(),
+                            ),
+                            None => serde_json::Value::Null,
+                        }
+                    }
+                    t => {
+                        let type_name = t.to_string();
+                        if type_name == "uuid" {
+                            match row.try_get::<_, uuid::Uuid>(i) {
+                                Ok(uuid) => serde_json::Value::String(uuid.to_string()),
+                                _ => {
+                                    let uuid_str: Option<String> = row.try_get(i).ok().flatten();
+                                    match uuid_str {
+                                        Some(val) => serde_json::Value::String(val),
+                                        None => serde_json::Value::Null,
+                                    }
+                                }
+                            }
+                        } else if t.oid() >= 16384 {
+                            let enum_value: Result<Option<PostgresEnum>, _> = row.try_get(i);
+                            match enum_value {
+                                Ok(Some(PostgresEnum(val))) => serde_json::Value::String(val),
+                                _ => {
+                                    let str_val: Option<String> = row.try_get(i).ok().flatten();
+                                    match str_val {
+                                        Some(val) => serde_json::Value::String(val),
+                                        None => serde_json::Value::Null,
+                                    }
+                                }
+                            }
+                        } else {
+                            let val: Option<String> = row.try_get(i).ok().flatten();
+                            match val {
+                                Some(s) => serde_json::Value::String(s),
+                                None => serde_json::Value::Null,
+                            }
+                        }
+                    }
+                };
+                obj.insert(name, value);
+            }
+            serde_json::Value::Object(obj)
+        })
+        .collect())
 }

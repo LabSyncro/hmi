@@ -63,16 +63,16 @@ function retryLoading() {
         <div class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="md:col-span-1">
-              <img :src="deviceDetail.kind.image?.mainImage || '/device-image.svg'"
-                :alt="deviceDetail.kind.name || 'Device Image'" class="w-full rounded-lg" />
+              <img :src="deviceDetail.image?.mainImage || '/device-image.svg'"
+                :alt="deviceDetail.deviceName || 'Device Image'" class="w-full rounded-lg" />
             </div>
 
             <div class="md:col-span-2">
               <div class="space-y-4">
                 <div>
-                  <div class="text-sm text-gray-500">MÃ: {{ deviceDetail.device.fullId }}</div>
+                  <div class="text-sm text-gray-500">MÃ: {{ deviceDetail.fullId }}</div>
                   <h1 class="text-2xl font-bold text-gray-900 mt-1">
-                    {{ deviceDetail.kind.name }}
+                    {{ deviceDetail.deviceName }}
                   </h1>
                 </div>
 
@@ -80,7 +80,7 @@ function retryLoading() {
                   <div class="grid grid-cols-4">
                     <dt class="text-sm font-medium text-gray-500">Tình trạng</dt>
                     <dd class="text-sm text-green-600 font-medium col-span-3">
-                      {{ deviceDetail.device.status }}
+                      {{ deviceDetail.status }}
                     </dd>
                   </div>
 
@@ -94,8 +94,8 @@ function retryLoading() {
                   <div class="grid grid-cols-4">
                     <dt class="text-sm font-medium text-gray-500">Nơi chứa</dt>
                     <dd class="text-sm text-gray-900 col-span-3">
-                      {{ deviceDetail.lab?.room?.split('-')[1] + ' ' + deviceDetail.lab?.room?.split('-')[0] + ', ' +
-                      deviceDetail.lab?.branch }}
+                      {{ deviceDetail.labRoom?.split('-')[1] + ' ' + deviceDetail.labRoom?.split('-')[0] + ', ' +
+                        deviceDetail.labBranch }}
                     </dd>
                   </div>
 
@@ -104,35 +104,35 @@ function retryLoading() {
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Quyền mượn</dt>
                         <dd class="text-sm text-gray-900 col-span-3">
-                          {{ deviceDetail.kind.allowedBorrowRoles?.join(', ') || 'Tất cả' }}
+                          {{ deviceDetail.allowedBorrowRoles?.join(', ') || 'Tất cả' }}
                         </dd>
                       </div>
 
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Phân loại</dt>
                         <dd class="text-sm text-gray-900 col-span-3">
-                          {{ deviceDetail.kind.meta?.category || 'N/A' }}
+                          {{ deviceDetail.categoryName || 'N/A' }}
                         </dd>
                       </div>
 
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Thương hiệu</dt>
                         <dd class="text-sm text-gray-900 col-span-3">
-                          {{ deviceDetail.kind.brand || 'N/A' }}
+                          {{ deviceDetail.brand || 'N/A' }}
                         </dd>
                       </div>
 
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Nhà sản xuất</dt>
                         <dd class="text-sm text-gray-900 col-span-3">
-                          {{ deviceDetail.kind.manufacturer || 'N/A' }}
+                          {{ deviceDetail.manufacturer || 'N/A' }}
                         </dd>
                       </div>
 
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Mô tả</dt>
                         <dd class="text-sm text-gray-900 col-span-3">
-                          {{ deviceDetail.kind.description || 'N/A' }}
+                          {{ deviceDetail.description || 'N/A' }}
                         </dd>
                       </div>
                     </div>
@@ -156,23 +156,23 @@ function retryLoading() {
             <div class="bg-white rounded-lg border p-6">
               <h3 class="text-lg font-semibold text-gray-900">Mượn trả</h3>
               <p class="mt-2 text-sm text-gray-600">
-                {{ deviceDetail.device.status === DeviceStatus.HEALTHY
+                {{ deviceDetail.status === DeviceStatus.HEALTHY
                   ? 'Thiết bị đang sẵn sàng để được mượn.'
                   : 'Thiết bị hiện không khả dụng.' }}
               </p>
               <button @click="router.push(`/device/${route.params.id}/borrow`)"
-                :disabled="deviceDetail.device.status !== DeviceStatus.HEALTHY" :class="[
+                :disabled="deviceDetail.status !== DeviceStatus.HEALTHY" :class="[
                   'mt-4 w-full rounded-md py-2 px-4',
-                  deviceDetail.device.status === DeviceStatus.HEALTHY
+                  deviceDetail.status === DeviceStatus.HEALTHY
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 ]">
                 Mượn thiết bị
               </button>
               <button @click="router.push(`/device/${route.params.id}/return`)"
-                :disabled="deviceDetail.device.status !== DeviceStatus.BORROWING" :class="[
+                :disabled="deviceDetail.status !== DeviceStatus.BORROWING" :class="[
                   'mt-4 w-full rounded-md py-2 px-4',
-                  deviceDetail.device.status === DeviceStatus.BORROWING
+                  deviceDetail.status === DeviceStatus.BORROWING
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 ]">
@@ -181,14 +181,29 @@ function retryLoading() {
             </div>
 
             <div class="md:col-span-2 bg-white rounded-lg border p-6">
-              <h3 class="text-lg font-semibold text-gray-900">Thông tin thêm</h3>
-              <div class="mt-4 prose prose-sm max-w-none">
-                <p>{{ deviceDetail.kind.meta?.description }}</p>
-                <p v-if="deviceDetail.kind.datasheet">
-                  <a :href="deviceDetail.kind.datasheet" target="_blank" class="text-blue-600 hover:text-blue-500">
-                    Xem datasheet
-                  </a>
-                </p>
+              <h3 class="text-lg font-semibold text-gray-900">Tồn kho thiết bị</h3>
+              <div class="mt-4">
+                <table class="min-w-full">
+                  <thead>
+                    <tr>
+                      <th class="text-left text-sm font-medium text-gray-500">Nơi chứa</th>
+                      <th class="text-right text-sm font-medium text-gray-500">Sẵn sàng</th>
+                      <th class="text-right text-sm font-medium text-gray-500">Đang mượn</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    <tr>
+                      <td class="py-4 text-sm text-gray-900">601 H6, Dĩ An</td>
+                      <td class="py-4 text-right text-sm text-gray-900">10</td>
+                      <td class="py-4 text-right text-sm text-gray-900">10</td>
+                    </tr>
+                    <tr>
+                      <td class="py-4 text-sm text-gray-900">605 H6, Dĩ An</td>
+                      <td class="py-4 text-right text-sm text-gray-900">1</td>
+                      <td class="py-4 text-right text-sm text-gray-900">1</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

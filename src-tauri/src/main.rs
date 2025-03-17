@@ -37,7 +37,8 @@ async fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::db_commands::sync_schema,
             commands::db_commands::query_table,
-            commands::db_commands::insert_into_table
+            commands::db_commands::insert_into_table,
+            commands::db_commands::query_raw,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

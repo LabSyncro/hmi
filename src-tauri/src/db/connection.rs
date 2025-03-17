@@ -58,7 +58,7 @@ pub struct Database {
 impl Database {
     pub async fn new() -> DbResult<Self> {
         let config = DatabaseConfig::from_env()?;
-        
+
         let pool_config = tokio_postgres::config::Config::new()
             .host(&config.host)
             .port(config.port)
@@ -81,7 +81,7 @@ impl Database {
         })?;
 
         println!("Successfully connected to PostgreSQL!");
-        
+
         Ok(Self { pool })
     }
 
