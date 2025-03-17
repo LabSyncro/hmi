@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { TransitionRoot } from '@headlessui/vue';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline';
-import { getDeviceById, type DeviceDetail } from '@/lib/db/device';
+import { getDeviceById, getDeviceInventoryByKindId, type DeviceDetail, type DeviceInventory } from '@/lib/db/device';
 import { DeviceStatus } from '@/types/db/generated';
 
 const showMore = ref(false)
@@ -13,6 +13,83 @@ const deviceDetail = ref<DeviceDetail | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const retrying = ref(false)
+const inventory = ref<DeviceInventory[]>([])
+const loadingInventory = ref(true)
+
+const getStatusColor = (status: DeviceStatus | null) => {
+  if (!status) return 'text-gray-500';
+
+  switch (status) {
+    case DeviceStatus.HEALTHY:
+      return 'text-green-600';
+    case DeviceStatus.BROKEN:
+      return 'text-red-600';
+    case DeviceStatus.DISCARDED:
+      return 'text-gray-600';
+    case DeviceStatus.ASSESSING:
+      return 'text-yellow-600';
+    case DeviceStatus.MAINTAINING:
+      return 'text-blue-600';
+    case DeviceStatus.SHIPPING:
+      return 'text-purple-600';
+    case DeviceStatus.BORROWING:
+      return 'text-orange-600';
+    case DeviceStatus.LOST:
+      return 'text-red-800';
+    default:
+      return 'text-gray-500';
+  }
+};
+
+const getStatusBgColor = (status: DeviceStatus | null) => {
+  if (!status) return 'bg-gray-100';
+
+  switch (status) {
+    case DeviceStatus.HEALTHY:
+      return 'bg-green-50';
+    case DeviceStatus.BROKEN:
+      return 'bg-red-50';
+    case DeviceStatus.DISCARDED:
+      return 'bg-gray-50';
+    case DeviceStatus.ASSESSING:
+      return 'bg-yellow-50';
+    case DeviceStatus.MAINTAINING:
+      return 'bg-blue-50';
+    case DeviceStatus.SHIPPING:
+      return 'bg-purple-50';
+    case DeviceStatus.BORROWING:
+      return 'bg-orange-50';
+    case DeviceStatus.LOST:
+      return 'bg-red-100';
+    default:
+      return 'bg-gray-100';
+  }
+};
+
+const getStatusText = (status: DeviceStatus | null) => {
+  if (!status) return 'UNKNOWN';
+
+  switch (status) {
+    case DeviceStatus.HEALTHY:
+      return 'SẴN SÀNG';
+    case DeviceStatus.BROKEN:
+      return 'HƯ HỎNG';
+    case DeviceStatus.DISCARDED:
+      return 'ĐÃ LOẠI BỎ';
+    case DeviceStatus.ASSESSING:
+      return 'ĐANG ĐÁNH GIÁ';
+    case DeviceStatus.MAINTAINING:
+      return 'ĐANG BẢO TRÌ';
+    case DeviceStatus.SHIPPING:
+      return 'ĐANG VẬN CHUYỂN';
+    case DeviceStatus.BORROWING:
+      return 'ĐANG CHO MƯỢN';
+    case DeviceStatus.LOST:
+      return 'ĐÃ MẤT';
+    default:
+      return 'UNKNOWN';
+  }
+};
 
 async function loadDeviceDetails() {
   loading.value = true
@@ -22,12 +99,25 @@ async function loadDeviceDetails() {
     deviceDetail.value = await getDeviceById(id)
     if (!deviceDetail.value) {
       error.value = 'Device not found'
+    } else {
+      await loadInventoryData(deviceDetail.value.kind)
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load device details'
   } finally {
     loading.value = false
     retrying.value = false
+  }
+}
+
+async function loadInventoryData(kindId: string) {
+  loadingInventory.value = true
+  try {
+    inventory.value = await getDeviceInventoryByKindId(kindId)
+  } catch (e) {
+    console.error('Failed to load inventory data:', e)
+  } finally {
+    loadingInventory.value = false
   }
 }
 
@@ -79,15 +169,18 @@ function retryLoading() {
                 <dl class="grid grid-cols-1 gap-4">
                   <div class="grid grid-cols-4">
                     <dt class="text-sm font-medium text-gray-500">Tình trạng</dt>
-                    <dd class="text-sm text-green-600 font-medium col-span-3">
-                      {{ deviceDetail.status }}
+                    <dd class="text-sm font-medium col-span-3">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
+                        :class="[getStatusColor(deviceDetail.status), getStatusBgColor(deviceDetail.status)]">
+                        {{ getStatusText(deviceDetail.status) }}
+                      </span>
                     </dd>
                   </div>
 
                   <div class="grid grid-cols-4">
                     <dt class="text-sm font-medium text-gray-500">Hoạt động</dt>
                     <dd class="text-sm text-gray-900 col-span-3">
-                      {{ 'Mượn trả - Sẵn sàng' }}
+                      {{ deviceDetail.status === DeviceStatus.HEALTHY ? 'Mượn trả - Sẵn sàng' : 'Không khả dụng' }}
                     </dd>
                   </div>
 
@@ -161,7 +254,7 @@ function retryLoading() {
                   : 'Thiết bị hiện không khả dụng.' }}
               </p>
               <button @click="router.push(`/device/${route.params.id}/borrow`)"
-                :disabled="deviceDetail.status !== DeviceStatus.HEALTHY" :class="[
+                :hidden="deviceDetail.status !== DeviceStatus.HEALTHY" :class="[
                   'mt-4 w-full rounded-md py-2 px-4',
                   deviceDetail.status === DeviceStatus.HEALTHY
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -170,7 +263,7 @@ function retryLoading() {
                 Mượn thiết bị
               </button>
               <button @click="router.push(`/device/${route.params.id}/return`)"
-                :disabled="deviceDetail.status !== DeviceStatus.BORROWING" :class="[
+                :hidden="deviceDetail.status !== DeviceStatus.BORROWING" :class="[
                   'mt-4 w-full rounded-md py-2 px-4',
                   deviceDetail.status === DeviceStatus.BORROWING
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -183,7 +276,11 @@ function retryLoading() {
             <div class="md:col-span-2 bg-white rounded-lg border p-6">
               <h3 class="text-lg font-semibold text-gray-900">Tồn kho thiết bị</h3>
               <div class="mt-4">
-                <table class="min-w-full">
+                <div v-if="loadingInventory" class="text-center py-4">
+                  <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                  <p class="mt-2 text-sm text-gray-600">Loading inventory data...</p>
+                </div>
+                <table v-else class="min-w-full">
                   <thead>
                     <tr>
                       <th class="text-left text-sm font-medium text-gray-500">Nơi chứa</th>
@@ -191,16 +288,14 @@ function retryLoading() {
                       <th class="text-right text-sm font-medium text-gray-500">Đang mượn</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-gray-200">
-                    <tr>
-                      <td class="py-4 text-sm text-gray-900">601 H6, Dĩ An</td>
-                      <td class="py-4 text-right text-sm text-gray-900">10</td>
-                      <td class="py-4 text-right text-sm text-gray-900">10</td>
+                  <tbody class="divide-y divide-gray-200 border-t border-gray-200">
+                    <tr v-for="item in inventory" :key="item.room + item.branch" class="border-b border-gray-200">
+                      <td class="py-4 text-sm text-gray-900">{{ item.room }}, {{ item.branch }}</td>
+                      <td class="py-4 text-right text-sm text-gray-900">{{ item.availableQuantity }}</td>
+                      <td class="py-4 text-right text-sm text-gray-900">{{ item.borrowingQuantity }}</td>
                     </tr>
-                    <tr>
-                      <td class="py-4 text-sm text-gray-900">605 H6, Dĩ An</td>
-                      <td class="py-4 text-right text-sm text-gray-900">1</td>
-                      <td class="py-4 text-right text-sm text-gray-900">1</td>
+                    <tr v-if="inventory.length === 0">
+                      <td colspan="3" class="py-4 text-sm text-gray-500 text-center">No inventory data available</td>
                     </tr>
                   </tbody>
                 </table>

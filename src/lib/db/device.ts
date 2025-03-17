@@ -14,6 +14,14 @@ export interface DeviceDetail {
   categoryName: string;
   labRoom: string | null;
   labBranch: string | null;
+  kind: string;
+}
+
+export interface DeviceInventory {
+  branch: string;
+  room: string;
+  borrowingQuantity: number;
+  availableQuantity: number;
 }
 
 export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
@@ -23,6 +31,7 @@ export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
       SELECT 
         d.full_id,
         d.status,
+        d.kind,
         dk.image,
         dk.name AS device_name,
         dk.allowed_borrow_roles,
@@ -64,10 +73,45 @@ export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
       categoryName: row.categoryName as string,
       labRoom: row.room as string | null,
       labBranch: row.branch as string | null,
+      kind: row.kind as string
     };
 
     return deviceDetail;
   } catch (error) {
+    throw error;
+  }
+}
+
+export async function getDeviceInventoryByKindId(kindId: string): Promise<DeviceInventory[]> {
+  try {
+    const db = DatabaseClient.getInstance();
+    const sql = `
+      SELECT 
+        l.branch,
+        l.room,
+        SUM(CASE WHEN d.status = 'borrowing' THEN 1 ELSE 0 END)::int as borrowing_quantity,
+        SUM(CASE WHEN d.status IN ('healthy', 'borrowing') THEN 1 ELSE 0 END)::int as available_quantity
+      FROM labs l
+      JOIN devices d ON l.id = d.lab_id
+      JOIN device_kinds dk ON d.kind = dk.id
+      WHERE dk.id = $1
+      GROUP BY l.id, l.branch, l.room
+      ORDER BY l.branch, l.room
+    `;
+
+    const results = await db.queryRaw<Record<string, unknown>>({
+      sql,
+      params: [kindId]
+    });
+
+    return results.map(row => ({
+      branch: row.branch as string,
+      room: row.room as string,
+      borrowingQuantity: row.borrowingQuantity as number,
+      availableQuantity: row.availableQuantity as number
+    }));
+  } catch (error) {
+    console.error('Error querying device inventory:', error);
     throw error;
   }
 } 
