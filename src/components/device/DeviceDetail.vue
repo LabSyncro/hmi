@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { TransitionRoot } from '@headlessui/vue';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline';
 import { getDeviceById, getDeviceInventoryByKindId, type DeviceDetail, type DeviceInventory } from '@/lib/db/device';
 import { DeviceStatus } from '@/types/db/generated';
+import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection';
 
 const showMore = ref(false)
 const router = useRouter()
@@ -15,6 +16,29 @@ const error = ref<string | null>(null)
 const retrying = ref(false)
 const inventory = ref<DeviceInventory[]>([])
 const loadingInventory = ref(true)
+
+const handleVirtualKeyboardDetection = async (input: string, type?: 'userId' | 'device') => {
+  if (type === 'device') {
+    const deviceKindId = input.match(/\/devices\/([a-fA-F0-9]+)/)?.[1];
+    const deviceId = input.match(/[?&]id=([a-fA-F0-9]+)/)?.[1];
+
+    if (deviceKindId && deviceId) {
+      if (deviceId !== route.params.id || deviceKindId !== route.query.deviceKindId) {
+        router.push({
+          name: 'device-detail',
+          params: { id: deviceId },
+          query: { deviceKindId }
+        });
+      }
+    }
+  }
+};
+
+useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
+  device: { pattern: /^https?:\/\/[^/]+\/devices\/[a-fA-F0-9]{8}\?id=[a-fA-F0-9]+$/ },
+  scannerThresholdMs: 100,
+  maxInputTimeMs: 1000,
+});
 
 const getStatusColor = (status: DeviceStatus | null) => {
   if (!status) return 'text-gray-500';
@@ -95,12 +119,13 @@ async function loadDeviceDetails() {
   loading.value = true
   error.value = null
   try {
-    const id = '1003'
+    const id = route.params.id as string
     deviceDetail.value = await getDeviceById(id)
     if (!deviceDetail.value) {
       error.value = 'Device not found'
     } else {
-      await loadInventoryData(deviceDetail.value.kind)
+      const kindId = route.query.deviceKindId as string || deviceDetail.value.kind
+      await loadInventoryData(kindId)
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load device details'
@@ -129,6 +154,13 @@ function retryLoading() {
   retrying.value = true
   loadDeviceDetails()
 }
+
+watch(
+  () => [route.params.id, route.query.deviceKindId],
+  () => {
+    loadDeviceDetails();
+  }
+);
 </script>
 
 <template>
@@ -180,7 +212,8 @@ function retryLoading() {
                   <div class="grid grid-cols-4">
                     <dt class="text-sm font-medium text-gray-500">Hoạt động</dt>
                     <dd class="text-sm text-gray-900 col-span-3">
-                      {{ deviceDetail.status === DeviceStatus.HEALTHY ? 'Mượn trả - Sẵn sàng' : 'Không khả dụng' }}
+                      {{ deviceDetail.status === DeviceStatus.HEALTHY ? 'Mượn trả - Sẵn sàng' : deviceDetail.status ===
+                        DeviceStatus.BORROWING ? 'Mượn trả - Đang mượn' : 'Không khả dụng' }}
                     </dd>
                   </div>
 
@@ -245,32 +278,72 @@ function retryLoading() {
             </div>
           </div>
 
-          <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-white rounded-lg border p-6">
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-lg border p-4">
               <h3 class="text-lg font-semibold text-gray-900">Mượn trả</h3>
-              <p class="mt-2 text-sm text-gray-600">
-                {{ deviceDetail.status === DeviceStatus.HEALTHY
-                  ? 'Thiết bị đang sẵn sàng để được mượn.'
-                  : 'Thiết bị hiện không khả dụng.' }}
-              </p>
-              <button @click="router.push(`/device/${route.params.id}/borrow`)"
-                :hidden="deviceDetail.status !== DeviceStatus.HEALTHY" :class="[
-                  'mt-4 w-full rounded-md py-2 px-4',
-                  deviceDetail.status === DeviceStatus.HEALTHY
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                ]">
-                Mượn thiết bị
-              </button>
-              <button @click="router.push(`/device/${route.params.id}/return`)"
-                :hidden="deviceDetail.status !== DeviceStatus.BORROWING" :class="[
-                  'mt-4 w-full rounded-md py-2 px-4',
-                  deviceDetail.status === DeviceStatus.BORROWING
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                ]">
-                Trả thiết bị
-              </button>
+              <div v-if="deviceDetail.status === DeviceStatus.BORROWING" class="space-y-4">
+                <p class="text-base text-gray-500">{{ '#BR_' + deviceDetail.receiptId }}</p>
+                <hr />
+                <div>
+                  <div class="mt-2 flex items-center">
+                    <img :src="deviceDetail.borrower?.image || '/default-avatar.png'" alt="Borrower avatar"
+                      class="h-12 w-12 rounded-full" />
+                    <div class="ml-2">
+                      <h4 class="text-base font-medium text-gray-500">Người mượn</h4>
+                      <span class="text-sm text-gray-900">[{{ deviceDetail.borrower?.id }}] {{
+                        deviceDetail.borrower?.name }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4">
+                  <div class="grid grid-cols-2">
+                    <dt class="text-sm font-medium text-gray-500">Ngày mượn</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ deviceDetail.borrowedAt ? new
+                      Date(deviceDetail.borrowedAt).toLocaleDateString('vi-VN') : '---' }}</dd>
+                  </div>
+
+                  <div class="grid grid-cols-2">
+                    <dt class="text-sm font-medium text-gray-500">Ngày hẹn trả</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ deviceDetail.expectedReturnAt ? new
+                      Date(deviceDetail.expectedReturnAt).toLocaleDateString('vi-VN') : '---' }} <span
+                        class="text-gray-500">(Dự kiến)</span>
+                    </dd>
+                  </div>
+
+                  <div class="grid grid-cols-2">
+                    <dt class="text-sm font-medium text-gray-500">Nơi mượn</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ deviceDetail.borrowedLab || '---' }}</dd>
+                  </div>
+
+                  <div class="grid grid-cols-2">
+                    <dt class="text-sm font-medium text-gray-500">Nơi hẹn trả</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ deviceDetail.expectedReturnLab || '---' }}</dd>
+                  </div>
+                </div>
+
+                <button @click="router.push(`/device/${route.params.id}/return`)"
+                  class="mt-4 w-full rounded-md py-2 px-4 bg-blue-600 text-white hover:bg-blue-700">
+                  Trả thiết bị
+                </button>
+              </div>
+
+              <div v-else>
+                <p class="mt-2 text-sm text-gray-600">
+                  {{ deviceDetail.status === DeviceStatus.HEALTHY
+                    ? 'Thiết bị đang sẵn sàng để được mượn.'
+                    : 'Thiết bị hiện không khả dụng.' }}
+                </p>
+                <button @click="router.push(`/device/${route.params.id}/borrow`)"
+                  :hidden="deviceDetail.status !== DeviceStatus.HEALTHY" :class="[
+                    'mt-4 w-full rounded-md py-2 px-4',
+                    deviceDetail.status === DeviceStatus.HEALTHY
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  ]">
+                  Mượn thiết bị
+                </button>
+              </div>
             </div>
 
             <div class="md:col-span-2 bg-white rounded-lg border p-6">
@@ -290,7 +363,8 @@ function retryLoading() {
                   </thead>
                   <tbody class="divide-y divide-gray-200 border-t border-gray-200">
                     <tr v-for="item in inventory" :key="item.room + item.branch" class="border-b border-gray-200">
-                      <td class="py-4 text-sm text-gray-900">{{ item.room }}, {{ item.branch }}</td>
+                      <td class="py-4 text-sm text-gray-900">{{ item.room?.split('-')[1] + ' ' +
+                        item.room?.split('-')[0] + ', ' + item.branch }}</td>
                       <td class="py-4 text-right text-sm text-gray-900">{{ item.availableQuantity }}</td>
                       <td class="py-4 text-right text-sm text-gray-900">{{ item.borrowingQuantity }}</td>
                     </tr>

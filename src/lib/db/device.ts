@@ -15,6 +15,16 @@ export interface DeviceDetail {
   labRoom: string | null;
   labBranch: string | null;
   kind: string;
+  borrower?: {
+    id: string;
+    name: string;
+    image: string | null;
+  } | null;
+  borrowedAt?: Date | null;
+  expectedReturnAt?: Date | null;
+  borrowedLab?: string | null;
+  expectedReturnLab?: string | null;
+  receiptId?: string | null;
 }
 
 export interface DeviceInventory {
@@ -41,11 +51,24 @@ export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
         dk.description,
         c.name AS category_name,
         l.room,
-        l.branch
+        l.branch,
+        r.id AS receipt_id,
+        rd.created_at AS borrowed_at,
+        rd.expected_returned_at,
+        bl.room || ', ' || bl.branch AS borrowed_lab,
+        rl.room || ', ' || rl.branch AS expected_return_lab,
+        u.id AS borrower_id,
+        u.name AS borrower_name,
+        u.image AS borrower_image
       FROM devices d
       LEFT JOIN device_kinds dk ON d.kind = dk.id
       LEFT JOIN labs l ON d.lab_id = l.id
       LEFT JOIN categories c ON dk.category_id = c.id
+      LEFT JOIN receipts_devices rd ON d.id = rd.device_id AND rd.return_id IS NULL
+      LEFT JOIN receipts r ON rd.receipt_id = r.id
+      LEFT JOIN users u ON r.borrower_id = u.id
+      LEFT JOIN labs bl ON r.borrowed_lab_id = bl.id
+      LEFT JOIN labs rl ON rd.expected_returned_lab_id = rl.id
       WHERE d.id = $1
     `;
 
@@ -59,6 +82,7 @@ export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
     }
 
     const row = results[0];
+    console.log(row)
 
     const deviceDetail: DeviceDetail = {
       fullId: row.fullId as string,
@@ -73,7 +97,17 @@ export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
       categoryName: row.categoryName as string,
       labRoom: row.room as string | null,
       labBranch: row.branch as string | null,
-      kind: row.kind as string
+      kind: row.kind as string,
+      receiptId: row.receiptId as string | null,
+      borrower: row.borrowerId ? {
+        id: row.borrowerId as string,
+        name: row.borrowerName as string,
+        image: row.borrowerImage as string | null,
+      } : null,
+      borrowedAt: row.borrowedAt ? new Date(row.borrowedAt as string) : null,
+      expectedReturnAt: row.expectedReturnedAt ? new Date(row.expectedReturnedAt as string) : null,
+      borrowedLab: row.borrowedLab as string | null,
+      expectedReturnLab: row.expectedReturnLab as string | null,
     };
 
     return deviceDetail;
