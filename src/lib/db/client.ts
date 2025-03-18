@@ -1,22 +1,76 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export interface QueryParams<T = any> {
-  table: string;
-  columns?: (keyof T)[];
-  conditions?: Array<[keyof T, any]>;
-  orderBy?: Array<[keyof T, boolean]>;
-  limit?: number;
-  offset?: number;
+export interface JoinParams<T = unknown> {
+  table: string
+  left_column: keyof T extends string ? keyof T : string
+  right_column: string
+  kind: 'inner' | 'left' | 'right'
+  alias?: string
+  parent_table?: string
+}
+
+export interface QueryParams<T> {
+  table: string
+  columns?: string[]
+  conditions?: [string, unknown][]
+  order_by?: [string, boolean][]
+  limit?: number
+  offset?: number
+  joins?: JoinParams<T>[]
+}
+
+export interface RawQueryParams {
+  sql: string
+  params?: unknown[]
 }
 
 export interface InsertParams<T> {
-  table: string;
-  value: Partial<T>;
+  table: string
+  value: Partial<T>
 }
+
+export interface DbClient {
+  query<T>(params: QueryParams<T>): Promise<T[]>
+  queryRaw<T>(params: RawQueryParams): Promise<T[]>
+}
+
+class TauriDbClient implements DbClient {
+  async query<T>(params: QueryParams<T>): Promise<T[]> {
+    try {
+      return await invoke<T[]>('query_table', {
+        params: {
+          table: params.table,
+          columns: params.columns,
+          conditions: params.conditions,
+          order_by: params.order_by,
+          limit: params.limit,
+          offset: params.offset,
+          joins: params.joins
+        },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async queryRaw<T>(params: RawQueryParams): Promise<T[]> {
+    try {
+      return await invoke<T[]>('query_raw', {
+        params: {
+          sql: params.sql,
+          params: params.params || []
+        },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+}
+
+export const db = new TauriDbClient();
 
 export class DatabaseClient {
   private static instance: DatabaseClient;
-
   private constructor() { }
 
   public static getInstance(): DatabaseClient {
@@ -26,34 +80,12 @@ export class DatabaseClient {
     return DatabaseClient.instance;
   }
 
-  /**
-   * Synchronizes the database schema and generates TypeScript types
-   */
   public async syncSchema(): Promise<void> {
     await invoke('sync_schema');
   }
 
-  /**
-   * Queries a table with type-safe parameters
-   */
-  public async query<T = any>(params: QueryParams<T>): Promise<T[]> {
-    return invoke('query_table', {
-      params: {
-        table: params.table,
-        columns: params.columns as string[],
-        conditions: params.conditions?.map(([column, value]) => [column as string, value]),
-        order_by: params.orderBy?.map(([column, asc]) => [column as string, asc]),
-        limit: params.limit,
-        offset: params.offset,
-      },
-    });
-  }
-
-  /**
-   * Inserts a record into a table
-   */
   public async insert<T>(params: InsertParams<T>): Promise<T> {
-    return invoke('insert_into_table', {
+    return invoke<T>('insert_into_table', {
       params: {
         table: params.table,
         value: params.value,
@@ -61,24 +93,29 @@ export class DatabaseClient {
     });
   }
 
-  /**
-   * Helper method to create a type-safe query builder
-   */
-  public table<T>(name: string) {
+  public table<T>(name: string): TableQueryBuilder<T> {
     return new TableQueryBuilder<T>(this, name);
+  }
+
+  public async query<T>(params: QueryParams<T>): Promise<T[]> {
+    return db.query(params);
+  }
+
+  public async queryRaw<T>(params: RawQueryParams): Promise<T[]> {
+    return db.queryRaw(params);
   }
 }
 
 export class TableQueryBuilder<T> {
   private columns?: (keyof T)[];
-  private conditions: Array<[keyof T, any]> = [];
+  private conditions: Array<[keyof T, unknown]> = [];
   private orderByColumns: Array<[keyof T, boolean]> = [];
   private limitValue?: number;
   private offsetValue?: number;
 
   constructor(
-    private client: DatabaseClient,
-    private tableName: string,
+    private readonly client: DatabaseClient,
+    private readonly tableName: string,
   ) { }
 
   select(...columns: (keyof T)[]): this {
@@ -86,7 +123,7 @@ export class TableQueryBuilder<T> {
     return this;
   }
 
-  where(column: keyof T, value: any): this {
+  where(column: keyof T, value: unknown): this {
     this.conditions.push([column, value]);
     return this;
   }
@@ -109,9 +146,9 @@ export class TableQueryBuilder<T> {
   async execute(): Promise<T[]> {
     return this.client.query<T>({
       table: this.tableName,
-      columns: this.columns,
-      conditions: this.conditions,
-      orderBy: this.orderByColumns,
+      columns: this.columns?.map(String),
+      conditions: this.conditions.map(([col, val]) => [String(col), val]),
+      order_by: this.orderByColumns.map(([col, asc]) => [String(col), asc]),
       limit: this.limitValue,
       offset: this.offsetValue,
     });
@@ -123,7 +160,4 @@ export class TableQueryBuilder<T> {
       value,
     });
   }
-}
-
-// Export a singleton instance
-export const db = DatabaseClient.getInstance(); 
+} 

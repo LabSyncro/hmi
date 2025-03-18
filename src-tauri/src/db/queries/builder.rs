@@ -1,28 +1,58 @@
-use super::super::schema::{DatabaseSchema, TableInfo};
+use super::super::schema::DatabaseSchema;
 use serde::Serialize;
+use tokio_postgres::types::ToSql;
 
-#[derive(Debug)]
 pub struct QueryBuilder<'a> {
-    table: &'a TableInfo,
-    conditions: Vec<String>,
+    pub schema: &'a DatabaseSchema,
+    pub table: String,
+    conditions: Vec<(String, Box<dyn ToSql + Sync + Send>)>,
     selected_columns: Option<Vec<String>>,
-    order_by: Vec<String>,
+    order_by: Vec<(String, bool)>,
     limit: Option<i64>,
     offset: Option<i64>,
-    params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>>,
+    joins: Vec<JoinClause>,
+}
+
+#[derive(Debug)]
+pub struct JoinClause {
+    table: String,
+    alias: Option<String>,
+    kind: JoinType,
+    conditions: Vec<(String, String)>, // (left_column, right_column)
+}
+
+#[derive(Debug)]
+pub enum JoinType {
+    Inner,
+    Left,
 }
 
 impl<'a> QueryBuilder<'a> {
-    pub fn new(schema: &'a DatabaseSchema, table_name: &str) -> Option<Self> {
-        let table = schema.tables.get(table_name)?;
-        Some(Self {
-            table,
+    pub fn new(schema: &'a DatabaseSchema, table: &str) -> Option<Self> {
+        let table_exists = schema.tables.contains_key(table);
+        if !table_exists {
+            return None;
+        }
+
+        Some(QueryBuilder {
+            schema,
+            table: table.to_string(),
             conditions: Vec::new(),
             selected_columns: None,
             order_by: Vec::new(),
             limit: None,
             offset: None,
-            params: Vec::new(),
+            joins: Vec::new(),
+        })
+    }
+
+    pub fn get_column_type(&self, column_name: &str) -> Option<String> {
+        self.schema.tables.get(&self.table).and_then(|table| {
+            table
+                .columns
+                .iter()
+                .find(|col| col.name == column_name)
+                .map(|col| col.type_name.clone())
         })
     }
 
@@ -36,10 +66,9 @@ impl<'a> QueryBuilder<'a> {
         column: &str,
         value: T,
     ) -> Self {
-        let param_index = self.params.len() + 1;
+        let param_index = self.conditions.len() + 1;
         self.conditions
-            .push(format!("{} = ${}", column, param_index));
-        self.params.push(Box::new(value));
+            .push((format!("{} = ${}", column, param_index), Box::new(value)));
         self
     }
 
@@ -50,21 +79,19 @@ impl<'a> QueryBuilder<'a> {
         values: Vec<T>,
     ) -> Self {
         let param_indices: Vec<String> = (0..values.len())
-            .map(|i| format!("${}", self.params.len() + i + 1))
+            .map(|i| format!("${}", self.conditions.len() + i + 1))
             .collect();
 
-        self.conditions
-            .push(format!("{} IN ({})", column, param_indices.join(", ")));
+        self.conditions.push((
+            format!("{} IN ({})", column, param_indices.join(", ")),
+            Box::new(values),
+        ));
 
-        for value in values {
-            self.params.push(Box::new(value));
-        }
         self
     }
 
     pub fn order_by(mut self, column: &str, ascending: bool) -> Self {
-        let direction = if ascending { "ASC" } else { "DESC" };
-        self.order_by.push(format!("{} {}", column, direction));
+        self.order_by.push((column.to_string(), ascending));
         self
     }
 
@@ -78,41 +105,131 @@ impl<'a> QueryBuilder<'a> {
         self
     }
 
-    pub fn build_select(
-        &self,
-    ) -> (
-        String,
-        &Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>>,
-    ) {
-        let columns = match &self.selected_columns {
-            Some(cols) => cols.join(", "),
-            None => "*".to_string(),
-        };
+    pub fn inner_join(
+        mut self,
+        table: &str,
+        left_column: &str,
+        right_column: &str,
+        alias: Option<String>,
+    ) -> Self {
+        self.joins.push(JoinClause {
+            table: table.to_string(),
+            alias,
+            kind: JoinType::Inner,
+            conditions: vec![(left_column.to_string(), right_column.to_string())],
+        });
+        self
+    }
 
-        let mut query = format!(
-            "SELECT {} FROM {}.{}",
-            columns, self.table.schema, self.table.name
-        );
+    pub fn left_join(
+        mut self,
+        table: &str,
+        left_column: &str,
+        right_column: &str,
+        alias: Option<String>,
+    ) -> Self {
+        self.joins.push(JoinClause {
+            table: table.to_string(),
+            alias,
+            kind: JoinType::Left,
+            conditions: vec![(left_column.to_string(), right_column.to_string())],
+        });
+        self
+    }
+
+    pub fn build_select(&mut self) -> (String, Vec<Box<dyn ToSql + Sync + Send>>) {
+        let mut query = String::from("SELECT ");
+
+        if let Some(ref columns) = self.selected_columns {
+            let column_list: Vec<String> = columns
+                .iter()
+                .map(|c| format!("{}.{}", self.table, c))
+                .collect();
+            query.push_str(&column_list.join(", "));
+        } else {
+            let mut all_columns = vec![format!("{}.* ", self.table)];
+
+            for join in &self.joins {
+                let table_name = join.alias.as_ref().unwrap_or(&join.table);
+                all_columns.push(format!("{}.* ", table_name));
+            }
+
+            query.push_str(&all_columns.join(", "));
+        }
+
+        query.push_str(&format!(" FROM {}", self.table));
+
+        for join in &self.joins {
+            let join_type = match join.kind {
+                JoinType::Inner => "INNER JOIN",
+                JoinType::Left => "LEFT JOIN",
+            };
+
+            let table_alias = if let Some(ref alias) = join.alias {
+                format!(" AS {}", alias)
+            } else {
+                String::new()
+            };
+
+            query.push_str(&format!(" {} {}{}", join_type, join.table, table_alias));
+
+            if !join.conditions.is_empty() {
+                let join_conditions: Vec<String> = join
+                    .conditions
+                    .iter()
+                    .map(|(left, right)| {
+                        format!(
+                            "{}.{} = {}.{}",
+                            self.table,
+                            left,
+                            join.alias.as_ref().unwrap_or(&join.table),
+                            right
+                        )
+                    })
+                    .collect();
+                query.push_str(" ON ");
+                query.push_str(&join_conditions.join(" AND "));
+            }
+        }
 
         if !self.conditions.is_empty() {
             query.push_str(" WHERE ");
-            query.push_str(&self.conditions.join(" AND "));
+            let conditions: Vec<String> = (0..self.conditions.len())
+                .map(|i| format!("{}.{} = ${}", self.table, self.conditions[i].0, i + 1))
+                .collect();
+            query.push_str(&conditions.join(" AND "));
         }
 
         if !self.order_by.is_empty() {
             query.push_str(" ORDER BY ");
-            query.push_str(&self.order_by.join(", "));
+            let order_clauses: Vec<String> = self
+                .order_by
+                .iter()
+                .map(|(column, asc)| {
+                    format!(
+                        "{}.{} {}",
+                        self.table,
+                        column,
+                        if *asc { "ASC" } else { "DESC" }
+                    )
+                })
+                .collect();
+            query.push_str(&order_clauses.join(", "));
         }
 
         if let Some(limit) = self.limit {
             query.push_str(&format!(" LIMIT {}", limit));
         }
-
         if let Some(offset) = self.offset {
             query.push_str(&format!(" OFFSET {}", offset));
         }
 
-        (query, &self.params)
+        let params = std::mem::take(&mut self.conditions)
+            .into_iter()
+            .map(|(_, v)| v)
+            .collect();
+
+        (query, params)
     }
 
     pub fn build_insert<T: Serialize>(
@@ -136,7 +253,6 @@ impl<'a> QueryBuilder<'a> {
                     columns.push(column.name.clone());
                     param_positions.push(format!("${}", params.len() + 1));
 
-                    // Convert serde_json::Value to postgres parameter
                     match value {
                         serde_json::Value::String(s) => params.push(Box::new(s.clone())),
                         serde_json::Value::Number(n) => {

@@ -58,11 +58,9 @@ const stats = {
 <template>
     <div class="bg-gray-100 min-h-screen">
         <div class="flex py-6 sm:px-6 lg:px-8 gap-4">
-            <!-- Left Panel - Device List -->
             <div class="w-2/3">
                 <h2 class="text-2xl font-medium text-gray-900 mb-2">Danh sách thiết bị</h2>
 
-                <!-- Stats Cards -->
                 <div class="grid grid-cols-2 gap-6 mb-6">
                     <div class="bg-white rounded-lg">
                         <h3 class="text-base font-medium text-gray-500 px-4 pt-4">Tiến độ</h3>
@@ -92,7 +90,6 @@ const stats = {
                     </div>
                 </div>
 
-                <!-- Device Table -->
                 <div class="bg-white rounded-lg overflow-hidden border">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -121,7 +118,6 @@ const stats = {
                 </div>
             </div>
 
-            <!-- Right Panel - Borrow Form -->
             <div class="w-1/3 rounded-xl space-y-4">
                 <div class="bg-white p-6 rounded-xl h-fit">
                     <h2 class="text-xl font-medium text-gray-900 mb-1">Đơn trả</h2>
@@ -160,7 +156,6 @@ const stats = {
                     </div>
                 </div>
 
-                <!-- Borrower Info -->
                 <div class="space-y-4 bg-white p-6 rounded-xl">
                     <h3 class="text-xl font-medium text-gray-900">Người trả</h3>
 

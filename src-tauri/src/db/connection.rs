@@ -58,9 +58,7 @@ pub struct Database {
 impl Database {
     pub async fn new() -> DbResult<Self> {
         let config = DatabaseConfig::from_env()?;
-        
-        println!("Connecting to PostgreSQL at {}:{}...", config.host, config.port);
-        
+
         let pool_config = tokio_postgres::config::Config::new()
             .host(&config.host)
             .port(config.port)
@@ -75,7 +73,6 @@ impl Database {
             .build()
             .map_err(|e| DbError::Build(e.to_string()))?;
 
-        // Test the connection
         let client = pool.get().await.map_err(|e| DbError::Pool(e))?;
         client.query("SELECT 1", &[]).await.map_err(|e| {
             eprintln!("Database connection test failed: {}", e);
@@ -84,7 +81,7 @@ impl Database {
         })?;
 
         println!("Successfully connected to PostgreSQL!");
-        
+
         Ok(Self { pool })
     }
 
