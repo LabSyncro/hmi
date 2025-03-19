@@ -20,7 +20,7 @@ const closeDrawer = () => {
 
 <template>
   <Dialog :open="isOpen" @update:open="closeDrawer" class="relative z-50">
-    <div class="fixed inset-0 overflow-hidden">
+    <div v-if="isOpen" class="fixed inset-0 overflow-hidden">
       <div class="absolute inset-0 overflow-hidden">
         <div class="pointer-events-none fixed inset-y-0 left-0 flex max-w-full">
           <DialogContent :class="[
@@ -30,7 +30,7 @@ const closeDrawer = () => {
             <div class="absolute right-0 top-0 flex pt-4 pr-2">
               <DialogClose
                 class="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                <X class="h-6 w-6 text-white" />
+                <X class="h-6 w-6 text-gray-600" />
                 <span class="sr-only">Close</span>
               </DialogClose>
             </div>
