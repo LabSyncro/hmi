@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { debounce } from 'lodash-es';
 import { createColumns, type AugmentedColumnDef } from './column';
-import { ref, onMounted, watch, useTemplateRef } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
+import { Search, QrCode, Plus } from 'lucide-vue-next';
+import TableCore from './Core.vue';
 
 const props = defineProps<{
   deleteFn?: (ids: string[]) => Promise<void>;
@@ -15,6 +20,7 @@ const props = defineProps<{
 }>();
 
 const searchText = ref('');
+const filterBoxRef = ref<HTMLInputElement | null>(null);
 
 const pageIndex = ref(0);
 const pageSize = ref(10);
@@ -28,6 +34,7 @@ const pageCount = ref(0);
 
 const sortField = ref<string | null>(null);
 const sortOrder = ref<'desc' | 'asc' | null>(null);
+
 function handleSortFieldChange(value: string | null) {
   sortField.value = value;
 }
@@ -85,62 +92,79 @@ function closeDeleteModal() {
 
 const data = ref<unknown[]>([]);
 const updateData = debounce(async () => {
-  const res = await props.fetchFn(pageIndex.value * pageSize.value, pageSize.value, { searchText: searchText.value || undefined, sortField: sortField.value || undefined as any, desc: sortOrder.value === 'asc' });
+  const res = await props.fetchFn(pageIndex.value * pageSize.value, pageSize.value, {
+    searchText: searchText.value || undefined,
+    sortField: sortField.value === null ? undefined : sortField.value,
+    desc: sortOrder.value === 'asc'
+  });
   data.value = res.data;
   pageCount.value = res.totalPages;
 }, 300);
-onMounted(updateData);
-watch([pageSize, pageIndex, searchText, sortField, sortOrder], updateData);
 
-const filterBoxRef = useTemplateRef<HTMLInputElement>('filterBox');
-onMounted(() => filterBoxRef.value?.focus());
+onMounted(() => {
+  updateData();
+  // Focus the search input if it exists
+  if (props.searchable) {
+    nextTick(() => {
+      filterBoxRef.value?.focus();
+    });
+  }
+});
+
+watch([pageSize, pageIndex, searchText, sortField, sortOrder], updateData);
 </script>
 
 <template>
-  <div>
-    <div v -if="isDeleteModalActive"
-      class="fixed top-4 z-50 left-0 w-[100vw] h-[100vh] p-10 flex justify-end items-end">
-      <div class="bg-white p-4 shadow-[0_0px_16px_-3px_rgba(0,0,0,0.3)]">
-        <p class="mb-4"> Bạn có chắc chắn muốn xoá { { rowsToDelete.length } } bản ghi ? </p>
-        < div class="flex gap-3 justify-end">
-          <button class="bg-gray-300 p-1.5 px-3 rounded-md text-normal" @click="closeDeleteModal"> Hủy bỏ </button>
-          <button class="bg-red-500 text-white p-1.5 px-3 rounded-md text-normal" @click="onConfirmDelete">
-            Xác nhận
-          </button>
-      </div>
-    </div>
-  </div>
+  <Dialog :open="isDeleteModalActive" @update:open="closeDeleteModal">
+    <DialogContent>
+      <p class="mb-4">Bạn có chắc chắn muốn xoá {{ rowsToDelete.length }} bản ghi?</p>
+      <DialogFooter>
+        <Button variant="outline" @click="closeDeleteModal">Hủy bỏ</Button>
+        <Button variant="destructive" @click="onConfirmDelete">Xác nhận</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
   <div class="flex justify-between items-stretch">
     <div v-if="searchable" class="relative items-center flex gap-4 m-auto md:m-0 md:mb-8 mb-8">
-      <input ref="filterBox" v - model="searchText" type="search" placeholder="Nhập tên/mã thiết bị"
-        class="border-gray-300 border rounded-sm p-2 pl-10 w-[250px] sm:w-[300px] md:w-[350px] lg:w-[400px]"
-        @input="handlePageIndexChange(0)">
-      <Icon aria - hidden class="absolute left-3 top-[12px] text-xl text-primary-dark"
-        name="i-heroicons-magnifying-glass" />
-      <button v -if="qrable"
-        class="relative bg-slate-200 border border-slate-400 text-slate-dark rounded-md w-11 h-11 lg:w-auto">
-        <Icon aria - hidden class="absolute left-3 top-[12px] text-xl" name="i-heroicons-qr-code" />
-        <p class="hidden lg:block pl-10 pr-3"> Quét QR </p>
-      </button>
-      <button v -if="addTriggerFn"
-        class="relative md:hidden bg-tertiary-darker items-center text-white px-3 rounded-md w-11 h-11">
-        <Icon aria - hidden class="absolute left-3 top-[12px] text-xl" name="i-heroicons-plus" />
-      </button>
+      <div class="relative">
+        <Search class="absolute left-3 top-[12px] h-4 w-4 text-gray-500" />
+        <Input ref="filterBoxRef" v-model="searchText" type="search" placeholder="Nhập tên/mã thiết bị"
+          class="pl-10 w-[250px] sm:w-[300px] md:w-[350px] lg:w-[400px]" @input="handlePageIndexChange(0)" />
+      </div>
+
+      <Button v-if="qrable" variant="outline" class="relative w-11 lg:w-auto">
+        <QrCode class="h-4 w-4 lg:mr-2" />
+        <span class="hidden lg:inline">Quét QR</span>
+      </Button>
+
+      <Button v-if="addTriggerFn" class="md:hidden" @click="addTriggerFn">
+        <Plus class="h-4 w-4" />
+      </Button>
     </div>
+
     <div>
       <slot name="custom-button">
-        <button v -if="addTriggerFn"
-          class="relative hidden md:block bg-tertiary-darker items-center text-white px-3 rounded-md w-11 h-11 md:w-auto"
-          @click="addTriggerFn">
-          <Icon aria - hidden class="absolute left-3 top-[12px] text-xl" name="i-heroicons-plus" />
-          <span class="hidden md:block pl-8 pr-3"> {{ addTitle ?? 'Thêm' }}</span>
-        </button>
+        <Button v-if="addTriggerFn" class="hidden md:flex items-center" @click="addTriggerFn">
+          <Plus class="h-4 w-4 mr-2" />
+          <span>{{ addTitle ?? 'Thêm' }}</span>
+        </Button>
       </slot>
     </div>
   </div>
-  <DataTableCore
-    :columns="createColumns(columns as AugmentedColumnDef<any>[], { selectable, deletable: !!deleteFn, sortField: sortField as any, sortOrder: sortOrder as any, rowSelection, onSelectRows, onSelectAllRows, onDeleteRow, onDeleteSelectedRows })"
-    :data="data" :page-count="pageCount" :page-size="pageSize" :page-index="pageIndex" :row-selection="rowSelection"
-    :selectable="selectable" @page-index-change="handlePageIndexChange" @page-size-change="handlePageSizeChange"
-    @sort-order-change="handleSortOrderChange as any" @sort-field-change="handleSortFieldChange as any" />
+
+  <TableCore :columns="createColumns(columns as AugmentedColumnDef<any>[], {
+    selectable,
+    deletable: !!deleteFn,
+    sortField: sortField ?? undefined,
+    sortOrder: sortOrder ?? undefined,
+    rowSelection,
+    onSelectRows,
+    onSelectAllRows,
+    onDeleteRow,
+    onDeleteSelectedRows
+  })" :data="data" :page-count="pageCount" :page-size="pageSize" :page-index="pageIndex" :row-selection="rowSelection"
+    :selectable="selectable" :sort-field="sortField" :sort-order="sortOrder" @page-index-change="handlePageIndexChange"
+    @page-size-change="handlePageSizeChange" @sort-order-change="handleSortOrderChange"
+    @sort-field-change="handleSortFieldChange" />
 </template>

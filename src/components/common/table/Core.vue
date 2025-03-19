@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { FlexRender, getCoreRowModel, useVueTable, type ColumnDef } from '@tanstack/vue-table';
-import DataTablePagination from './Pagination.vue';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import TablePagination from './Pagination.vue';
 
 type DataTableProps = {
     columns: ColumnDef<any, unknown>[];
@@ -70,7 +71,7 @@ const table = useVueTable({
             <div class="hidden sm:block">
                 <span v-if="selectable"> {{ rowSelection.length }} được chọn </span>
             </div>
-            <DataTablePagination :table="table" :page-index="pageIndex" :page-size="pageSize" :page-count="pageCount"
+            <TablePagination :table="table" :page-index="pageIndex" :page-size="pageSize" :page-count="pageCount"
                 @page-size-change="(value: number) => emits('page-size-change', value)"
                 @page-index-change="(value: number) => emits('page-index-change', value)" />
         </div>
