@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { ReadyBorrowTable, BorrowTable, ReturnTable } from '@/components/app/borrow-return'
+import { ArrowUp, ArrowDown } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
 
 const selectedLab = ref('601 H6, Dĩ An')
@@ -36,11 +37,11 @@ const handleLabChange = (value: AcceptableValue) => {
       </div>
       <div class="flex gap-2">
         <Button variant="default" class="bg-blue-500 hover:bg-blue-600">
-          <Icon name="i-heroicons-arrow-up-tray" class="mr-2 h-4 w-4" />
+          <ArrowUp class="mr-2 h-4 w-4" />
           Mượn
         </Button>
         <Button variant="default" class="bg-green-500 hover:bg-green-600">
-          <Icon name="i-heroicons-arrow-down-tray" class="mr-2 h-4 w-4" />
+          <ArrowDown class="mr-2 h-4 w-4" />
           Trả
         </Button>
       </div>

@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { Transition } from 'vue'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogClose } from '@/components/ui/dialog'
 import { useRoute } from 'vue-router'
-import { XIcon, ChartPieIcon, HandIcon, CalculatorIcon, TruckIcon, WrenchIcon } from 'lucide-vue-next'
+import { X, PieChart, Hand, Calculator, Truck, Wrench } from 'lucide-vue-next'
 
 defineProps<{
   isOpen: boolean
@@ -20,28 +19,24 @@ const closeDrawer = () => {
 </script>
 
 <template>
-  <Transition as="template" :show="isOpen">
-    <Dialog as="div" class="relative z-50" @close="closeDrawer">
-      <Transition as="template" enter="transition-opacity ease-linear duration-300" enter-from="opacity-0"
-        enter-to="opacity-100" leave="transition-opacity ease-linear duration-300" leave-from="opacity-100"
-        leave-to="opacity-0">
-        <div class="fixed inset-0 bg-gray-900/80" />
-      </Transition>
-
-      <div class="fixed inset-0 flex">
-        <Transition as="template" enter="transition ease-in-out duration-300 transform" enter-from="-translate-x-full"
-          enter-to="translate-x-0" leave="transition ease-in-out duration-300 transform" leave-from="translate-x-0"
-          leave-to="-translate-x-full">
-          <DialogContent class="relative mr-16 flex w-full max-w-xs flex-1">
-            <div class="absolute left-full top-0 flex w-16 justify-center pt-5">
-              <button type="button" class="-m-2.5 p-2.5" @click="closeDrawer">
-                <span class="sr-only">Close sidebar</span>
-                <XIcon class="h-6 w-6 text-white" aria-hidden="true" />
-              </button>
+  <Dialog :open="isOpen" @update:open="closeDrawer" class="relative z-50">
+    <div class="fixed inset-0 overflow-hidden">
+      <div class="absolute inset-0 overflow-hidden">
+        <div class="pointer-events-none fixed inset-y-0 left-0 flex max-w-full">
+          <DialogContent :class="[
+            'pointer-events-auto w-screen max-w-xs transform transition-all duration-300 ease-in-out',
+            isOpen ? 'translate-x-0' : '-translate-x-full'
+          ]">
+            <div class="absolute right-0 top-0 flex pt-4 pr-2">
+              <DialogClose
+                class="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                <X class="h-6 w-6 text-white" />
+                <span class="sr-only">Close</span>
+              </DialogClose>
             </div>
 
-            <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-white pb-4">
-              <div class="flex h-16 shrink-0 items-center px-6 bg-blue-500">
+            <div class="flex h-full flex-col overflow-y-auto bg-white py-6 shadow-xl">
+              <div class="flex h-16 shrink-0 items-center px-6 bg-blue-500 -mt-6">
                 <img class="h-8 w-auto" src="/logo.png" alt="Lab Syncro" />
               </div>
 
@@ -54,7 +49,7 @@ const closeDrawer = () => {
                         <router-link to="/"
                           class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                           :class="{ 'text-blue-600 bg-gray-50': route.name === 'home' }">
-                          <ChartPieIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
+                          <PieChart class="h-6 w-6 shrink-0" aria-hidden="true" />
                           Dashboard
                         </router-link>
                       </li>
@@ -68,28 +63,28 @@ const closeDrawer = () => {
                         <router-link to="/borrow-return"
                           class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                           :class="{ 'text-blue-600 bg-gray-50': route.name === 'borrow-return' }">
-                          <HandIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
+                          <Hand class="h-6 w-6 shrink-0" aria-hidden="true" />
                           Mượn trả
                         </router-link>
                       </li>
                       <li>
                         <a href="#"
                           class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50">
-                          <CalculatorIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
+                          <Calculator class="h-6 w-6 shrink-0" aria-hidden="true" />
                           Kiểm đếm
                         </a>
                       </li>
                       <li>
                         <a href="#"
                           class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50">
-                          <TruckIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
+                          <Truck class="h-6 w-6 shrink-0" aria-hidden="true" />
                           Vận chuyển
                         </a>
                       </li>
                       <li>
                         <a href="#"
                           class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50">
-                          <WrenchIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
+                          <Wrench class="h-6 w-6 shrink-0" aria-hidden="true" />
                           Sửa chữa
                         </a>
                       </li>
@@ -99,8 +94,8 @@ const closeDrawer = () => {
               </nav>
             </div>
           </DialogContent>
-        </Transition>
+        </div>
       </div>
-    </Dialog>
-  </Transition>
+    </div>
+  </Dialog>
 </template>
