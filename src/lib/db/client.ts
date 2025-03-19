@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export interface JoinParams<T = unknown> {
+export type JoinParams<T = unknown> = {
   table: string
   left_column: keyof T extends string ? keyof T : string
   right_column: string
@@ -9,7 +9,7 @@ export interface JoinParams<T = unknown> {
   parent_table?: string
 }
 
-export interface QueryParams<T> {
+export type QueryParams<T> = {
   table: string
   columns?: string[]
   conditions?: [string, unknown][]
@@ -19,12 +19,12 @@ export interface QueryParams<T> {
   joins?: JoinParams<T>[]
 }
 
-export interface RawQueryParams {
+export type RawQueryParams = {
   sql: string
   params?: unknown[]
 }
 
-export interface InsertParams<T> {
+export type InsertParams<T> = {
   table: string
   value: Partial<T>
 }

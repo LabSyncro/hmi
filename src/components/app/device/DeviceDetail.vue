@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, Transition } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { TransitionRoot } from '@headlessui/vue';
-import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline';
+import { ChevronDownIcon, ChevronUpIcon } from 'lucide-vue-next';
 import { getDeviceById, getDeviceInventoryByKindId, type DeviceDetail, type DeviceInventory } from '@/lib/db/device';
 import { DeviceStatus } from '@/types/db/generated';
 import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection';
@@ -225,7 +224,7 @@ watch(
                     </dd>
                   </div>
 
-                  <TransitionRoot as="template" :show="showMore">
+                  <Transition as="template" :show="showMore">
                     <div class="contents">
                       <div class="grid grid-cols-4">
                         <dt class="text-sm font-medium text-gray-500">Quyền mượn</dt>
@@ -262,7 +261,7 @@ watch(
                         </dd>
                       </div>
                     </div>
-                  </TransitionRoot>
+                  </Transition>
                 </dl>
 
                 <div class="flex justify-start mt-4">

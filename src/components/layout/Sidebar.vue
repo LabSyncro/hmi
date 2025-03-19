@@ -1,14 +1,8 @@
 <script setup lang="ts">
-import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue'
+import { Transition } from 'vue'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useRoute } from 'vue-router'
-import {
-  XMarkIcon,
-  ChartPieIcon,
-  HandRaisedIcon,
-  CalculatorIcon,
-  TruckIcon,
-  WrenchScrewdriverIcon,
-} from '@heroicons/vue/24/outline'
+import { XIcon, ChartPieIcon, HandIcon, CalculatorIcon, TruckIcon, WrenchIcon } from 'lucide-vue-next'
 
 defineProps<{
   isOpen: boolean
@@ -26,23 +20,23 @@ const closeDrawer = () => {
 </script>
 
 <template>
-  <TransitionRoot as="template" :show="isOpen">
+  <Transition as="template" :show="isOpen">
     <Dialog as="div" class="relative z-50" @close="closeDrawer">
-      <TransitionChild as="template" enter="transition-opacity ease-linear duration-300" enter-from="opacity-0"
+      <Transition as="template" enter="transition-opacity ease-linear duration-300" enter-from="opacity-0"
         enter-to="opacity-100" leave="transition-opacity ease-linear duration-300" leave-from="opacity-100"
         leave-to="opacity-0">
         <div class="fixed inset-0 bg-gray-900/80" />
-      </TransitionChild>
+      </Transition>
 
       <div class="fixed inset-0 flex">
-        <TransitionChild as="template" enter="transition ease-in-out duration-300 transform"
-          enter-from="-translate-x-full" enter-to="translate-x-0" leave="transition ease-in-out duration-300 transform"
-          leave-from="translate-x-0" leave-to="-translate-x-full">
-          <DialogPanel class="relative mr-16 flex w-full max-w-xs flex-1">
+        <Transition as="template" enter="transition ease-in-out duration-300 transform" enter-from="-translate-x-full"
+          enter-to="translate-x-0" leave="transition ease-in-out duration-300 transform" leave-from="translate-x-0"
+          leave-to="-translate-x-full">
+          <DialogContent class="relative mr-16 flex w-full max-w-xs flex-1">
             <div class="absolute left-full top-0 flex w-16 justify-center pt-5">
               <button type="button" class="-m-2.5 p-2.5" @click="closeDrawer">
                 <span class="sr-only">Close sidebar</span>
-                <XMarkIcon class="h-6 w-6 text-white" aria-hidden="true" />
+                <XIcon class="h-6 w-6 text-white" aria-hidden="true" />
               </button>
             </div>
 
@@ -71,10 +65,10 @@ const closeDrawer = () => {
                     <div class="text-xs font-semibold leading-6 text-gray-400">VẬN HÀNH</div>
                     <ul role="list" class="-mx-2 mt-2 space-y-1">
                       <li>
-                        <router-link to="/device/123"
+                        <router-link to="/borrow-return"
                           class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50"
-                          :class="{ 'text-blue-600 bg-gray-50': route.name === 'device-detail' }">
-                          <HandRaisedIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
+                          :class="{ 'text-blue-600 bg-gray-50': route.name === 'borrow-return' }">
+                          <HandIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
                           Mượn trả
                         </router-link>
                       </li>
@@ -95,7 +89,7 @@ const closeDrawer = () => {
                       <li>
                         <a href="#"
                           class="group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50">
-                          <WrenchScrewdriverIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
+                          <WrenchIcon class="h-6 w-6 shrink-0" aria-hidden="true" />
                           Sửa chữa
                         </a>
                       </li>
@@ -104,9 +98,9 @@ const closeDrawer = () => {
                 </ul>
               </nav>
             </div>
-          </DialogPanel>
-        </TransitionChild>
+          </DialogContent>
+        </Transition>
       </div>
     </Dialog>
-  </TransitionRoot>
+  </Transition>
 </template>

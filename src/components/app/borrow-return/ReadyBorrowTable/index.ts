@@ -1,0 +1,1 @@
+export { default as ReadyBorrowTable } from './ReadyBorrowTable.vue'

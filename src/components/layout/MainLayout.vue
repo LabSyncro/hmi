@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bars3Icon, ChevronLeftIcon } from '@heroicons/vue/24/outline'
+import { MenuIcon, ChevronLeftIcon } from 'lucide-vue-next'
 import Sidebar from './Sidebar.vue'
 
 const route = useRoute()
@@ -68,7 +68,7 @@ const handleBack = () => {
             <span class="ml-2 text-lg">{{ headerTitle }}</span>
           </button>
           <button v-else @click="sidebarOpen = true" class="text-gray-500 hover:text-gray-600">
-            <Bars3Icon class="h-6 w-6" />
+            <MenuIcon class="h-6 w-6" />
           </button>
         </div>
 

@@ -7,6 +7,8 @@ import BorrowInvoice from '../components/device/BorrowInvoice.vue'
 import ReturnForm from '../components/device/ReturnForm.vue'
 import ConfirmReturnForm from '../components/device/ConfirmReturnForm.vue'
 import ReturnInvoice from '../components/device/ReturnInvoice.vue'
+import BorrowReturn from '../pages/borrow-return/index.vue'
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -14,6 +16,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: Home
+    },
+    {
+      path: '/borrow-return',
+      name: 'borrow-return',
+      component: BorrowReturn
     },
     {
       path: '/device/:id',

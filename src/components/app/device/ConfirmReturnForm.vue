@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ExclamationTriangleIcon, CheckIcon } from '@heroicons/vue/24/outline'
+import { TriangleAlertIcon, CheckIcon } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -180,7 +180,7 @@ const stats = {
                     <div class="bg-red-50 border border-red-200 rounded-lg p-1">
                         <div>
                             <div class="flex items-center">
-                                <ExclamationTriangleIcon class="h-4 w-4 mr-2 stroke-2 stroke-red-500" />
+                                <TriangleAlertIcon class="h-4 w-4 mr-2 stroke-2 stroke-red-500" />
                                 <p class="font-bold text-sm text-red-600">Không đủ điều kiện trả thiết bị.</p>
                             </div>
                             <p class="mt-1 text-sm text-red-600">Bạn không phải là người mượn thiết bị này, nên không

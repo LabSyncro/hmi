@@ -1,7 +1,7 @@
 import { DatabaseClient } from '@/lib/db/client'
 import type { DeviceStatus } from '@/types/db/generated'
 
-export interface DeviceDetail {
+export type DeviceDetail = {
   fullId: string;
   status: DeviceStatus | null;
   image: any;
@@ -27,7 +27,7 @@ export interface DeviceDetail {
   receiptId?: string | null;
 }
 
-export interface DeviceInventory {
+export type DeviceInventory = {
   branch: string;
   room: string;
   borrowingQuantity: number;

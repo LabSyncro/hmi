@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { CalendarIcon, ExclamationTriangleIcon, CheckIcon } from '@heroicons/vue/24/outline'
+import { CalendarIcon, TriangleAlertIcon, CheckIcon } from 'lucide-vue-next'
 import { DatePicker } from 'v-calendar'
 import { useRouter } from 'vue-router'
 import 'v-calendar/style.css'
@@ -182,7 +182,7 @@ const masks = {
                     <div class="bg-red-50 border border-red-200 rounded-lg p-1">
                         <div>
                             <div class="flex items-center">
-                                <ExclamationTriangleIcon class="h-4 w-4 stroke-2 stroke-red-500 mr-2" />
+                                <TriangleAlertIcon class="h-4 w-4 stroke-2 stroke-red-500 mr-2" />
                                 <p class="font-bold text-sm text-red-600">Không đủ điều kiện mượn thiết bị.</p>
                             </div>
                             <p class="mt-1 text-sm text-red-600">Chỉ sinh viên học Đồ án Đa ngành mới được mượn các
