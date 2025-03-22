@@ -80,7 +80,7 @@ watch(route, () => {
       </div>
     </header>
 
-    <main class="py-6">
+    <main>
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">

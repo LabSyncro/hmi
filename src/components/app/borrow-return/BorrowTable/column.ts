@@ -6,22 +6,39 @@ const statusMap = {
     on_time: 'Đúng hạn',
 };
 
+const borrowStateMap = {
+    borrowing: 'Đang mượn',
+    returned: 'Trả xong'
+};
+
 type BorrowReturnDeviceSchema = {
-    id: number,
-    name: string,
-    image: string,
-    quantity: number,
+    receiptCode: string,
+    borrowerName: string,
+    borrowerImage: string,
+    totalQty: number,
+    returnedQty: number,
     borrowedPlace: string,
-    returnedPlace: string,
     borrowedAt: Date,
     expectedReturnedAt: Date,
     status: 'on_time' | 'late',
+    borrowState: 'borrowing' | 'returned'
 }
 
 export const columns: AugmentedColumnDef<BorrowReturnDeviceSchema>[] = [
     {
-        id: 'name',
-        title: 'Tên thiết bị',
+        id: 'receiptCode',
+        title: 'Mã đơn',
+        cell: ({ row }) =>
+            h(
+                'span',
+                { class: 'text-slate-500 text-sm font-normal leading-tight' },
+                row.original.receiptCode,
+            ),
+        enableSorting: true,
+    },
+    {
+        id: 'borrowerName',
+        title: 'Người mượn',
         cell: ({ row }) =>
             h(
                 'div',
@@ -30,27 +47,27 @@ export const columns: AugmentedColumnDef<BorrowReturnDeviceSchema>[] = [
                 },
                 [
                     h('img', {
-                        src: row.original.image,
-                        alt: row.original.name,
+                        src: row.original.borrowerImage,
+                        alt: row.original.borrowerName,
                         class: 'w-8 h-8 relative object-cover rounded-lg',
                     }),
                     h(
                         'span',
                         { class: 'text-slate-500 text-xs font-normal leading-none' },
-                        row.original.name,
+                        row.original.borrowerName,
                     ),
                 ],
             ),
         enableSorting: true,
     },
     {
-        id: 'quantity',
-        title: 'Số lượng',
+        id: 'totalQty',
+        title: 'Đã trả',
         cell: ({ row }) =>
             h(
                 'span',
                 { class: 'text-slate-500 text-sm font-normal leading-tight' },
-                row.original.quantity,
+                `${row.original.returnedQty}/${row.original.totalQty}`,
             ),
         enableSorting: true,
     },
@@ -62,17 +79,6 @@ export const columns: AugmentedColumnDef<BorrowReturnDeviceSchema>[] = [
                 'span',
                 { class: 'text-slate-500 text-sm font-normal leading-tight' },
                 row.original.borrowedPlace,
-            ),
-        enableSorting: true,
-    },
-    {
-        id: 'returnedPlace',
-        title: 'Nơi trả',
-        cell: ({ row }) =>
-            h(
-                'span',
-                { class: 'text-slate-500 text-sm font-normal leading-tight' },
-                row.original.returnedPlace,
             ),
         enableSorting: true,
     },
@@ -115,6 +121,22 @@ export const columns: AugmentedColumnDef<BorrowReturnDeviceSchema>[] = [
                         }`,
                 },
                 statusMap[row.original.status],
+            ),
+        enableSorting: true,
+    },
+    {
+        id: 'borrowState',
+        title: 'Trạng thái',
+        cell: ({ row }) =>
+            h(
+                'span',
+                {
+                    class: `inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${borrowStateMap[row.original.borrowState] === 'Đang mượn'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-green-100 text-green-800'
+                        }`,
+                },
+                borrowStateMap[row.original.borrowState],
             ),
         enableSorting: true,
     },

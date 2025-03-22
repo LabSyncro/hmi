@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { ReadyBorrowTable, BorrowTable, ReturnTable } from '@/components/app/borrow-return'
-import { ArrowUp, ArrowDown } from 'lucide-vue-next'
+import { Upload, Download } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
 
 const selectedLab = ref('601 H6, Dĩ An')
@@ -21,11 +21,29 @@ const handleLabChange = (value: AcceptableValue) => {
 </script>
 
 <template>
-  <div class="container mx-auto py-6">
-    <div class="flex justify-between items-center mb-6">
-      <div class="flex items-center gap-4">
+  <div class="mt-4 mx-auto">
+    <div class="flex justify-between items-center mb-4">
+      <div class="flex gap-2">
+        <Button variant="default" class="bg-tertiary-darker hover:bg-blue-900 w-24">
+          <Upload class="h-4 w-4" />
+          Mượn
+        </Button>
+        <Button variant="default" class="bg-tertiary-darker hover:bg-blue-900 w-24">
+          <Download class="h-4 w-4" />
+          Trả
+        </Button>
+      </div>
+    </div>
+
+    <Tabs default-value="ready-borrow" class="w-full">
+      <div class="flex justify-between items-center">
+        <TabsList class="grid w-[500px] grid-cols-3">
+          <TabsTrigger value="ready-borrow">Sẵn sàng mượn (32)</TabsTrigger>
+          <TabsTrigger value="borrowing">Đang mượn</TabsTrigger>
+          <TabsTrigger value="returned">Đã trả</TabsTrigger>
+        </TabsList>
         <Select :model-value="selectedLab" @update:model-value="handleLabChange">
-          <SelectTrigger class="w-[180px]">
+          <SelectTrigger class="w-[180px] bg-white">
             <SelectValue :placeholder="selectedLab" />
           </SelectTrigger>
           <SelectContent>
@@ -35,24 +53,6 @@ const handleLabChange = (value: AcceptableValue) => {
           </SelectContent>
         </Select>
       </div>
-      <div class="flex gap-2">
-        <Button variant="default" class="bg-blue-500 hover:bg-blue-600">
-          <ArrowUp class="mr-2 h-4 w-4" />
-          Mượn
-        </Button>
-        <Button variant="default" class="bg-green-500 hover:bg-green-600">
-          <ArrowDown class="mr-2 h-4 w-4" />
-          Trả
-        </Button>
-      </div>
-    </div>
-
-    <Tabs default-value="ready-borrow" class="w-full">
-      <TabsList class="grid w-full grid-cols-3">
-        <TabsTrigger value="ready-borrow">Sẵn sàng mượn</TabsTrigger>
-        <TabsTrigger value="borrowing">Đang mượn</TabsTrigger>
-        <TabsTrigger value="returned">Đã trả</TabsTrigger>
-      </TabsList>
       <TabsContent value="ready-borrow">
         <ReadyBorrowTable />
       </TabsContent>

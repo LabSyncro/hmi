@@ -11,8 +11,6 @@ type DataTableProps = {
     pageSize: number;
     sortField: string | null;
     sortOrder: 'desc' | 'asc' | null;
-    selectable: boolean;
-    rowSelection: unknown[];
 }
 
 const props = defineProps<DataTableProps>();
@@ -68,9 +66,6 @@ const table = useVueTable({
         </div>
 
         <div class="text-sm text-slate flex items-center justify-between">
-            <div class="hidden sm:block">
-                <span v-if="selectable"> {{ rowSelection.length }} được chọn </span>
-            </div>
             <TablePagination :table="table" :page-index="pageIndex" :page-size="pageSize" :page-count="pageCount"
                 @page-size-change="(value: number) => emits('page-size-change', value)"
                 @page-index-change="(value: number) => emits('page-index-change', value)" />

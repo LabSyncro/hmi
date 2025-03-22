@@ -2,7 +2,7 @@ import { type AugmentedColumnDef } from '@/components/common/table';
 import { h } from 'vue';
 
 type ReadyBorrowedDeviceSchema = {
-    id: number;
+    kind: string;
     name: string;
     image: string;
     quantity: number;
@@ -10,6 +10,17 @@ type ReadyBorrowedDeviceSchema = {
 }
 
 export const columns: AugmentedColumnDef<ReadyBorrowedDeviceSchema>[] = [
+    {
+        id: 'kind',
+        title: 'Mã',
+        cell: ({ row }) =>
+            h(
+                'span',
+                { class: 'text-slate-500 text-sm font-normal leading-tight' },
+                row.original.kind,
+            ),
+        enableSorting: true,
+    },
     {
         id: 'name',
         title: 'Tên thiết bị',
@@ -47,7 +58,7 @@ export const columns: AugmentedColumnDef<ReadyBorrowedDeviceSchema>[] = [
     },
     {
         id: 'place',
-        title: 'Địa điểm chứa',
+        title: 'Địa điểm',
         cell: ({ row }) =>
             h(
                 'span',
