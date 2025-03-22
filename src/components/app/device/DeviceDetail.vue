@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, Transition } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ChevronDownIcon, ChevronUpIcon } from 'lucide-vue-next';
 import { getDeviceById, getDeviceInventoryByKindId, type DeviceDetail, type DeviceInventory } from '@/lib/db/device';
@@ -139,7 +139,7 @@ async function loadInventoryData(kindId: string) {
   try {
     inventory.value = await getDeviceInventoryByKindId(kindId)
   } catch (e) {
-    console.error('Failed to load inventory data:', e)
+    throw e
   } finally {
     loadingInventory.value = false
   }

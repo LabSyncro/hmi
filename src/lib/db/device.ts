@@ -1,4 +1,4 @@
-import { DatabaseClient } from '@/lib/db/client'
+import { db } from './client'
 import type { DeviceStatus } from '@/types/db/generated'
 
 export type DeviceDetail = {
@@ -36,7 +36,6 @@ export type DeviceInventory = {
 
 export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
   try {
-    const db = DatabaseClient.getInstance();
     const sql = `
       SELECT 
         d.full_id,
@@ -53,23 +52,27 @@ export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
         l.room,
         l.branch,
         r.id AS receipt_id,
-        rd.created_at AS borrowed_at,
+        a.created_at AS borrowed_at,
         rd.expected_returned_at,
         bl.room || ', ' || bl.branch AS borrowed_lab,
         rl.room || ', ' || rl.branch AS expected_return_lab,
         u.id AS borrower_id,
         u.name AS borrower_name,
         u.image AS borrower_image
-      FROM devices d
-      LEFT JOIN device_kinds dk ON d.kind = dk.id
-      LEFT JOIN labs l ON d.lab_id = l.id
-      LEFT JOIN categories c ON dk.category_id = c.id
-      LEFT JOIN receipts_devices rd ON d.id = rd.device_id AND rd.return_id IS NULL
-      LEFT JOIN receipts r ON rd.receipt_id = r.id
-      LEFT JOIN users u ON r.borrower_id = u.id
-      LEFT JOIN labs bl ON r.borrowed_lab_id = bl.id
-      LEFT JOIN labs rl ON rd.expected_returned_lab_id = rl.id
-      WHERE d.id = $1
+      FROM 
+        devices d
+        LEFT JOIN device_kinds dk ON d.kind = dk.id
+        LEFT JOIN labs l ON d.lab_id = l.id
+        LEFT JOIN categories c ON dk.category_id = c.id
+        LEFT JOIN receipts_devices rd ON d.id = rd.device_id AND rd.return_id IS NULL
+        LEFT JOIN receipts r ON rd.receipt_id = r.id
+        LEFT JOIN users u ON r.borrower_id = u.id
+        LEFT JOIN labs bl ON r.borrowed_lab_id = bl.id
+        LEFT JOIN labs rl ON rd.expected_returned_lab_id = rl.id
+        LEFT JOIN activities a ON rd.borrow_id = a.id
+      WHERE 
+        d.id = $1
+        AND d.deleted_at IS NULL
     `;
 
     const results = await db.queryRaw<Record<string, unknown>>({
@@ -82,7 +85,6 @@ export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
     }
 
     const row = results[0];
-    console.log(row)
 
     const deviceDetail: DeviceDetail = {
       fullId: row.fullId as string,
@@ -118,19 +120,26 @@ export async function getDeviceById(id: string): Promise<DeviceDetail | null> {
 
 export async function getDeviceInventoryByKindId(kindId: string): Promise<DeviceInventory[]> {
   try {
-    const db = DatabaseClient.getInstance();
     const sql = `
       SELECT 
         l.branch,
         l.room,
         SUM(CASE WHEN d.status = 'borrowing' THEN 1 ELSE 0 END)::int as borrowing_quantity,
         SUM(CASE WHEN d.status IN ('healthy', 'borrowing') THEN 1 ELSE 0 END)::int as available_quantity
-      FROM labs l
-      JOIN devices d ON l.id = d.lab_id
-      JOIN device_kinds dk ON d.kind = dk.id
-      WHERE dk.id = $1
-      GROUP BY l.id, l.branch, l.room
-      ORDER BY l.branch, l.room
+      FROM 
+        labs l
+        JOIN devices d ON l.id = d.lab_id
+        JOIN device_kinds dk ON d.kind = dk.id
+      WHERE 
+        dk.id = $1
+        AND d.deleted_at IS NULL
+      GROUP BY
+        l.id,
+        l.branch,
+        l.room
+      ORDER BY
+        l.branch,
+        l.room
     `;
 
     const results = await db.queryRaw<Record<string, unknown>>({
@@ -145,7 +154,6 @@ export async function getDeviceInventoryByKindId(kindId: string): Promise<Device
       availableQuantity: row.availableQuantity as number
     }));
   } catch (error) {
-    console.error('Error querying device inventory:', error);
     throw error;
   }
 } 

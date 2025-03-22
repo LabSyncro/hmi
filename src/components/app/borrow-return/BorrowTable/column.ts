@@ -11,7 +11,7 @@ const borrowStateMap = {
     returned: 'Trả xong'
 };
 
-type BorrowReturnDeviceSchema = {
+export type BorrowReturnDeviceSchema = {
     receiptCode: string,
     borrowerName: string,
     borrowerImage: string,

@@ -1,10 +1,10 @@
 import { type AugmentedColumnDef } from '@/components/common/table';
 import { h } from 'vue';
 
-type ReadyBorrowedDeviceSchema = {
+export type ReadyBorrowedDeviceSchema = {
     kind: string;
     name: string;
-    image: string;
+    image: any;
     quantity: number;
     place: string;
 }
@@ -32,7 +32,7 @@ export const columns: AugmentedColumnDef<ReadyBorrowedDeviceSchema>[] = [
                 },
                 [
                     h('img', {
-                        src: row.original.image,
+                        src: row.original.image?.mainImage,
                         alt: row.original.name,
                         class: 'w-8 h-8 relative object-cover rounded-lg',
                     }),

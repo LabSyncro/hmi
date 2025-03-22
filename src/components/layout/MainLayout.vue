@@ -81,7 +81,7 @@ watch(route, () => {
     </header>
 
     <main>
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-7xl p-4">
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <component :is="Component" />

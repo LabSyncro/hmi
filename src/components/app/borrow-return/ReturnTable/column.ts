@@ -1,7 +1,7 @@
 import type { AugmentedColumnDef } from '@/components/common/table/column';
 import { h } from 'vue';
 
-type ReturnedReceiptDeviceSchema = {
+export type ReturnedReceiptDeviceSchema = {
     receiptCode: string,
     returnedName: string,
     returnedImage: string,

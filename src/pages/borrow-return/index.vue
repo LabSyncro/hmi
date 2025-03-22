@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { ReadyBorrowTable, BorrowTable, ReturnTable } from '@/components/app/borrow-return'
 import { Upload, Download } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
+import { receiptService } from '@/lib/db/receipt'
 
 const selectedLab = ref('601 H6, Dĩ An')
 const labs = [
@@ -18,6 +19,32 @@ const labs = [
 const handleLabChange = (value: AcceptableValue) => {
   selectedLab.value = value as string
 }
+
+const readyBorrowCount = ref(0)
+const borrowingCount = ref(0)
+const returnedCount = ref(0)
+
+const fetchData = async () => {
+  const readyBorrowRes = await receiptService.fetchReadyBorrowDevices(0, 10, {
+    sortField: undefined,
+    desc: true,
+  })
+  const borrowingRes = await receiptService.fetchBorrowingDevices(0, 10, {
+    sortField: undefined,
+    desc: true,
+  })
+  const returnedRes = await receiptService.fetchReturnedDevices(0, 10, {
+    sortField: undefined,
+    desc: true,
+  })
+  readyBorrowCount.value = readyBorrowRes.totalCount
+  borrowingCount.value = borrowingRes.totalCount
+  returnedCount.value = returnedRes.totalCount
+}
+
+onMounted(() => {
+  fetchData()
+})
 </script>
 
 <template>
@@ -37,10 +64,10 @@ const handleLabChange = (value: AcceptableValue) => {
 
     <Tabs default-value="ready-borrow" class="w-full">
       <div class="flex justify-between items-center">
-        <TabsList class="grid w-[500px] grid-cols-3">
-          <TabsTrigger value="ready-borrow">Sẵn sàng mượn (32)</TabsTrigger>
-          <TabsTrigger value="borrowing">Đang mượn</TabsTrigger>
-          <TabsTrigger value="returned">Đã trả</TabsTrigger>
+        <TabsList class="grid w-[600px] grid-cols-3">
+          <TabsTrigger value="ready-borrow">Sẵn sàng mượn ({{ readyBorrowCount }})</TabsTrigger>
+          <TabsTrigger value="borrowing">Đang mượn ({{ borrowingCount }})</TabsTrigger>
+          <TabsTrigger value="returned">Đã trả ({{ returnedCount }})</TabsTrigger>
         </TabsList>
         <Select :model-value="selectedLab" @update:model-value="handleLabChange">
           <SelectTrigger class="w-[180px] bg-white">
