@@ -9,12 +9,7 @@ import type { AcceptableValue } from 'reka-ui'
 import { receiptService } from '@/lib/db/receipt'
 
 const selectedLab = ref('601 H6, Dĩ An')
-const labs = [
-  '601 H6, Dĩ An',
-  '602 H6, Dĩ An',
-  '603 H6, Dĩ An',
-  '604 H6, Dĩ An',
-]
+const labs = ['601 H6, Dĩ An', '602 H6, Dĩ An', '603 H6, Dĩ An']
 
 const handleLabChange = (value: AcceptableValue) => {
   selectedLab.value = value as string
@@ -24,27 +19,24 @@ const readyBorrowCount = ref(0)
 const borrowingCount = ref(0)
 const returnedCount = ref(0)
 
-const fetchData = async () => {
-  const readyBorrowRes = await receiptService.fetchReadyBorrowDevices(0, 10, {
-    sortField: undefined,
-    desc: true,
-  })
-  const borrowingRes = await receiptService.fetchBorrowingDevices(0, 10, {
-    sortField: undefined,
-    desc: true,
-  })
-  const returnedRes = await receiptService.fetchReturnedDevices(0, 10, {
-    sortField: undefined,
-    desc: true,
-  })
-  readyBorrowCount.value = readyBorrowRes.totalCount
-  borrowingCount.value = borrowingRes.totalCount
-  returnedCount.value = returnedRes.totalCount
+async function fetchCounts() {
+  try {
+    const [ready, borrowing, returned] = await Promise.all([
+      receiptService.fetchReadyBorrowCount(),
+      receiptService.fetchBorrowingCount(),
+      receiptService.fetchReturnedCount()
+    ])
+
+    readyBorrowCount.value = ready
+    borrowingCount.value = borrowing
+    returnedCount.value = returned
+  } catch (error) {
+    throw error
+  }
 }
 
-onMounted(() => {
-  fetchData()
-})
+onMounted(() => { fetchCounts() })
+
 </script>
 
 <template>
@@ -65,9 +57,21 @@ onMounted(() => {
     <Tabs default-value="ready-borrow" class="w-full">
       <div class="flex justify-between items-center">
         <TabsList class="grid w-[600px] grid-cols-3">
-          <TabsTrigger value="ready-borrow">Sẵn sàng mượn ({{ readyBorrowCount }})</TabsTrigger>
-          <TabsTrigger value="borrowing">Đang mượn ({{ borrowingCount }})</TabsTrigger>
-          <TabsTrigger value="returned">Đã trả ({{ returnedCount }})</TabsTrigger>
+          <TabsTrigger value="ready-borrow">
+            <div class="flex items-center gap-2 px-4 py-2">
+              <span>Sẵn sàng mượn ({{ readyBorrowCount }})</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="borrowing">
+            <div class="flex items-center gap-2 px-4 py-2">
+              <span>Đang mượn ({{ borrowingCount }})</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="returned">
+            <div class="flex items-center gap-2 px-4 py-2">
+              <span>Đã trả ({{ returnedCount }})</span>
+            </div>
+          </TabsTrigger>
         </TabsList>
         <Select :model-value="selectedLab" @update:model-value="handleLabChange">
           <SelectTrigger class="w-[180px] bg-white">

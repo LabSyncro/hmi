@@ -211,5 +211,93 @@ export const receiptService = {
         } catch (error) {
             throw error
         }
+    },
+
+    async fetchReadyBorrowCount(): Promise<number> {
+        const sql = `
+            SELECT COUNT(*) OVER() as count
+            FROM (
+                SELECT device_kinds.id
+                FROM devices
+                JOIN device_kinds ON devices.kind = device_kinds.id
+                LEFT JOIN labs ON devices.lab_id = labs.id
+                WHERE devices.status::text = $1
+                    AND devices.deleted_at IS NULL
+                GROUP BY 
+                    device_kinds.id,
+                    device_kinds.name,
+                    device_kinds.image,
+                    labs.name
+            ) subquery
+        `;
+
+        const result = await db.queryRaw<{ count: number }>({
+            sql,
+            params: [DeviceStatus.HEALTHY]
+        });
+
+        return result[0]?.count ?? 0;
+    },
+
+    async fetchBorrowingCount(): Promise<number> {
+        const sql = `
+            SELECT COUNT(*) OVER() as count
+            FROM (
+                SELECT receipts.id
+                FROM receipts_devices
+                JOIN receipts ON receipts_devices.receipt_id = receipts.id
+                JOIN users ON receipts.borrower_id = users.id
+                JOIN labs ON receipts.borrowed_lab_id = labs.id
+                JOIN activities ON receipts_devices.borrow_id = activities.id
+                WHERE users.deleted_at IS NULL
+                    AND receipts_devices.return_id IS NULL
+                GROUP BY 
+                    receipts.id,
+                    users.name,
+                    users.image,
+                    labs.name,
+                    activities.created_at,
+                    receipts_devices.expected_returned_at,
+                    receipts_devices.return_checker_id
+            ) subquery
+        `;
+
+        const result = await db.queryRaw<{ count: number }>({
+            sql,
+            params: []
+        });
+
+        return result[0]?.count ?? 0;
+    },
+
+    async fetchReturnedCount(): Promise<number> {
+        const sql = `
+            SELECT COUNT(*) OVER() as count
+            FROM (
+                SELECT receipts.id
+                FROM receipts_devices
+                JOIN receipts ON receipts_devices.receipt_id = receipts.id
+                JOIN users ON receipts_devices.return_checker_id = users.id
+                JOIN labs ON receipts.borrowed_lab_id = labs.id
+                JOIN activities ON receipts_devices.return_id = activities.id
+                WHERE users.deleted_at IS NULL
+                    AND receipts_devices.return_id IS NOT NULL
+                GROUP BY 
+                    receipts.id,
+                    users.name,
+                    users.image,
+                    labs.name,
+                    activities.created_at,
+                    receipts_devices.expected_returned_at,
+                    receipts_devices.note
+            ) subquery
+        `;
+
+        const result = await db.queryRaw<{ count: number }>({
+            sql,
+            params: []
+        });
+
+        return result[0]?.count ?? 0;
     }
 } 

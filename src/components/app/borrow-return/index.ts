@@ -1,3 +1,6 @@
 export { ReadyBorrowTable } from './ReadyBorrowTable'
+export type { ReadyBorrowedDeviceSchema } from './ReadyBorrowTable/column'
 export { BorrowTable } from './BorrowTable'
+export type { BorrowReturnDeviceSchema } from './BorrowTable/column'
 export { ReturnTable } from './ReturnTable'
+export type { ReturnedReceiptDeviceSchema } from './ReturnTable/column'

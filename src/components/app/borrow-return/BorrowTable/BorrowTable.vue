@@ -3,8 +3,10 @@ import { receiptService } from '@/lib/db/receipt';
 import { columns, type BorrowReturnDeviceSchema } from './column';
 import { Table, type AugmentedColumnDef } from '@/components/common/table';
 
-async function fetchData(offset: number, length: number, options: { desc?: boolean, sortField?: string }): Promise<{ data: BorrowReturnDeviceSchema[], totalPages: number, totalCount: number }> {
-  return await receiptService.fetchBorrowingDevices(offset, length, options);
+async function fetchData(offset: number, length: number, options: { desc?: boolean, sortField?: string })
+  : Promise<{ data: BorrowReturnDeviceSchema[], totalPages: number, totalCount: number }> {
+  const data = await receiptService.fetchBorrowingDevices(offset, length, options);
+  return data;
 }
 </script>
 
