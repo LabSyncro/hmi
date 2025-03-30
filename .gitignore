@@ -30,3 +30,6 @@ dist-ssr
 .vscode
 
 .env
+memory-bank
+docs
+.cursorrules

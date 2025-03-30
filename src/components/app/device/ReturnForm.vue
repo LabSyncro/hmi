@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, Transition } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { TrashIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
-import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
-import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue'
-import { TransitionRoot } from '@headlessui/vue'
+import { TrashIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-vue-next'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 
-interface Device {
+type Device = {
     id: string
     code: string
     name: string
@@ -120,7 +118,7 @@ const getProgressColor = (progress: string) => {
                             <span class="text-gray-900 col-span-2">Sinh viên, Giảng viên</span>
                         </div>
 
-                        <TransitionRoot as="template" :show="showMore">
+                        <Transition as="template" :show="showMore">
                             <div class="contents text-base space-y-4">
                                 <div class="grid grid-cols-3 items-center gap-2 text-sm">
                                     <dt class="text-gray-500 w-32">Phân loại</dt>
@@ -142,7 +140,7 @@ const getProgressColor = (progress: string) => {
                                     <dd class="text-gray-900 col-span-2">N/A</dd>
                                 </div>
                             </div>
-                        </TransitionRoot>
+                        </Transition>
 
                         <div class="flex justify-start mt-4">
                             <button type="button"
@@ -186,14 +184,14 @@ const getProgressColor = (progress: string) => {
                                         <div class="flex items-center gap-1">
                                             <span :class="getStatusColor(device.status)">{{ device.status }}</span>
                                             <ChevronRightIcon class="h-3 w-3 text-gray-400 shrink-0" />
-                                            <Menu as="div" class="relative inline-block text-left">
+                                            <DropdownMenu as="div" class="relative inline-block text-left">
                                                 <div>
-                                                    <MenuButton
+                                                    <DropdownMenuTrigger
                                                         class="inline-flex items-center rounded-md px-2 py-1 text-sm font-medium"
                                                         :class="getStatusBgColor(device.status)">
                                                         {{ device.status }}
                                                         <ChevronDownIcon class="ml-1 h-3 w-3" aria-hidden="true" />
-                                                    </MenuButton>
+                                                    </DropdownMenuTrigger>
                                                 </div>
                                                 <transition enter-active-class="transition ease-out duration-100"
                                                     enter-from-class="transform opacity-0 scale-95"
@@ -201,29 +199,25 @@ const getProgressColor = (progress: string) => {
                                                     leave-active-class="transition ease-in duration-75"
                                                     leave-from-class="transform opacity-100 scale-100"
                                                     leave-to-class="transform opacity-0 scale-95">
-                                                    <MenuItems
+                                                    <DropdownMenuContent
                                                         class="absolute right-0 z-10 mt-1 w-24 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                                                         <div class="py-1">
-                                                            <MenuItem v-slot="{ active }">
-                                                            <button :class="[
-                                                                active ? 'bg-gray-50' : '',
-                                                                'block w-full px-3 py-1 text-left text-sm text-gray-900'
-                                                            ]">
-                                                                Tốt
-                                                            </button>
-                                                            </MenuItem>
-                                                            <MenuItem v-slot="{ active }">
-                                                            <button :class="[
-                                                                active ? 'bg-gray-50' : '',
-                                                                'block w-full px-3 py-1 text-left text-sm text-gray-900'
-                                                            ]">
-                                                                Hư
-                                                            </button>
-                                                            </MenuItem>
+                                                            <DropdownMenuItem>
+                                                                <button
+                                                                    class="block w-full px-3 py-1 text-left text-sm text-gray-900">
+                                                                    Tốt
+                                                                </button>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem>
+                                                                <button
+                                                                    class="block w-full px-3 py-1 text-left text-sm text-gray-900">
+                                                                    Hư
+                                                                </button>
+                                                            </DropdownMenuItem>
                                                         </div>
-                                                    </MenuItems>
+                                                    </DropdownMenuContent>
                                                 </transition>
-                                            </Menu>
+                                            </DropdownMenu>
                                         </div>
                                     </td>
                                 </tr>

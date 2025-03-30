@@ -1,13 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { TransitionRoot } from '@headlessui/vue'
+import { ref, Transition } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import {
-    ChevronDownIcon,
-    ChevronUpIcon,
-    InformationCircleIcon,
-    TrashIcon
-} from '@heroicons/vue/24/outline'
+import { ChevronDownIcon, ChevronUpIcon, InfoIcon, TrashIcon } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
@@ -38,7 +32,7 @@ const showMore = ref(false)
                             <span class="text-gray-900 col-span-2">Sinh viên, Giảng viên</span>
                         </div>
 
-                        <TransitionRoot as="template" :show="showMore">
+                        <Transition as="template" :show="showMore">
                             <div class="contents text-base space-y-4">
                                 <div class="grid grid-cols-3 items-center gap-2 text-sm">
                                     <dt class="text-gray-500 w-32">Phân loại</dt>
@@ -60,7 +54,7 @@ const showMore = ref(false)
                                     <dd class="text-gray-900 col-span-2">N/A</dd>
                                 </div>
                             </div>
-                        </TransitionRoot>
+                        </Transition>
 
                         <div class="flex justify-start mt-4">
                             <button type="button"
@@ -95,7 +89,7 @@ const showMore = ref(false)
                                         <div class="flex items-center">
                                             <span class="px-2 py-1 text-xs rounded bg-red-50 text-red-700">Hư</span>
                                             <button class="ml-2">
-                                                <InformationCircleIcon class="h-4 w-4 text-gray-400" />
+                                                <InfoIcon class="h-4 w-4 text-gray-400" />
                                             </button>
                                         </div>
                                     </td>
@@ -111,7 +105,7 @@ const showMore = ref(false)
                                         <div class="flex items-center">
                                             <span class="px-2 py-1 text-xs rounded bg-red-50 text-red-700">Hư</span>
                                             <button class="ml-2">
-                                                <InformationCircleIcon class="h-4 w-4 text-gray-400" />
+                                                <InfoIcon class="h-4 w-4 text-gray-400" />
                                             </button>
                                         </div>
                                     </td>
@@ -127,7 +121,7 @@ const showMore = ref(false)
                                         <div class="flex items-center">
                                             <span class="px-2 py-1 text-xs rounded bg-red-50 text-red-700">Hư</span>
                                             <button class="ml-2">
-                                                <InformationCircleIcon class="h-4 w-4 text-gray-400" />
+                                                <InfoIcon class="h-4 w-4 text-gray-400" />
                                             </button>
                                         </div>
                                     </td>

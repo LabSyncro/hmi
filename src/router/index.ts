@@ -1,12 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../components/Home.vue'
-import DeviceDetail from '../components/device/DeviceDetail.vue'
-import BorrowForm from '../components/device/BorrowForm.vue'
-import ConfirmBorrowForm from '../components/device/ConfirmBorrowForm.vue'
-import BorrowInvoice from '../components/device/BorrowInvoice.vue'
-import ReturnForm from '../components/device/ReturnForm.vue'
-import ConfirmReturnForm from '../components/device/ConfirmReturnForm.vue'
-import ReturnInvoice from '../components/device/ReturnInvoice.vue'
+import Home from '@/components/Home.vue'
+import DeviceDetail from '@/components/app/device/DeviceDetail.vue'
+import BorrowForm from '@/components/app/device/BorrowForm.vue'
+import ConfirmBorrowForm from '@/components/app/device/ConfirmBorrowForm.vue'
+import BorrowInvoice from '@/components/app/device/BorrowInvoice.vue'
+import ReturnForm from '@/components/app/device/ReturnForm.vue'
+import ConfirmReturnForm from '@/components/app/device/ConfirmReturnForm.vue'
+import ReturnInvoice from '@/components/app/device/ReturnInvoice.vue'
+import BorrowReturn from '@/pages/borrow-return/index.vue'
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -14,6 +16,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: Home
+    },
+    {
+      path: '/borrow-return',
+      name: 'borrow-return',
+      component: BorrowReturn
     },
     {
       path: '/device/:id',
