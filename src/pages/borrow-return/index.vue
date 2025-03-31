@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ReadyBorrowTable, BorrowTable, ReturnTable } from '@/components/app/borrow-return'
 import { Map, Package, SendToBack, RotateCcw } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
-import { receiptService } from '@/lib/db/receipt'
+import { receiptService } from '@/lib/db'
 
 const selectedLab = ref('601 H6, Dĩ An')
 const labs = ['601 H6, Dĩ An', '602 H6, Dĩ An', '603 H6, Dĩ An']

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { receiptService } from '@/lib/db/receipt';
+import { receiptService } from '@/lib/db';
 import { columns, type ReturnedReceiptDeviceSchema } from './column';
 import { Table, type AugmentedColumnDef } from '@/components/common/table';
 

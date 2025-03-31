@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection'
-import { Package, User, Smartphone, Scan } from 'lucide-vue-next'
+import { Package, Smartphone, Scan, User } from 'lucide-vue-next'
+import { userService } from '@/lib/db'
+import { toast } from '@/components/ui/toast'
 
 const devices = ref<Array<{
   id: string;
@@ -11,17 +13,60 @@ const devices = ref<Array<{
   timestamp: string;
 }>>([])
 
-const scannedUser = ref<string | null>(null)
 const scanMode = ref<'borrowed' | 'returned'>('borrowed')
+
+const userInfo = ref<{
+  id: string;
+  fullName: string;
+  role: string;
+  avatar: string;
+}>({
+  id: '',
+  fullName: '',
+  role: '',
+  avatar: ''
+});
+
+
+async function handleUserCodeChange(userId: string) {
+  const isValidUserCode = /^\d{7}$/.test(userId);
+
+  if (!isValidUserCode) {
+    userInfo.value.role = 'Vai trò không hợp lệ';
+    return;
+  }
+
+  try {
+    const userMeta = await userService.getUserById(userId);
+    if (!userMeta) throw new Error('User not found');
+
+    userInfo.value.fullName = userMeta.name || '';
+    userInfo.value.avatar = userMeta.avatar || '';
+    userInfo.value.id = userMeta.id || '';
+
+    const role = userMeta.roles.find(role => role.key === 'student' || role.key === 'teacher');
+    if (role) {
+      userInfo.value.role = role.name;
+    }
+
+
+    if (userInfo.value.role === '') {
+      userInfo.value.role = 'Vai trò không hợp lệ';
+    }
+  } catch (error) {
+    toast({
+      title: 'Lỗi',
+      description: 'Không thể tìm thấy thông tin người dùng',
+      variant: 'destructive'
+    });
+  }
+}
+
 
 const handleVirtualKeyboardDetection = async (input: string, type?: 'userId' | 'device') => {
   if (type === 'userId') {
-    console.log('User scanned:', input)
-    alert(`User ${input} (ID: ${input})`)
-    scannedUser.value = `User ${input} (ID: ${input})`
+    await handleUserCodeChange(input);
   } else if (type === 'device') {
-    if (!scannedUser.value) return
-
     const deviceKindId = input.match(/\/devices\/([a-fA-F0-9]+)/)?.[1]
     const deviceId = input.match(/[?&]id=([a-fA-F0-9]+)/)?.[1]
 
@@ -108,7 +153,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
         <div class="p-4 space-y-6">
           <div class="space-y-4">
-            <div v-if="!scannedUser"
+            <div v-if="!userInfo.fullName"
               class="border border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center">
               <div class="bg-gray-100 rounded-full p-3 mb-4">
                 <User class="h-6 w-6 text-gray-400" />
@@ -120,19 +165,17 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
             </div>
 
             <div v-else class="bg-gray-50 rounded-lg p-4">
-              <div class="flex items-center gap-3">
-                <div class="bg-white rounded-full p-2 border border-gray-200">
-                  <User class="h-5 w-5" />
-                </div>
-                <div>
-                  <p class="font-medium">{{ scannedUser }}</p>
-                  <p class="text-sm text-gray-500">Đã xác định người dùng</p>
+              <div class="mt-2 flex items-center">
+                <img :src="userInfo.avatar" alt="User avatar" class="h-12 w-12 rounded-full" />
+                <div class="ml-2">
+                  <h4 class="text-base font-medium text-gray-500">{{ userInfo.id }}</h4>
+                  <span class="text-sm text-gray-900">{{ userInfo.fullName }} ({{ userInfo.role }})</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <template v-if="scannedUser">
+          <template v-if="userInfo.fullName">
             <hr class="border-gray-200" />
           </template>
         </div>

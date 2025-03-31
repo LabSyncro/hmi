@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ChevronDownIcon, ChevronUpIcon } from 'lucide-vue-next';
-import { getDeviceById, getDeviceInventoryByKindId, type DeviceDetail, type DeviceInventory } from '@/lib/db/device';
+import { getDeviceById, getDeviceInventoryByKindId, type DeviceDetail, type DeviceInventory } from '@/lib/db';
 import { DeviceStatus } from '@/types/db/generated';
 import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection';
 

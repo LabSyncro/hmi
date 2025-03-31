@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, Transition } from 'vue'
+import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ChevronDownIcon, ChevronUpIcon, InfoIcon, TrashIcon } from 'lucide-vue-next'
 
