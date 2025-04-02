@@ -162,25 +162,26 @@ pub async fn query_table(
                     if let Some(type_name) = column_info {
                         if type_name == "uuid" {
                             if let Ok(uuid) = uuid::Uuid::parse_str(&s) {
-                                builder = builder.where_eq(&column, uuid);
+                                builder = builder.where_eq(&column, Some(uuid));
                             } else {
-                                continue;
+                                builder = builder.where_eq(&column, Some(s));
                             }
                         } else {
-                            builder = builder.where_eq(&column, s);
+                            builder = builder.where_eq(&column, Some(s));
                         }
                     } else {
-                        builder = builder.where_eq(&column, s);
+                        builder = builder.where_eq(&column, Some(s));
                     }
                 }
                 serde_json::Value::Number(n) => {
                     if let Some(i) = n.as_i64() {
-                        builder = builder.where_eq(&column, i);
+                        builder = builder.where_eq(&column, Some(i));
                     } else if let Some(f) = n.as_f64() {
-                        builder = builder.where_eq(&column, f);
+                        builder = builder.where_eq(&column, Some(f));
                     }
                 }
-                serde_json::Value::Bool(b) => builder = builder.where_eq(&column, b),
+                serde_json::Value::Bool(b) => builder = builder.where_eq(&column, Some(b)),
+                serde_json::Value::Null => builder = builder.where_eq::<String>(&column, None),
                 _ => continue,
             }
         }
@@ -205,6 +206,7 @@ pub async fn query_table(
 
     let params_slice: Vec<&(dyn ToSql + Sync)> =
         params.iter().map(|p| &**p as &(dyn ToSql + Sync)).collect();
+
     let rows = client
         .query(&query, &params_slice)
         .await
@@ -254,10 +256,21 @@ pub async fn query_table(
                         ts.map(|t| serde_json::Value::String(t.to_rfc3339()))
                             .unwrap_or(serde_json::Value::Null)
                     }
-                    &Type::JSONB => {
-                        let json: Option<JsonValue> = row.try_get(i).ok().flatten();
-                        convert_json_keys_to_camel_case(json.unwrap_or(JsonValue::Null))
-                    }
+                    &Type::JSON | &Type::JSONB => match row.try_get::<_, Option<JsonValue>>(i) {
+                        Ok(Some(json_val)) => convert_json_keys_to_camel_case(json_val),
+                        Ok(None) => serde_json::Value::Null,
+                        Err(_) => {
+                            if let Ok(Some(json_str)) = row.try_get::<_, Option<String>>(i) {
+                                if let Ok(parsed) = serde_json::from_str(&json_str) {
+                                    convert_json_keys_to_camel_case(parsed)
+                                } else {
+                                    serde_json::Value::String(json_str)
+                                }
+                            } else {
+                                serde_json::Value::Null
+                            }
+                        }
+                    },
                     t if t.to_string().starts_with("_") => {
                         let arr: Option<Vec<String>> = row.try_get(i).ok().flatten();
                         match arr {
@@ -367,7 +380,7 @@ pub async fn insert_into_table(
                 ts.map(|t| serde_json::Value::String(t.to_rfc3339()))
                     .unwrap_or(serde_json::Value::Null)
             }
-            &Type::JSONB => {
+            &Type::JSON | &Type::JSONB => {
                 let json: Option<JsonValue> = row.try_get(i).ok().flatten();
                 convert_json_keys_to_camel_case(json.unwrap_or(JsonValue::Null))
             }
@@ -481,10 +494,21 @@ pub async fn query_raw(
                             None => serde_json::Value::Null,
                         }
                     }
-                    &Type::JSONB => {
-                        let json: Option<JsonValue> = row.try_get(i).ok().flatten();
-                        convert_json_keys_to_camel_case(json.unwrap_or(JsonValue::Null))
-                    }
+                    &Type::JSON | &Type::JSONB => match row.try_get::<_, Option<JsonValue>>(i) {
+                        Ok(Some(json_val)) => convert_json_keys_to_camel_case(json_val),
+                        Ok(None) => serde_json::Value::Null,
+                        Err(_) => {
+                            if let Ok(Some(json_str)) = row.try_get::<_, Option<String>>(i) {
+                                if let Ok(parsed) = serde_json::from_str(&json_str) {
+                                    convert_json_keys_to_camel_case(parsed)
+                                } else {
+                                    serde_json::Value::String(json_str)
+                                }
+                            } else {
+                                serde_json::Value::Null
+                            }
+                        }
+                    },
                     t if t.to_string().starts_with("_") => {
                         let arr: Option<Vec<String>> = row.try_get(i).ok().flatten();
                         match arr {

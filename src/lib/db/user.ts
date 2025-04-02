@@ -58,7 +58,6 @@ export const userService = {
             }
 
             const row = results[0]
-            console.log('row', row)
 
             const userDetail: UserDetail = {
                 id: row.id as string,

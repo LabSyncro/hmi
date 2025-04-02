@@ -1,86 +1,80 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection'
-import { Package, Smartphone, Scan, User } from 'lucide-vue-next'
-import { userService } from '@/lib/db'
+import { Package, Scan, User } from 'lucide-vue-next'
+import { userService, deviceService, type UserDetail } from '@/lib/db'
 import { toast } from '@/components/ui/toast'
 
-const devices = ref<Array<{
-  id: string;
-  name: string;
-  type: string;
-  status: 'borrowed' | 'returned';
-  timestamp: string;
-}>>([])
+const router = useRouter()
 
-const scanMode = ref<'borrowed' | 'returned'>('borrowed')
-
-const userInfo = ref<{
-  id: string;
-  fullName: string;
-  role: string;
-  avatar: string;
-}>({
-  id: '',
-  fullName: '',
-  role: '',
-  avatar: ''
-});
-
+const userInfo = ref<UserDetail | null>(null)
 
 async function handleUserCodeChange(userId: string) {
-  const isValidUserCode = /^\d{7}$/.test(userId);
+  const isValidUserCode = /^\d{7}$/.test(userId)
 
   if (!isValidUserCode) {
-    userInfo.value.role = 'Vai trò không hợp lệ';
-    return;
+    toast({ title: 'Lỗi', description: 'Mã người dùng không hợp lệ', variant: 'destructive' })
+    userInfo.value = null
+    return
   }
 
   try {
-    const userMeta = await userService.getUserById(userId);
-    if (!userMeta) throw new Error('User not found');
-
-    userInfo.value.fullName = userMeta.name || '';
-    userInfo.value.avatar = userMeta.avatar || '';
-    userInfo.value.id = userMeta.id || '';
-
-    const role = userMeta.roles.find(role => role.key === 'student' || role.key === 'teacher');
-    if (role) {
-      userInfo.value.role = role.name;
+    const userMeta = await userService.getUserById(userId)
+    if (!userMeta) {
+      toast({ title: 'Lỗi', description: 'Không tìm thấy người dùng', variant: 'destructive' })
+      userInfo.value = null
+      return
     }
 
+    userInfo.value = userMeta
+    toast({ title: 'Thành công', description: `Đã nhận diện: ${userMeta.name}` })
 
-    if (userInfo.value.role === '') {
-      userInfo.value.role = 'Vai trò không hợp lệ';
-    }
   } catch (error) {
     toast({
       title: 'Lỗi',
       description: 'Không thể tìm thấy thông tin người dùng',
       variant: 'destructive'
-    });
+    })
+    userInfo.value = null
   }
 }
 
-
 const handleVirtualKeyboardDetection = async (input: string, type?: 'userId' | 'device') => {
   if (type === 'userId') {
-    await handleUserCodeChange(input);
+    await handleUserCodeChange(input)
   } else if (type === 'device') {
     const deviceKindId = input.match(/\/devices\/([a-fA-F0-9]+)/)?.[1]
     const deviceId = input.match(/[?&]id=([a-fA-F0-9]+)/)?.[1]
 
-    if (deviceKindId && deviceId) {
-      const newDevice = {
-        id: deviceId,
-        name: `Device ${deviceId.substring(0, 4)}`,
-        type: 'Hardware',
-        status: scanMode.value,
-        timestamp: new Date().toLocaleString()
-      }
-
-      devices.value = [newDevice, ...devices.value]
+    if (!deviceId) {
+      toast({ title: 'Lỗi', description: 'Không thể trích xuất ID thiết bị từ mã QR', variant: 'destructive' })
+      return
     }
+
+    const deviceStatus = await deviceService.getDeviceStatusById(deviceId)
+
+    if (!deviceStatus) {
+      toast({ title: 'Lỗi', description: `Không tìm thấy thiết bị hoặc trạng thái không hợp lệ (ID: ${deviceId})`, variant: 'destructive' })
+      return
+    }
+
+    if (deviceStatus === 'healthy' || deviceStatus === 'broken') {
+      router.push({
+        name: 'borrow-record',
+        query: { userId: userInfo.value?.id }
+      })
+    } else if (deviceStatus === 'borrowing') {
+      router.push({
+        name: 'return-record',
+        query: { userId: userInfo.value?.id }
+      })
+    } else {
+      toast({ title: 'Thông báo', description: `Thiết bị đang ở trạng thái '${deviceStatus}', không thể mượn/trả.` })
+    }
+
+  } else if (type === 'device' && !userInfo.value) {
+    toast({ title: 'Cảnh báo', description: 'Vui lòng quét mã người dùng trước khi quét thiết bị.' })
   }
 }
 
@@ -106,39 +100,11 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
         </div>
 
         <div class="p-4">
-          <div v-if="devices.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
+          <div class="flex flex-col items-center justify-center py-12 text-center">
             <div class="rounded-full bg-gray-100 p-3 mb-4">
               <Package class="h-8 w-8 text-gray-400" />
             </div>
             <h3 class="text-lg font-medium mb-1">Không có thiết bị nào được ghi nhận</h3>
-          </div>
-
-          <div v-else class="space-y-4">
-            <div v-for="device in devices" :key="device.id"
-              class="flex items-center justify-between p-4 border rounded-lg">
-              <div class="flex items-center gap-3">
-                <div class="rounded-full bg-gray-100 p-2">
-                  <Smartphone class="h-5 w-5" />
-                </div>
-                <div>
-                  <p class="font-medium">{{ device.name }}</p>
-                  <p class="text-sm text-gray-500">{{ device.type }}</p>
-                </div>
-              </div>
-              <div class="flex flex-col items-end">
-                <span :class="[
-                  'text-xs px-2 py-1 rounded-full',
-                  device.status === 'borrowed'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-green-100 text-green-800'
-                ]">
-                  {{ device.status === 'borrowed' ? 'Mượn' : 'Trả' }}
-                </span>
-                <span class="text-xs text-gray-500 mt-1">
-                  {{ device.timestamp }}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -153,7 +119,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
         <div class="p-4 space-y-6">
           <div class="space-y-4">
-            <div v-if="!userInfo.fullName"
+            <div v-if="!userInfo"
               class="border border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center">
               <div class="bg-gray-100 rounded-full p-3 mb-4">
                 <User class="h-6 w-6 text-gray-400" />
@@ -166,18 +132,19 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
             <div v-else class="bg-gray-50 rounded-lg p-4">
               <div class="mt-2 flex items-center">
-                <img :src="userInfo.avatar" alt="User avatar" class="h-12 w-12 rounded-full" />
-                <div class="ml-2">
-                  <h4 class="text-base font-medium text-gray-500">{{ userInfo.id }}</h4>
-                  <span class="text-sm text-gray-900">{{ userInfo.fullName }} ({{ userInfo.role }})</span>
+                <img :src="userInfo.avatar || 'default-avatar.png'" alt="User avatar"
+                  class="h-12 w-12 rounded-full object-cover" />
+                <div class="ml-3">
+                  <h4 class="text-sm font-medium text-gray-500">{{ userInfo.id }}</h4>
+                  <p class="text-base font-semibold text-gray-900">{{ userInfo.name }}
+                    <span class="text-sm text-gray-500 italic font-normal">
+                      ({{userInfo.roles?.map(r => r.name).join(', ') || 'Không có vai trò'}})
+                    </span>
+                  </p>
                 </div>
               </div>
             </div>
           </div>
-
-          <template v-if="userInfo.fullName">
-            <hr class="border-gray-200" />
-          </template>
         </div>
       </div>
     </div>

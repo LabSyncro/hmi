@@ -22,7 +22,7 @@ const router = createRouter({
     {
       path: '/borrow-return',
       name: 'borrow-return',
-      component: BorrowReturn
+      component: BorrowRecord
     },
     {
       path: '/borrow-record',

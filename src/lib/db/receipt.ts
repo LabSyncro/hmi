@@ -201,7 +201,6 @@ export const receiptService = {
             });
 
             const totalCount = result[0]?.totalCount || 0;
-            console.log(result)
 
             return {
                 data: result.map(({ totalCount, ...rest }) => rest),
