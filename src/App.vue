@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import MainLayout from '@/layouts/MainLayout.vue'
+import Toaster from '@/components/ui/toast/Toaster.vue'
 </script>
 
 <template>
+  <Toaster />
   <MainLayout />
 </template>
 
@@ -38,5 +40,4 @@ import MainLayout from '@/layouts/MainLayout.vue'
     background-color: #2f2f2f;
   }
 }
-
 </style>

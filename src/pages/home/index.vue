@@ -52,25 +52,45 @@ const handleVirtualKeyboardDetection = async (input: string, type?: 'userId' | '
       return
     }
 
-    const deviceStatus = await deviceService.getDeviceStatusById(deviceId)
+    const deviceInfo = await deviceService.getDeviceStatusById(deviceId)
 
-    if (!deviceStatus) {
+    if (!deviceInfo) {
       toast({ title: 'Lỗi', description: `Không tìm thấy thiết bị hoặc trạng thái không hợp lệ (ID: ${deviceId})`, variant: 'destructive' })
       return
     }
 
-    if (deviceStatus === 'healthy' || deviceStatus === 'broken') {
+    if (deviceInfo.status === 'healthy' || deviceInfo.status === 'broken') {
       router.push({
         name: 'borrow-record',
-        query: { userId: userInfo.value?.id }
+        query: {
+          userId: userInfo.value?.id,
+          userName: userInfo.value?.name,
+          userAvatar: userInfo.value?.avatar,
+          userRoles: JSON.stringify(userInfo.value?.roles?.map(r => r.name)),
+          deviceId: deviceId,
+          deviceKindId: deviceKindId,
+          deviceName: deviceInfo.deviceName,
+          deviceImage: deviceInfo.image?.mainImage,
+          deviceStatus: deviceInfo.status,
+        }
       })
-    } else if (deviceStatus === 'borrowing') {
+    } else if (deviceInfo.status === 'borrowing') {
       router.push({
         name: 'return-record',
-        query: { userId: userInfo.value?.id }
+        query: {
+          userId: userInfo.value?.id,
+          userName: userInfo.value?.name,
+          userAvatar: userInfo.value?.avatar,
+          userRoles: JSON.stringify(userInfo.value?.roles?.map(r => r.name)),
+          deviceId: deviceId,
+          deviceKindId: deviceKindId,
+          deviceName: deviceInfo.deviceName,
+          deviceImage: deviceInfo.image,
+          deviceStatus: deviceInfo.status,
+        }
       })
     } else {
-      toast({ title: 'Thông báo', description: `Thiết bị đang ở trạng thái '${deviceStatus}', không thể mượn/trả.` })
+      toast({ title: 'Thông báo', description: `Thiết bị đang ở trạng thái '${deviceInfo}', không thể mượn/trả.` })
     }
 
   } else if (type === 'device' && !userInfo.value) {

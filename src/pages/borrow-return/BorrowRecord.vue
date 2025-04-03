@@ -2,44 +2,35 @@
 import { ref, computed, onMounted } from 'vue'
 import { ChevronDown, Trash, Box, User, Calendar, MapPin, PackageCheck } from 'lucide-vue-next'
 import BorrowReturnLayout from '@/layouts/BorrowReturnLayout.vue'
-import type { UserDetail } from '@/lib/db'
-import { userService } from '@/lib/db/user'
+import { deviceService } from '@/lib/db'
 import { useRoute } from 'vue-router'
+import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection'
+import { toast } from '@/components/ui/toast'
+
+type UserInfo = {
+  id: string
+  name: string
+  avatar: string
+  roles: { name: string; key: string }[]
+}
+
+type DeviceItem = {
+  id: string
+  status: string
+}
+
+type Device = {
+  code: string
+  name: string,
+  image: string,
+  quantity: number
+  expanded: boolean
+  items: DeviceItem[]
+}
 
 const route = useRoute()
-const userInfo = ref<UserDetail | null>(null)
-
-const devices = ref([
-  {
-    code: '123-123',
-    name: 'Tên thiết bị A',
-    quantity: 3,
-    expanded: true,
-    items: [
-      { id: '123-123/123-456', status: 'Tốt' },
-      { id: '123-123/123-457', status: 'Tốt' },
-      { id: '123-123/123-459', status: 'Tốt' },
-    ]
-  },
-  {
-    code: '123-124',
-    name: 'Tên thiết bị B',
-    quantity: 1,
-    expanded: false,
-    items: [
-      { id: '123-124/456-789', status: 'Tốt' },
-    ]
-  },
-  {
-    code: '123-125',
-    name: 'Tên thiết bị C',
-    quantity: 1,
-    expanded: false,
-    items: [
-      { id: '123-125/789-123', status: 'Tốt' },
-    ]
-  },
-])
+const userInfo = ref<UserInfo | null>(null)
+const devices = ref<Device[]>([])
 
 const borrowDetails = ref({
   location: '601 H6, Dĩ An',
@@ -48,11 +39,86 @@ const borrowDetails = ref({
 })
 
 onMounted(async () => {
-  const userId = route.query.userId as string
+  const { userId, userName, userAvatar, userRoles } = route.query
   if (userId) {
-    userInfo.value = await userService.getUserById(userId)
+    userInfo.value = {
+      id: userId as string,
+      name: userName as string,
+      avatar: userAvatar as string,
+      roles: JSON.parse(userRoles as string) as { name: string; key: string }[]
+    }
+  }
+
+  const { deviceId, deviceName, deviceImage, deviceStatus } = route.query
+  if (deviceId) {
+    devices.value.push({
+      code: deviceId as string,
+      name: deviceName as string,
+      image: deviceImage as string,
+      quantity: 1,
+      expanded: true,
+      items: [{ id: deviceId as string, status: deviceStatus as string }]
+    })
   }
 })
+
+const handleDeviceScan = async (input: string) => {
+  try {
+    //const deviceKindId = input.match(/\/devices\/([a-fA-F0-9]+)/)?.[1]
+    const deviceId = input.match(/[?&]id=([a-fA-F0-9]+)/)?.[1]
+
+    if (!deviceId) {
+      toast({ title: 'Lỗi', description: 'Không thể trích xuất ID thiết bị từ mã QR', variant: 'destructive' })
+      return
+    }
+
+    const deviceStatus = await deviceService.getDeviceStatusById(deviceId)
+
+    if (!deviceStatus || deviceStatus.status !== 'healthy') {
+      toast({
+        title: 'Lỗi',
+        description: `Thiết bị không khả dụng để mượn (ID: ${deviceId})`,
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const deviceDetails = await deviceService.getDeviceById(deviceId)
+    if (!deviceDetails) {
+      toast({ title: 'Lỗi', description: 'Không thể lấy thông tin thiết bị', variant: 'destructive' })
+      return
+    }
+
+    const existingDevice = devices.value.find(d => d.code === deviceDetails.kind)
+    if (existingDevice) {
+      existingDevice.items.push({
+        id: deviceId,
+        status: 'Tốt'
+      })
+      existingDevice.quantity = existingDevice.items.length
+    } else {
+      devices.value.push({
+        code: deviceDetails.kind,
+        name: deviceDetails.deviceName,
+        image: deviceDetails.image,
+        quantity: 1,
+        expanded: true,
+        items: [{
+          id: deviceId,
+          status: deviceStatus.status
+        }]
+      })
+    }
+
+    toast({ title: 'Thành công', description: 'Đã thêm thiết bị vào danh sách mượn' })
+  } catch (error) {
+    toast({
+      title: 'Lỗi',
+      description: 'Không thể xử lý thiết bị',
+      variant: 'destructive'
+    })
+  }
+}
 
 const toggleDevice = (device: any) => {
   device.expanded = !device.expanded
@@ -70,6 +136,12 @@ const removeDeviceItem = (device: any, itemId: string) => {
 const totalDevices = computed(() => {
   return devices.value.reduce((total, device) => total + device.quantity, 0)
 })
+
+useVirtualKeyboardDetection((input: string) => handleDeviceScan(input), {
+  device: { pattern: /^https?:\/\/[^/]+\/devices\/[a-fA-F0-9]{8}\?id=[a-fA-F0-9]+$/ },
+  scannerThresholdMs: 100,
+  maxInputTimeMs: 1000,
+})
 </script>
 
 <template>
@@ -81,14 +153,14 @@ const totalDevices = computed(() => {
           <div class="p-4 hover:bg-gray-50 cursor-pointer" @click="toggleDevice(device)">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <Box class="h-5 w-5 text-gray-500" />
+                <img :src="device.image" alt="Device image" class="h-12 w-12 rounded-full object-cover" />
                 <div>
-                  <h3 class="font-medium text-gray-900">{{ device.name }}</h3>
-                  <p class="text-sm text-gray-500">Mã: {{ device.code }}</p>
+                  <h3 class="font-medium text-gray-900">MÃ LOẠI: {{ device.code }}</h3>
+                  <p class="text-sm text-gray-900 font-medium">{{ device.name }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-4">
-                <span class="text-sm text-gray-500">
+                <span class="text-base text-gray-900 font-medium mr-32">
                   {{ device.quantity }} cái
                 </span>
                 <ChevronDown class="h-5 w-5 text-gray-400 transition-transform"
@@ -97,18 +169,26 @@ const totalDevices = computed(() => {
             </div>
           </div>
 
-          <div v-if="device.expanded" class="bg-gray-50 divide-y divide-gray-100">
-            <div v-for="item in device.items" :key="item.id" class="p-4">
-              <div class="flex items-center">
-                <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-700">{{ item.id }}</p>
-                  <p class="text-sm text-gray-500">Tình trạng: {{ item.status }}</p>
+          <div v-if="device.expanded" class="bg-gray-50">
+            <div class="p-4">
+              <div class="flex justify-between mb-2">
+                <h4 class="text-sm font-medium text-gray-500">THIẾT BỊ GHI NHẬN</h4>
+                <h4 class="text-sm font-medium text-gray-500 mr-32">TÌNH TRẠNG</h4>
+              </div>
+              <div class="space-y-3">
+                <div v-for="item in device.items" :key="item.id" class="flex items-center justify-between">
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ device.code }}/{{ item.id }}
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm text-gray-900 font-medium mr-32">{{ item.status }}</span>
+                    <button @click.stop="removeDeviceItem(device, item.id)"
+                      class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-100"
+                      aria-label="Remove device">
+                      <Trash class="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-                <button @click.stop="removeDeviceItem(device, item.id)"
-                  class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-100"
-                  aria-label="Remove device">
-                  <Trash class="h-4 w-4" />
-                </button>
               </div>
             </div>
           </div>

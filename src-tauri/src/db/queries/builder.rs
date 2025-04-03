@@ -71,14 +71,12 @@ impl<'a> QueryBuilder<'a> {
                 let param_index = self.conditions.len() + 1;
                 self.conditions.push((
                     format!("{}.{} = ${}", self.table, column, param_index),
-                    Box::new(v)
+                    Box::new(v),
                 ));
             }
             None => {
-                self.conditions.push((
-                    format!("{}.{} IS NULL", self.table, column),
-                    Box::new("")
-                ));
+                self.conditions
+                    .push((format!("{}.{} IS NULL", self.table, column), Box::new("")));
             }
         }
         self
@@ -155,7 +153,13 @@ impl<'a> QueryBuilder<'a> {
         if let Some(ref columns) = self.selected_columns {
             let column_list: Vec<String> = columns
                 .iter()
-                .map(|c| format!("{}.{}", self.table, c))
+                .map(|c| {
+                    if c.contains('.') || c.to_lowercase().contains(" as ") {
+                        c.clone()
+                    } else {
+                        format!("{}.{}", self.table, c)
+                    }
+                })
                 .collect();
             query.push_str(&column_list.join(", "));
         } else {
@@ -206,7 +210,8 @@ impl<'a> QueryBuilder<'a> {
 
         if !self.conditions.is_empty() {
             query.push_str(" WHERE ");
-            let conditions: Vec<String> = self.conditions
+            let conditions: Vec<String> = self
+                .conditions
                 .iter()
                 .map(|(condition, _)| condition.clone())
                 .collect();

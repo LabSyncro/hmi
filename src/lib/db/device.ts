@@ -163,29 +163,45 @@ export const deviceService = {
     }
   },
 
-  async getDeviceStatusById(id: string): Promise<DeviceStatus | null> {
+  async getDeviceStatusById(id: string): Promise<{ status: DeviceStatus, kind: string, deviceName: string, image: any } | null> {
     if (!id) {
       return null
     }
     try {
-      const results = await db.query<{ status: DeviceStatus }>({
-        table: 'devices',
-        columns: ['status'],
-        conditions: [
-          ['id', id],
-          ['deleted_at', null]
-        ],
-        limit: 1
-      })
+      type DeviceStatusResult = {
+        status: DeviceStatus;
+        kind: string;
+        deviceKindsName: string;
+        deviceKindsImage: any;
+      }
 
-      if (results.length > 0) {
-        const status = results[0].status
-        if (!Object.values(DeviceStatus).includes(status)) {
-          return null
-        }
-        return status
-      } else {
+      const device = await db.table<DeviceStatusResult>('devices')
+        .select(['status', 'kind'])
+        .include({
+          table: 'device_kinds',
+          select: ['name', 'image'],
+          on: {
+            from: 'kind',
+            to: 'id'
+          }
+        })
+        .whereMany({
+          id,
+          deleted_at: null
+        })
+        .first()
+
+      console.log(device)
+
+      if (!device || !Object.values(DeviceStatus).includes(device.status)) {
         return null
+      }
+
+      return {
+        status: device.status,
+        kind: device.kind,
+        deviceName: device.deviceKindsName,
+        image: device.deviceKindsImage
       }
     } catch (error) {
       return null

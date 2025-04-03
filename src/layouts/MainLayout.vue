@@ -30,8 +30,8 @@ const handleBack = () => {
     'device-return': `/device/${route.params.id}`,
     'confirm-return': `/device/${route.params.id}/return`,
     'return-invoice': '/',
-    'borrow-record': '/borrow-return',
-    'return-record': '/borrow-return'
+    'borrow-record': '/',
+    'return-record': '/'
   }
 
   router.push(routeMap[route.name as string] || '/')

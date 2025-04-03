@@ -14,7 +14,7 @@ defineProps<Props>()
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <div class="mx-auto py-6">
+    <div class="mx-auto">
       <h1 class="text-2xl font-bold text-center mb-6">{{ title }}</h1>
 
       <div class="flex gap-6" style="height: calc(100vh - 140px)">

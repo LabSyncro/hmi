@@ -4,34 +4,29 @@ import { useRoute } from 'vue-router'
 import { ChevronDown, Trash, Box, User, Calendar, MapPin, PackageCheck } from 'lucide-vue-next'
 import BorrowReturnLayout from '@/layouts/BorrowReturnLayout.vue'
 import type { UserDetail } from '@/lib/db'
-import { userService } from '@/lib/db/user'
+import { userService, deviceService } from '@/lib/db'
+import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection'
+import { toast } from '@/components/ui/toast'
 
 const route = useRoute()
 
 const userInfo = ref<UserDetail | null>(null)
 
-const devices = ref([
-  {
-    code: '123-123',
-    name: 'Tên thiết bị A',
-    quantity: 3,
-    expanded: true,
-    items: [
-      { id: '123-123/123-456', status: 'Tốt', condition: 'Bình thường' },
-      { id: '123-123/123-457', status: 'Hỏng', condition: 'Hư hỏng nhẹ' },
-      { id: '123-123/123-459', status: 'Tốt', condition: 'Bình thường' },
-    ]
-  },
-  {
-    code: '123-124',
-    name: 'Tên thiết bị B',
-    quantity: 1,
-    expanded: false,
-    items: [
-      { id: '123-124/456-789', status: 'Tốt', condition: 'Bình thường' },
-    ]
-  },
-])
+interface DeviceItem {
+  id: string
+  status: string
+  condition: string
+}
+
+interface Device {
+  code: string
+  name: string
+  quantity: number
+  expanded: boolean
+  items: DeviceItem[]
+}
+
+const devices = ref<Device[]>([])
 
 const returnDetails = ref({
   location: '601 H6, Dĩ An',
@@ -45,7 +40,76 @@ onMounted(async () => {
   if (userId) {
     userInfo.value = await userService.getUserById(userId)
   }
+
+  // Get initial device from query if exists
+  const deviceId = route.query.deviceId as string
+  if (deviceId) {
+    await handleDeviceScan(deviceId)
+  }
 })
+
+const handleDeviceScan = async (input: string) => {
+  try {
+    const deviceKindId = input.match(/\/devices\/([a-fA-F0-9]+)/)?.[1]
+    const deviceId = input.match(/[?&]id=([a-fA-F0-9]+)/)?.[1]
+
+    if (!deviceId) {
+      toast({ title: 'Lỗi', description: 'Không thể trích xuất ID thiết bị từ mã QR', variant: 'destructive' })
+      return
+    }
+
+    const deviceStatus = await deviceService.getDeviceStatusById(deviceId)
+
+    if (!deviceStatus || deviceStatus !== 'borrowing') {
+      toast({ 
+        title: 'Lỗi', 
+        description: `Thiết bị không ở trạng thái đang mượn (ID: ${deviceId})`, 
+        variant: 'destructive' 
+      })
+      return
+    }
+
+    // Get device details from service
+    const deviceDetails = await deviceService.getDeviceById(deviceId)
+    if (!deviceDetails) {
+      toast({ title: 'Lỗi', description: 'Không thể lấy thông tin thiết bị', variant: 'destructive' })
+      return
+    }
+
+    // Check if device kind already exists
+    const existingDevice = devices.value.find(d => d.code === deviceDetails.kind)
+    if (existingDevice) {
+      // Add item to existing device
+      existingDevice.items.push({
+        id: deviceId,
+        status: 'Tốt',
+        condition: 'Bình thường'
+      })
+      existingDevice.quantity = existingDevice.items.length
+    } else {
+      // Add new device kind
+      devices.value.push({
+        code: deviceDetails.kind,
+        name: deviceDetails.deviceName,
+        quantity: 1,
+        expanded: true,
+        items: [{
+          id: deviceId,
+          status: 'Tốt',
+          condition: 'Bình thường'
+        }]
+      })
+    }
+
+    toast({ title: 'Thành công', description: 'Đã thêm thiết bị vào danh sách trả' })
+  } catch (error) {
+    toast({ 
+      title: 'Lỗi', 
+      description: 'Không thể xử lý thiết bị', 
+      variant: 'destructive' 
+    })
+  }
+}
 
 const toggleDevice = (device: any) => {
   device.expanded = !device.expanded
@@ -62,6 +126,12 @@ const removeDeviceItem = (device: any, itemId: string) => {
 
 const totalDevices = computed(() => {
   return devices.value.reduce((total, device) => total + device.quantity, 0)
+})
+
+useVirtualKeyboardDetection((input: string) => handleDeviceScan(input), {
+  device: { pattern: /^https?:\/\/[^/]+\/devices\/[a-fA-F0-9]{8}\?id=[a-fA-F0-9]+$/ },
+  scannerThresholdMs: 100,
+  maxInputTimeMs: 1000,
 })
 </script>
 
