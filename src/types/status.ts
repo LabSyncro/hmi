@@ -43,19 +43,46 @@ export type UserInfo = {
   roles: { name: string; key: string }[]
 }
 
-export type DeviceItem = {
+// Base device item type with common fields
+export type BaseDeviceItem = {
   id: string
-  status: DeviceStatus,
-  prevQuality?: DeviceQuality,
-  returnCondition?: DeviceStatus
+  status: DeviceStatus
 }
 
+// Workflow-specific types
+export type AuditDeviceItem = BaseDeviceItem & {
+  auditCondition: DeviceStatus
+}
+
+export type MaintenanceDeviceItem = BaseDeviceItem & {
+  maintenanceOutcome: DeviceStatus
+}
+
+export type ReturnDeviceItem = BaseDeviceItem & {
+  returnCondition: DeviceStatus
+  prevQuality?: DeviceQuality
+}
+
+export type TransportDeviceItem = BaseDeviceItem & {
+  transportDestination: string
+}
+
+// Generic device type that can be used for any workflow
 export type Device = {
   code: string
-  name: string,
-  image: any,
+  name: string
+  image: any
   quantity: number
   unit: string
   expanded: boolean
-  items: DeviceItem[]
+  items: BaseDeviceItem[]
+}
+
+// Workflow-specific device types
+export type AuditDevice = Omit<Device, 'items'> & {
+  items: AuditDeviceItem[]
+}
+
+export type MaintenanceDevice = Omit<Device, 'items'> & {
+  items: MaintenanceDeviceItem[]
 }

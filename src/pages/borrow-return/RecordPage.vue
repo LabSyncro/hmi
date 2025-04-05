@@ -3,18 +3,18 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ChevronDown, Trash, Box, User, Calendar, MapPin, PackageCheck, Package } from 'lucide-vue-next'
 import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection'
-import { deviceService, userService, type DeviceStatus } from '@/lib/db'
+import { deviceService, userService, type DeviceStatus, type DeviceQuality } from '@/lib/db'
 import { toast } from '@/components/ui/toast'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { statusMap, statusColorMap, qualityMap, qualityColorMap, type UserInfo, type Device, type DeviceItem } from '@/types/status'
+import { statusMap, statusColorMap, qualityMap, qualityColorMap, type UserInfo, type Device, type ReturnDeviceItem } from '@/types/status'
 
 const mode = ref<'idle' | 'borrow' | 'return'>('idle')
 
 const userInfo = ref<UserInfo | null>(null)
 
-const devices = ref<Device[]>([])
+const devices = ref<(Device & { items: ReturnDeviceItem[] })[]>([])
 
 const notes = ref<string>("")
 
@@ -72,10 +72,11 @@ onMounted(async () => {
         if (deviceStatus === 'borrowing') {
             mode.value = 'return'
 
-            const initialItem: DeviceItem = {
+            const initialItem: ReturnDeviceItem = {
                 id: deviceId as string,
                 status: deviceStatus as DeviceStatus,
-                returnCondition: 'healthy' as DeviceStatus
+                returnCondition: 'healthy' as DeviceStatus,
+                prevQuality: 'healthy' as DeviceQuality
             }
 
             devices.value.push({
@@ -90,6 +91,13 @@ onMounted(async () => {
         } else {
             mode.value = 'borrow'
 
+            const initialItem: ReturnDeviceItem = {
+                id: deviceId as string,
+                status: deviceStatus as DeviceStatus,
+                returnCondition: 'healthy' as DeviceStatus,
+                prevQuality: 'healthy' as DeviceQuality
+            }
+
             devices.value.push({
                 code: deviceKindId as string,
                 name: deviceName as string,
@@ -97,7 +105,7 @@ onMounted(async () => {
                 quantity: 1,
                 unit: deviceUnit as string,
                 expanded: true,
-                items: [{ id: deviceId as string, status: deviceStatus as DeviceStatus }]
+                items: [initialItem]
             })
         }
     }
@@ -198,7 +206,9 @@ const handleDeviceScan = async (input: string) => {
             if (existingDevice) {
                 existingDevice.items.push({
                     id: deviceId,
-                    status: deviceDetails.status
+                    status: deviceDetails.status,
+                    returnCondition: 'healthy' as DeviceStatus,
+                    prevQuality: 'healthy' as DeviceQuality
                 })
                 existingDevice.quantity = existingDevice.items.length
             } else {
@@ -211,16 +221,19 @@ const handleDeviceScan = async (input: string) => {
                     expanded: true,
                     items: [{
                         id: deviceId,
-                        status: deviceDetails.status
+                        status: deviceDetails.status,
+                        returnCondition: 'healthy' as DeviceStatus,
+                        prevQuality: 'healthy' as DeviceQuality
                     }]
                 })
             }
             toast({ title: 'Thành công', description: 'Đã thêm thiết bị vào danh sách mượn' })
         } else if (mode.value === 'return') {
-            const newItem: DeviceItem = {
+            const newItem: ReturnDeviceItem = {
                 id: deviceId,
                 status: deviceDetails.status,
-                returnCondition: 'healthy' as DeviceStatus
+                returnCondition: 'healthy' as DeviceStatus,
+                prevQuality: 'healthy' as DeviceQuality
             }
 
             const existingDevice = devices.value.find(d => d.code === deviceKindId)

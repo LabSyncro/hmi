@@ -8,6 +8,9 @@ import ConfirmReturnForm from '@/components/app/device/ConfirmReturnForm.vue'
 import ReturnInvoice from '@/components/app/device/ReturnInvoice.vue'
 import BorrowReturn from '@/pages/borrow-return/index.vue'
 import RecordPage from '@/pages/borrow-return/RecordPage.vue'
+import AuditPage from '@/pages/audit/AuditPage.vue'
+import MaintenancePage from '@/pages/maintenance/MaintenancePage.vue'
+import TransportPage from '@/pages/transport/TransportPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -21,6 +24,21 @@ const router = createRouter({
       path: '/borrow-return',
       name: 'borrow-return',
       component: BorrowReturn
+    },
+    {
+      path: '/audit',
+      name: 'audit',
+      component: AuditPage
+    },
+    {
+      path: '/maintenance',
+      name: 'maintenance',
+      component: MaintenancePage
+    },
+    {
+      path: '/transport',
+      name: 'transport',
+      component: TransportPage
     },
     {
       path: '/device/:id',

@@ -1,46 +1,66 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { ChevronDown } from 'lucide-vue-next'
+import { PackageCheck, ClipboardCheck, Wrench, Truck, ChevronDown, Search } from 'lucide-vue-next'
 
 interface NavChild {
-  name: string;
-  route: string;
-  active?: boolean;
+  name: string
+  route: string
+  active?: boolean
 }
 
 interface NavItem {
-  name: string;
-  route: string;
-  active: boolean;
-  children?: NavChild[];
+  name: string
+  route?: string
+  icon?: any
+  active?: boolean
+  children?: NavChild[]
 }
 
 const route = useRoute()
-
 const openDropdown = ref<string | null>(null)
 
-const navigationItems: Omit<NavItem, 'active'>[] = [
+const navigationItems: NavItem[] = [
   {
-    name: 'Mượn trả', route: '/',
+    name: 'Mượn Trả',
+    route: '/',
+    icon: PackageCheck,
     children: [
       { name: 'Ghi nhận', route: '/' },
       { name: 'Tổng quan', route: '/borrow-return' }
     ]
   },
-  { name: 'Kiểm đếm', route: '/inventory' },
-  { name: 'Sửa chữa', route: '/repair' },
-  { name: 'Vận chuyển', route: '/transport' },
-  { name: 'Tra cứu', route: '/device/:id' },
+  {
+    name: 'Kiểm Đếm',
+    route: '/audit',
+    icon: ClipboardCheck
+  },
+  {
+    name: 'Sửa Chữa',
+    route: '/maintenance',
+    icon: Wrench
+  },
+  {
+    name: 'Vận Chuyển',
+    route: '/transport',
+    icon: Truck
+  },
+  {
+    name: 'Tra cứu',
+    route: '/search',
+    icon: Search
+  }
 ]
 
 const activeNavItems = computed<NavItem[]>(() => {
   return navigationItems.map(item => ({
     ...item,
-    active: (route.path.startsWith(item.route) && item.route !== '/') || (item.route === '/' && (route.path === '/' || route.path === '/borrow-return')),
+    active: (route.path.startsWith(item.route!) && item.route !== '/') ||
+      (item.route === '/' && (route.path === '/' || route.path === '/borrow-return')),
     children: item.children?.map(child => ({
       ...child,
-      active: (route.path.startsWith(child.route) && child.route !== '/') || (child.route === '/' && (route.path === '/' || route.path === '/borrow-return'))
+      active: (route.path.startsWith(child.route) && child.route !== '/') ||
+        (child.route === '/' && route.path === '/')
     }))
   }))
 })
@@ -75,32 +95,36 @@ onBeforeUnmount(() => {
       </div>
       <div class="flex items-center space-x-1">
         <template v-for="(item, index) in activeNavItems" :key="index">
-          <router-link v-if="!item.children" :to="item.route"
-            class="px-4 py-2 text-sm font-semibold transition-colors rounded-md"
+          <router-link v-if="!item.children" :to="item.route!"
+            class="px-4 py-2 text-sm font-semibold transition-colors rounded-md flex items-center gap-2"
             :class="item.active ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'"
             :aria-current="item.active ? 'page' : undefined">
+            <component :is="item.icon" class="h-4 w-4" />
             {{ item.name }}
           </router-link>
 
-          <div v-else class="relative">
-            <button @click.stop="toggleDropdown(item.name)"
-              class="px-4 py-2 text-sm font-semibold transition-colors rounded-md flex items-center"
+          <div v-else class="relative" @click.stop>
+            <button @click="toggleDropdown(item.name)"
+              class="px-4 py-2 text-sm font-semibold transition-colors rounded-md flex items-center gap-2 w-full text-left"
               :class="item.active ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'">
+              <component :is="item.icon" class="h-4 w-4" />
               {{ item.name }}
-              <ChevronDown class="ml-1 h-4 w-4 transition-transform duration-200"
-                :class="openDropdown === item.name ? 'rotate-180' : ''" />
+              <ChevronDown class="h-4 w-4 ml-1 transition-transform"
+                :class="{ 'rotate-180': openDropdown === item.name }" />
             </button>
-
-            <div v-if="openDropdown === item.name"
-              class="absolute left-0 mt-1 w-56 rounded-md bg-white border border-gray-200 shadow-lg z-10" @click.stop>
-              <div class="py-1">
-                <router-link v-for="child in item.children" :key="child.name" :to="child.route"
-                  :class="(child.active ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-100') + ' block px-4 py-2 text-sm'"
-                  @click="openDropdown = null">
+            <transition enter-active-class="transition ease-out duration-100"
+              enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100"
+              leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100"
+              leave-to-class="transform opacity-0 scale-95">
+              <div v-if="openDropdown === item.name && item.children"
+                class="absolute z-10 mt-2 w-48 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none left-0">
+                <router-link v-for="child in item.children" :key="child.route" :to="child.route"
+                  @click="closeAllDropdowns" class="block px-4 py-2 text-sm w-full text-left"
+                  :class="child.active ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'">
                   {{ child.name }}
                 </router-link>
               </div>
-            </div>
+            </transition>
           </div>
         </template>
       </div>
