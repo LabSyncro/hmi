@@ -5,6 +5,7 @@ export type DeviceDetail = {
   fullId: string;
   status: DeviceStatus | null;
   image: any;
+  unit: string;
   deviceName: string;
   allowedBorrowRoles: string[];
   allowedViewRoles: string[];
@@ -47,6 +48,7 @@ export const deviceService = {
           d.status,
           d.kind,
           dk.image,
+          dk.unit,
           dk.name AS device_name,
           dk.allowed_borrow_roles,
           dk.allowed_view_roles,
@@ -95,6 +97,7 @@ export const deviceService = {
         fullId: row.fullId as string,
         status: row.status as DeviceStatus | null,
         image: row.image,
+        unit: row.unit as string,
         deviceName: row.deviceName as string,
         allowedBorrowRoles: row.allowedBorrowRoles as string[],
         allowedViewRoles: row.allowedViewRoles as string[],
@@ -163,7 +166,13 @@ export const deviceService = {
     }
   },
 
-  async getDeviceStatusById(id: string): Promise<{ status: DeviceStatus, kind: string, deviceName: string, image: any } | null> {
+  async getDeviceStatusById(id: string): Promise<{
+    status: DeviceStatus,
+    kind: string,
+    deviceName: string,
+    image: any,
+    unit: string
+  } | null> {
     if (!id) {
       return null
     }
@@ -173,13 +182,14 @@ export const deviceService = {
         kind: string;
         deviceKindsName: string;
         deviceKindsImage: any;
+        deviceKindsUnit: string;
       }
 
       const device = await db.table<DeviceStatusResult>('devices')
         .select(['status', 'kind'])
         .include({
           table: 'device_kinds',
-          select: ['name', 'image'],
+          select: ['name', 'image', 'unit'],
           on: {
             from: 'kind',
             to: 'id'
@@ -191,8 +201,6 @@ export const deviceService = {
         })
         .first()
 
-      console.log(device)
-
       if (!device || !Object.values(DeviceStatus).includes(device.status)) {
         return null
       }
@@ -201,7 +209,8 @@ export const deviceService = {
         status: device.status,
         kind: device.kind,
         deviceName: device.deviceKindsName,
-        image: device.deviceKindsImage
+        image: device.deviceKindsImage,
+        unit: device.deviceKindsUnit
       }
     } catch (error) {
       return null

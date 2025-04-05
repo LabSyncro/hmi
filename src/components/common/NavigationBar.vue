@@ -31,7 +31,7 @@ const navigationItems: Omit<NavItem, 'active'>[] = [
   { name: 'Kiểm đếm', route: '/inventory' },
   { name: 'Sửa chữa', route: '/repair' },
   { name: 'Vận chuyển', route: '/transport' },
-  { name: 'Tra cứu', route: '/search' },
+  { name: 'Tra cứu', route: '/device/:id' },
 ]
 
 const activeNavItems = computed<NavItem[]>(() => {

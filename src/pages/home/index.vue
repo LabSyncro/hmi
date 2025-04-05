@@ -66,12 +66,13 @@ const handleVirtualKeyboardDetection = async (input: string, type?: 'userId' | '
           userId: userInfo.value?.id,
           userName: userInfo.value?.name,
           userAvatar: userInfo.value?.avatar,
-          userRoles: JSON.stringify(userInfo.value?.roles?.map(r => r.name)),
+          userRoles: JSON.stringify(userInfo.value?.roles),
           deviceId: deviceId,
           deviceKindId: deviceKindId,
           deviceName: deviceInfo.deviceName,
           deviceImage: deviceInfo.image?.mainImage,
           deviceStatus: deviceInfo.status,
+          deviceUnit: deviceInfo.unit,
         }
       })
     } else if (deviceInfo.status === 'borrowing') {
@@ -81,12 +82,13 @@ const handleVirtualKeyboardDetection = async (input: string, type?: 'userId' | '
           userId: userInfo.value?.id,
           userName: userInfo.value?.name,
           userAvatar: userInfo.value?.avatar,
-          userRoles: JSON.stringify(userInfo.value?.roles?.map(r => r.name)),
+          userRoles: JSON.stringify(userInfo.value?.roles),
           deviceId: deviceId,
           deviceKindId: deviceKindId,
           deviceName: deviceInfo.deviceName,
-          deviceImage: deviceInfo.image,
+          deviceImage: deviceInfo.image?.mainImage,
           deviceStatus: deviceInfo.status,
+          deviceUnit: deviceInfo.unit,
         }
       })
     } else {
@@ -152,8 +154,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
             <div v-else class="bg-gray-50 rounded-lg p-4">
               <div class="mt-2 flex items-center">
-                <img :src="userInfo.avatar || 'default-avatar.png'" alt="User avatar"
-                  class="h-12 w-12 rounded-full object-cover" />
+                <img :src="userInfo.avatar" alt="User avatar" class="h-12 w-12 rounded-full object-cover" />
                 <div class="ml-3">
                   <h4 class="text-sm font-medium text-gray-500">{{ userInfo.id }}</h4>
                   <p class="text-base font-semibold text-gray-900">{{ userInfo.name }}

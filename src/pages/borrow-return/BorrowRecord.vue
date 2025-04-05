@@ -2,31 +2,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { ChevronDown, Trash, Box, User, Calendar, MapPin, PackageCheck } from 'lucide-vue-next'
 import BorrowReturnLayout from '@/layouts/BorrowReturnLayout.vue'
-import { deviceService } from '@/lib/db'
+import { deviceService, userService, type DeviceStatus } from '@/lib/db'
 import { useRoute } from 'vue-router'
 import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection'
 import { toast } from '@/components/ui/toast'
-
-type UserInfo = {
-  id: string
-  name: string
-  avatar: string
-  roles: { name: string; key: string }[]
-}
-
-type DeviceItem = {
-  id: string
-  status: string
-}
-
-type Device = {
-  code: string
-  name: string,
-  image: string,
-  quantity: number
-  expanded: boolean
-  items: DeviceItem[]
-}
+import { statusMap, statusColorMap, type UserInfo, type Device } from '@/types/status'
 
 const route = useRoute()
 const userInfo = ref<UserInfo | null>(null)
@@ -49,22 +29,23 @@ onMounted(async () => {
     }
   }
 
-  const { deviceId, deviceName, deviceImage, deviceStatus } = route.query
+  const { deviceId, deviceName, deviceImage, deviceStatus, deviceKindId, deviceUnit } = route.query
   if (deviceId) {
     devices.value.push({
-      code: deviceId as string,
+      code: deviceKindId as string,
       name: deviceName as string,
       image: deviceImage as string,
       quantity: 1,
+      unit: deviceUnit as string,
       expanded: true,
-      items: [{ id: deviceId as string, status: deviceStatus as string }]
+      items: [{ id: deviceId as string, status: deviceStatus as DeviceStatus }]
     })
   }
 })
 
 const handleDeviceScan = async (input: string) => {
   try {
-    //const deviceKindId = input.match(/\/devices\/([a-fA-F0-9]+)/)?.[1]
+    const deviceKindId = input.match(/\/devices\/([a-fA-F0-9]+)/)?.[1]
     const deviceId = input.match(/[?&]id=([a-fA-F0-9]+)/)?.[1]
 
     if (!deviceId) {
@@ -72,9 +53,18 @@ const handleDeviceScan = async (input: string) => {
       return
     }
 
-    const deviceStatus = await deviceService.getDeviceStatusById(deviceId)
+    const isAlreadyAdded = devices.value.some(device =>
+      device.items.some(item => item.id === deviceId)
+    );
 
-    if (!deviceStatus || deviceStatus.status !== 'healthy') {
+    if (isAlreadyAdded) {
+      toast({ title: 'Lỗi', description: 'Thiết bị này đã được thêm vào danh sách.', variant: 'destructive' });
+      return;
+    }
+
+    const deviceInfo = await deviceService.getDeviceStatusById(deviceId)
+
+    if (!deviceInfo || deviceInfo.status !== 'healthy') {
       toast({
         title: 'Lỗi',
         description: `Thiết bị không khả dụng để mượn (ID: ${deviceId})`,
@@ -89,23 +79,24 @@ const handleDeviceScan = async (input: string) => {
       return
     }
 
-    const existingDevice = devices.value.find(d => d.code === deviceDetails.kind)
+    const existingDevice = devices.value.find(d => d.code === deviceKindId)
     if (existingDevice) {
       existingDevice.items.push({
         id: deviceId,
-        status: 'Tốt'
+        status: deviceInfo.status
       })
       existingDevice.quantity = existingDevice.items.length
     } else {
       devices.value.push({
-        code: deviceDetails.kind,
+        code: deviceKindId!,
         name: deviceDetails.deviceName,
         image: deviceDetails.image,
         quantity: 1,
+        unit: deviceDetails.unit,
         expanded: true,
         items: [{
           id: deviceId,
-          status: deviceStatus.status
+          status: deviceInfo.status
         }]
       })
     }
@@ -120,8 +111,29 @@ const handleDeviceScan = async (input: string) => {
   }
 }
 
-const toggleDevice = (device: any) => {
-  device.expanded = !device.expanded
+const handleUserScan = async (userId: string) => {
+  try {
+    const fetchedUserInfo = await userService.getUserById(userId);
+    if (fetchedUserInfo) {
+      userInfo.value = {
+        id: fetchedUserInfo.id,
+        name: fetchedUserInfo.name,
+        avatar: fetchedUserInfo.avatar,
+        roles: fetchedUserInfo.roles,
+      };
+      toast({ title: 'Thành công', description: 'Đã quét thông tin người mượn.' });
+    } else {
+      toast({ title: 'Lỗi', description: 'Không tìm thấy người dùng.', variant: 'destructive' });
+    }
+  } catch (error) {
+    toast({ title: 'Lỗi', description: 'Không thể lấy thông tin người dùng.', variant: 'destructive' });
+  }
+}
+
+const toggleDevice = (device: Device) => {
+  if (device.items.length > 0) {
+    device.expanded = !device.expanded
+  }
 }
 
 const removeDeviceItem = (device: any, itemId: string) => {
@@ -137,7 +149,14 @@ const totalDevices = computed(() => {
   return devices.value.reduce((total, device) => total + device.quantity, 0)
 })
 
-useVirtualKeyboardDetection((input: string) => handleDeviceScan(input), {
+useVirtualKeyboardDetection((input: string, type?: 'userId' | 'device' | undefined) => {
+  if (type === 'userId') {
+    handleUserScan(input);
+  } else if (type === 'device') {
+    handleDeviceScan(input);
+  }
+}, {
+  userId: { length: 7 },
   device: { pattern: /^https?:\/\/[^/]+\/devices\/[a-fA-F0-9]{8}\?id=[a-fA-F0-9]+$/ },
   scannerThresholdMs: 100,
   maxInputTimeMs: 1000,
@@ -155,13 +174,14 @@ useVirtualKeyboardDetection((input: string) => handleDeviceScan(input), {
               <div class="flex items-center gap-3">
                 <img :src="device.image" alt="Device image" class="h-12 w-12 rounded-full object-cover" />
                 <div>
-                  <h3 class="font-medium text-gray-900">MÃ LOẠI: {{ device.code }}</h3>
-                  <p class="text-sm text-gray-900 font-medium">{{ device.name }}</p>
+                  <h3 class="font-medium text-gray-900 text-sm">Mã loại: <span class="font-bold text-base">{{
+                    device.code }}</span></h3>
+                  <p class="text-base text-gray-900 font-medium">{{ device.name }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-4">
                 <span class="text-base text-gray-900 font-medium mr-32">
-                  {{ device.quantity }} cái
+                  {{ device.quantity }} {{ device.unit }}
                 </span>
                 <ChevronDown class="h-5 w-5 text-gray-400 transition-transform"
                   :class="{ 'rotate-180': device.expanded }" />
@@ -181,7 +201,8 @@ useVirtualKeyboardDetection((input: string) => handleDeviceScan(input), {
                     {{ device.code }}/{{ item.id }}
                   </div>
                   <div class="flex items-center gap-3">
-                    <span class="text-sm text-gray-900 font-medium mr-32">{{ item.status }}</span>
+                    <span :class="statusColorMap[item.status]" class="text-base font-semibold mr-32">{{
+                      statusMap[item.status] }}</span>
                     <button @click.stop="removeDeviceItem(device, item.id)"
                       class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-100"
                       aria-label="Remove device">
@@ -197,30 +218,34 @@ useVirtualKeyboardDetection((input: string) => handleDeviceScan(input), {
     </template>
 
     <template #right-column>
-      <div class="p-4 space-y-6">
-        <div v-if="userInfo" class="flex flex-col items-center p-4 bg-gray-50 rounded-lg">
-          <div class="mt-2 flex items-center">
-            <img :src="userInfo.avatar || 'default-avatar.png'" alt="User avatar"
-              class="h-12 w-12 rounded-full object-cover" />
+      <div class="space-y-6">
+        <div v-if="userInfo" class="flex flex-col items-center py-1 bg-gray-50 rounded-lg">
+          <div class="flex items-center">
+            <img :src="userInfo.avatar" alt="User avatar" class="h-12 w-12 rounded-full object-cover" />
             <div class="ml-3">
               <h4 class="text-sm font-medium text-gray-500">{{ userInfo.id }}</h4>
-              <p class="text-base font-semibold text-gray-900">{{ userInfo.name }}</p>
-              <p class="text-sm text-gray-600">
-                {{userInfo.roles?.map(r => r.name).join(', ') || 'Không có vai trò'}}
+              <p class="text-base font-semibold text-gray-900">{{ userInfo.name }}
+                <span class="text-sm text-gray-500 italic font-normal">
+                  ({{userInfo.roles?.map(r => r.name).join(', ') || 'Không có vai trò'}})
+                </span>
               </p>
             </div>
           </div>
         </div>
-        <div v-else class="text-center text-gray-500 py-4">
-          Đang tải thông tin người dùng...
+        <div v-else
+          class="m-1 border border-dashed border-gray-300 rounded-lg py-1 flex flex-col items-center justify-center">
+          <div class="bg-gray-100 rounded-full p-3 mb-4">
+            <User class="h-6 w-6 text-gray-400" />
+          </div>
+          <h3 class="text-lg font-medium">Quét mã QR người mượn</h3>
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-4 p-4">
           <div class="flex items-center gap-3">
             <div class="rounded-full bg-blue-50 p-2">
               <Box class="h-4 w-4 text-blue-600" />
             </div>
-            <div class="flex-1">
+            <div class="grid grid-cols-2 w-full">
               <p class="text-sm text-gray-500">Tổng thiết bị</p>
               <p class="font-medium text-gray-800">{{ totalDevices }} cái</p>
             </div>
@@ -230,7 +255,7 @@ useVirtualKeyboardDetection((input: string) => handleDeviceScan(input), {
             <div class="rounded-full bg-amber-50 p-2">
               <MapPin class="h-4 w-4 text-amber-600" />
             </div>
-            <div class="flex-1">
+            <div class="grid grid-cols-2 w-full">
               <p class="text-sm text-gray-500">Nơi mượn/trả</p>
               <p class="font-medium text-gray-800">{{ borrowDetails.location }}</p>
             </div>
@@ -240,7 +265,7 @@ useVirtualKeyboardDetection((input: string) => handleDeviceScan(input), {
             <div class="rounded-full bg-green-50 p-2">
               <Calendar class="h-4 w-4 text-green-600" />
             </div>
-            <div class="flex-1">
+            <div class="grid grid-cols-2 w-full">
               <p class="text-sm text-gray-500">Ngày mượn</p>
               <p class="font-medium text-gray-800">{{ borrowDetails.borrowDate }}</p>
             </div>
@@ -250,18 +275,17 @@ useVirtualKeyboardDetection((input: string) => handleDeviceScan(input), {
             <div class="rounded-full bg-purple-50 p-2">
               <Calendar class="h-4 w-4 text-purple-600" />
             </div>
-            <div class="flex-1">
+            <div class="grid grid-cols-2 w-full">
               <p class="text-sm text-gray-500">Ngày hẹn trả</p>
               <p class="font-medium text-gray-800">{{ borrowDetails.returnDate }}</p>
             </div>
           </div>
+          <button :disabled="!userInfo || devices.length === 0"
+            class="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <PackageCheck class="h-5 w-5" />
+            Xác nhận mượn
+          </button>
         </div>
-
-        <button :disabled="!userInfo"
-          class="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-          <PackageCheck class="h-5 w-5" />
-          Xác nhận mượn
-        </button>
       </div>
     </template>
   </BorrowReturnLayout>

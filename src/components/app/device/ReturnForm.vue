@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, Transition } from 'vue'
+import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { TrashIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-vue-next'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
