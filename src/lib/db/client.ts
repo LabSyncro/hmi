@@ -1,22 +1,22 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export type JoinParams<T = unknown> = {
+export type JoinParams = {
   table: string
-  left_column: keyof T extends string ? keyof T : string
+  left_column: string
   right_column: string
   kind: 'inner' | 'left' | 'right'
   alias?: string
   parent_table?: string
 }
 
-export type QueryParams<T> = {
+export type QueryParams = {
   table: string
   columns?: string[]
   conditions?: [string, unknown][]
   order_by?: [string, boolean][]
   limit?: number
   offset?: number
-  joins?: JoinParams<T>[]
+  joins?: JoinParams[]
 }
 
 export type RawQueryParams = {
@@ -30,12 +30,16 @@ export type InsertParams<T> = {
 }
 
 export interface DbClient {
-  query<T>(params: QueryParams<T>): Promise<T[]>
   queryRaw<T>(params: RawQueryParams): Promise<T[]>
+  table<T>(name: string): TableQueryBuilder<T>
 }
 
 class TauriDbClient implements DbClient {
-  async query<T>(params: QueryParams<T>): Promise<T[]> {
+  table<T>(name: string): TableQueryBuilder<T> {
+    return new TableQueryBuilder<T>(this as any as DatabaseClient, name);
+  }
+
+  async query<T>(params: QueryParams): Promise<T[]> {
     try {
       return await invoke<T[]>('query_table', {
         params: {
@@ -97,38 +101,67 @@ export class DatabaseClient {
     return new TableQueryBuilder<T>(this, name);
   }
 
-  public async query<T>(params: QueryParams<T>): Promise<T[]> {
-    return db.query(params);
+  public async query<T>(params: QueryParams): Promise<T[]> {
+    return db.query<T>(params);
   }
 
   public async queryRaw<T>(params: RawQueryParams): Promise<T[]> {
-    return db.queryRaw(params);
+    return db.queryRaw<T>(params);
   }
 }
 
 export class TableQueryBuilder<T> {
-  private columns?: (keyof T)[];
-  private conditions: Array<[keyof T, unknown]> = [];
-  private orderByColumns: Array<[keyof T, boolean]> = [];
+  private columns?: string[];
+  private conditions: Array<[string, unknown]> = [];
+  private orderByColumns: Array<[string, boolean]> = [];
   private limitValue?: number;
   private offsetValue?: number;
+  private includeRelations: Array<{
+    table: string;
+    as?: string;
+    select?: string[];
+    on: {
+      from: string;
+      to: string;
+    };
+  }> = [];
 
   constructor(
     private readonly client: DatabaseClient,
     private readonly tableName: string,
   ) { }
 
-  select(...columns: (keyof T)[]): this {
+  select(columns: string[]): this {
     this.columns = columns;
     return this;
   }
 
-  where(column: keyof T, value: unknown): this {
+  include(params: {
+    table: string;
+    as?: string;
+    select?: string[];
+    on: {
+      from: string;
+      to: string;
+    };
+  }): this {
+    this.includeRelations.push(params);
+    return this;
+  }
+
+  where(column: string, value: unknown): this {
     this.conditions.push([column, value]);
     return this;
   }
 
-  orderBy(column: keyof T, ascending = true): this {
+  whereMany(conditions: Record<string, unknown>): this {
+    Object.entries(conditions).forEach(([column, value]) => {
+      this.conditions.push([column, value]);
+    });
+    return this;
+  }
+
+  orderBy(column: string, ascending = true): this {
     this.orderByColumns.push([column, ascending]);
     return this;
   }
@@ -144,14 +177,37 @@ export class TableQueryBuilder<T> {
   }
 
   async execute(): Promise<T[]> {
+    const joins = this.includeRelations.map(relation => ({
+      table: relation.table,
+      left_column: relation.on.from,
+      right_column: relation.on.to,
+      kind: 'left' as const
+    }));
+
+    const allColumns = [
+      ...(this.columns || []),
+      ...this.includeRelations.flatMap(relation =>
+        (relation.select || []).map(col =>
+          `${relation.table}.${col} AS ${relation.table}_${col}`
+        )
+      )
+    ];
+
     return this.client.query<T>({
       table: this.tableName,
-      columns: this.columns?.map(String),
-      conditions: this.conditions.map(([col, val]) => [String(col), val]),
-      order_by: this.orderByColumns.map(([col, asc]) => [String(col), asc]),
+      columns: allColumns.length > 0 ? allColumns : undefined,
+      conditions: this.conditions,
+      order_by: this.orderByColumns.length > 0 ? this.orderByColumns : undefined,
       limit: this.limitValue,
       offset: this.offsetValue,
+      joins: joins.length > 0 ? joins : undefined
     });
+  }
+
+  async first(): Promise<T | null> {
+    this.limit(1);
+    const results = await this.execute();
+    return results[0] || null;
   }
 
   async insert(value: Partial<T>): Promise<T> {

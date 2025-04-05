@@ -14,7 +14,6 @@ export type ReceiptCache = {
     returned: CachedData<ReturnedReceiptDeviceSchema> | null;
 }
 
-// Cache duration in milliseconds (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000;
 
 const cache = ref<ReceiptCache>({

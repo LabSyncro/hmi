@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ChevronDownIcon, ChevronUpIcon } from 'lucide-vue-next';
-import { getDeviceById, getDeviceInventoryByKindId, type DeviceDetail, type DeviceInventory } from '@/lib/db/device';
+import { deviceService, type DeviceDetail, type DeviceInventory } from '@/lib/db';
 import { DeviceStatus } from '@/types/db/generated';
 import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection';
 
@@ -119,7 +119,7 @@ async function loadDeviceDetails() {
   error.value = null
   try {
     const id = route.params.id as string
-    deviceDetail.value = await getDeviceById(id)
+    deviceDetail.value = await deviceService.getDeviceById(id)
     if (!deviceDetail.value) {
       error.value = 'Device not found'
     } else {
@@ -137,7 +137,7 @@ async function loadDeviceDetails() {
 async function loadInventoryData(kindId: string) {
   loadingInventory.value = true
   try {
-    inventory.value = await getDeviceInventoryByKindId(kindId)
+    inventory.value = await deviceService.getDeviceInventoryByKindId(kindId)
   } catch (e) {
     throw e
   } finally {

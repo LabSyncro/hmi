@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '@/components/Home.vue'
 import DeviceDetail from '@/components/app/device/DeviceDetail.vue'
 import BorrowForm from '@/components/app/device/BorrowForm.vue'
 import ConfirmBorrowForm from '@/components/app/device/ConfirmBorrowForm.vue'
@@ -8,6 +7,7 @@ import ReturnForm from '@/components/app/device/ReturnForm.vue'
 import ConfirmReturnForm from '@/components/app/device/ConfirmReturnForm.vue'
 import ReturnInvoice from '@/components/app/device/ReturnInvoice.vue'
 import BorrowReturn from '@/pages/borrow-return/index.vue'
+import RecordPage from '@/pages/borrow-return/RecordPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -15,7 +15,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: Home
+      component: RecordPage
     },
     {
       path: '/borrow-return',
