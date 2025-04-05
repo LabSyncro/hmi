@@ -37,10 +37,10 @@ const navigationItems: Omit<NavItem, 'active'>[] = [
 const activeNavItems = computed<NavItem[]>(() => {
   return navigationItems.map(item => ({
     ...item,
-    active: (route.path.startsWith(item.route) && item.route !== '/') || (item.route === '/' && (route.path === '/' || route.path === '/borrow-return' || route.path === '/borrow-record' || route.path === '/return-record')),
+    active: (route.path.startsWith(item.route) && item.route !== '/') || (item.route === '/' && (route.path === '/' || route.path === '/borrow-return')),
     children: item.children?.map(child => ({
       ...child,
-      active: (route.path.startsWith(child.route) && child.route !== '/') || (child.route === '/' && (route.path === '/' || route.path === '/borrow-record' || route.path === '/return-record'))
+      active: (route.path.startsWith(child.route) && child.route !== '/') || (child.route === '/' && (route.path === '/' || route.path === '/borrow-return'))
     }))
   }))
 })

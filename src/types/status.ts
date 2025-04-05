@@ -1,4 +1,4 @@
-import { DeviceStatus } from '@/lib/db'
+import { DeviceQuality, DeviceStatus } from '@/lib/db'
 
 export const statusMap: Record<DeviceStatus, string> = {
   'healthy': 'Tốt',
@@ -11,15 +11,29 @@ export const statusMap: Record<DeviceStatus, string> = {
   'lost': 'Đã mất'
 }
 
+export const qualityMap: Record<DeviceQuality, string> = {
+  'healthy': 'Tốt',
+  'broken': 'Hư hỏng',
+  'needs_fixing': 'Cần sửa chữa',
+  'lost': 'Đã mất'
+}
+
 export const statusColorMap: Record<DeviceStatus, string> = {
-  'healthy': 'text-green-600',
-  'broken': 'text-red-600',
-  'borrowing': 'text-blue-600',
-  'discarded': 'text-gray-600',
-  'assessing': 'text-yellow-600',
-  'maintaining': 'text-orange-600',
-  'shipping': 'text-purple-600',
-  'lost': 'text-black'
+  'healthy': 'text-green-600 bg-green-50 border-green-600',
+  'broken': 'text-red-600 bg-red-50 border-red-600',
+  'borrowing': 'text-blue-600 bg-blue-50 border-blue-600',
+  'discarded': 'text-gray-600 bg-gray-50 border-gray-600',
+  'assessing': 'text-yellow-600 bg-yellow-50 border-yellow-600',
+  'maintaining': 'text-orange-600 bg-orange-50 border-orange-600',
+  'shipping': 'text-purple-600 bg-purple-50 border-purple-600',
+  'lost': 'text-black bg-gray-50 border-black'
+}
+
+export const qualityColorMap: Record<DeviceQuality, string> = {
+  'healthy': 'text-green-600 bg-green-50 border-green-600',
+  'broken': 'text-red-600 bg-red-50 border-red-600',
+  'needs_fixing': 'text-yellow-600 bg-yellow-50 border-yellow-600',
+  'lost': 'text-black bg-gray-50 border-black'
 }
 
 export type UserInfo = {
@@ -31,14 +45,15 @@ export type UserInfo = {
 
 export type DeviceItem = {
   id: string
-  status: DeviceStatus
+  status: DeviceStatus,
+  prevQuality?: DeviceQuality,
   returnCondition?: DeviceStatus
 }
 
 export type Device = {
   code: string
   name: string,
-  image: string,
+  image: any,
   quantity: number
   unit: string
   expanded: boolean

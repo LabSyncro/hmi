@@ -1,9 +1,10 @@
 import { db } from './client'
-import { DeviceStatus } from '@/types/db/generated'
+import { DeviceStatus, DeviceQuality } from '@/types/db/generated'
 
 export type DeviceDetail = {
   fullId: string;
   status: DeviceStatus | null;
+  prevQuality?: DeviceQuality | null;
   image: any;
   unit: string;
   deviceName: string;
@@ -61,6 +62,7 @@ export const deviceService = {
           r.id AS receipt_id,
           a.created_at AS borrowed_at,
           rd.expected_returned_at,
+          rd.prev_quality,
           bl.room || ', ' || bl.branch AS borrowed_lab,
           rl.room || ', ' || rl.branch AS expected_return_lab,
           u.id AS borrower_id,
@@ -96,7 +98,8 @@ export const deviceService = {
       const deviceDetail: DeviceDetail = {
         fullId: row.fullId as string,
         status: row.status as DeviceStatus | null,
-        image: row.image,
+        prevQuality: row.prevQuality as DeviceQuality | null,
+        image: row.image as string,
         unit: row.unit as string,
         deviceName: row.deviceName as string,
         allowedBorrowRoles: row.allowedBorrowRoles as string[],
@@ -119,6 +122,7 @@ export const deviceService = {
         borrowedLab: row.borrowedLab as string | null,
         expectedReturnLab: row.expectedReturnLab as string | null,
       };
+      console.log(deviceDetail)
 
       return deviceDetail;
     } catch (error) {

@@ -16,8 +16,6 @@ const showBackButton = computed(() => {
     'device-return',
     'confirm-return',
     'return-invoice',
-    'borrow-record',
-    'return-record'
   ]
   return routesWithBack.includes(route.name as string)
 })
@@ -30,8 +28,6 @@ const handleBack = () => {
     'device-return': `/device/${route.params.id}`,
     'confirm-return': `/device/${route.params.id}/return`,
     'return-invoice': '/',
-    'borrow-record': '/',
-    'return-record': '/'
   }
 
   router.push(routeMap[route.name as string] || '/')
