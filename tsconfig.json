@@ -27,6 +27,12 @@
       "db-types/*": ["./db-types/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "db-types/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "db-types/**/*.ts"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

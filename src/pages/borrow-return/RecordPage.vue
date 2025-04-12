@@ -309,6 +309,7 @@ const handleDeviceScan = async (input: string) => {
       toast({
         title: "Thành công",
         description: "Đã thêm thiết bị vào danh sách mượn",
+        variant: "success",
       });
     } else if (mode.value === "return") {
       const newItem: ReturnDeviceItem = {
@@ -336,6 +337,7 @@ const handleDeviceScan = async (input: string) => {
       toast({
         title: "Thành công",
         description: "Đã thêm thiết bị vào danh sách trả",
+        variant: "success",
       });
     }
   } catch (error) {
@@ -411,7 +413,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           </h2>
         </div>
 
-        <div class="p-4">
+        <div>
           <div
             v-if="devices.length === 0"
             class="flex flex-col items-center justify-center py-20 text-center"
