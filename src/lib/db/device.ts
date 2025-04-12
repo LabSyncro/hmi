@@ -36,6 +36,22 @@ export type DeviceInventory = {
   availableQuantity: number;
 }
 
+export type AuditRecord = {
+  deviceId: string;
+  auditorId: string;
+  auditCondition: DeviceStatus;
+  location: string;
+  notes?: string;
+}
+
+export type MaintenanceRecord = {
+  deviceId: string;
+  technicianId: string;
+  maintenanceOutcome: DeviceStatus;
+  location: string;
+  notes?: string;
+}
+
 export const deviceService = {
   async getDeviceById(id: string): Promise<DeviceDetail | null> {
     if (!id) {
@@ -218,6 +234,176 @@ export const deviceService = {
       }
     } catch (error) {
       return null
+    }
+  },
+
+  async recordAudit(records: AuditRecord[]): Promise<void> {
+    try {
+      // Create audit activity
+      const activitySql = `
+        INSERT INTO activities (type, created_at)
+        VALUES ('audit', CURRENT_TIMESTAMP)
+        RETURNING id
+      `
+      const activity = await db.queryRaw<{ id: string }>({ sql: activitySql })
+      const activityId = activity[0].id
+
+      // Record each device audit
+      for (const record of records) {
+        const auditSql = `
+          INSERT INTO devices_audit (
+            device_id, auditor_id, audit_id, condition, location, notes, created_at
+          )
+          VALUES (
+            $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP
+          )
+        `
+        await db.queryRaw({
+          sql: auditSql,
+          params: [
+            record.deviceId,
+            record.auditorId,
+            activityId,
+            record.auditCondition,
+            record.location,
+            record.notes
+          ]
+        })
+
+        // Update device status if needed
+        if (record.auditCondition !== 'healthy') {
+          const updateSql = `
+            UPDATE devices
+            SET status = $1
+            WHERE id = $2
+          `
+          await db.queryRaw({
+            sql: updateSql,
+            params: [record.auditCondition, record.deviceId]
+          })
+        }
+      }
+    } catch (error) {
+      throw error
+    }
+  },
+
+  async recordMaintenance(records: MaintenanceRecord[]): Promise<void> {
+    try {
+      // Create maintenance activity
+      const activitySql = `
+        INSERT INTO activities (type, created_at)
+        VALUES ('maintenance', CURRENT_TIMESTAMP)
+        RETURNING id
+      `
+      const activity = await db.queryRaw<{ id: string }>({ sql: activitySql })
+      const activityId = activity[0].id
+
+      // Record each device maintenance
+      for (const record of records) {
+        const maintenanceSql = `
+          INSERT INTO devices_maintenance (
+            device_id, technician_id, maintenance_id, outcome, location, notes, created_at
+          )
+          VALUES (
+            $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP
+          )
+        `
+        await db.queryRaw({
+          sql: maintenanceSql,
+          params: [
+            record.deviceId,
+            record.technicianId,
+            activityId,
+            record.maintenanceOutcome,
+            record.location,
+            record.notes
+          ]
+        })
+
+        // Update device status
+        const updateSql = `
+          UPDATE devices
+          SET status = $1
+          WHERE id = $2
+        `
+        await db.queryRaw({
+          sql: updateSql,
+          params: [record.maintenanceOutcome, record.deviceId]
+        })
+      }
+    } catch (error) {
+      throw error
+    }
+  },
+
+  async getDeviceAuditHistory(deviceId: string): Promise<{
+    auditorName: string;
+    auditorImage: string | null;
+    condition: DeviceStatus;
+    location: string;
+    notes?: string;
+    createdAt: Date;
+  }[]> {
+    try {
+      const sql = `
+        SELECT 
+          u.name as auditor_name,
+          u.image as auditor_image,
+          da.condition,
+          da.location,
+          da.notes,
+          da.created_at
+        FROM 
+          devices_audit da
+          JOIN users u ON da.auditor_id = u.id
+        WHERE 
+          da.device_id = $1
+        ORDER BY 
+          da.created_at DESC
+      `
+
+      return await db.queryRaw({
+        sql,
+        params: [deviceId]
+      })
+    } catch (error) {
+      throw error
+    }
+  },
+
+  async getDeviceMaintenanceHistory(deviceId: string): Promise<{
+    technicianName: string;
+    technicianImage: string | null;
+    outcome: DeviceStatus;
+    location: string;
+    notes?: string;
+    createdAt: Date;
+  }[]> {
+    try {
+      const sql = `
+        SELECT 
+          u.name as technician_name,
+          u.image as technician_image,
+          dm.outcome,
+          dm.location,
+          dm.notes,
+          dm.created_at
+        FROM 
+          devices_maintenance dm
+          JOIN users u ON dm.technician_id = u.id
+        WHERE 
+          dm.device_id = $1
+        ORDER BY 
+          dm.created_at DESC
+      `
+
+      return await db.queryRaw({
+        sql,
+        params: [deviceId]
+      })
+    } catch (error) {
+      throw error
     }
   }
 } 
