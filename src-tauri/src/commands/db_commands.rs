@@ -283,8 +283,8 @@ pub async fn query_table(
                     t => {
                         let type_name = t.to_string();
                         if type_name == "uuid" {
-                            match row.try_get::<_, Option<uuid::Uuid>>(i) {
-                                Ok(Some(uuid)) => serde_json::Value::String(uuid.to_string()),
+                            match row.try_get::<_, uuid::Uuid>(i) {
+                                Ok(uuid) => serde_json::Value::String(uuid.to_string()),
                                 _ => {
                                     let uuid_str: Option<String> = row.try_get(i).ok().flatten();
                                     match uuid_str {
@@ -337,15 +337,17 @@ pub async fn insert_into_table(
         message: "Schema not synchronized".to_string(),
     })?;
 
-    let (query, params) = QueryBuilder::build_insert(&params.value, schema, &params.table)
+    let (query, insert_params) = QueryBuilder::build_insert(&params.value, schema, &params.table)
         .ok_or_else(|| CommandError {
-            message: format!("Failed to build insert query for table {}", params.table),
-        })?;
+        message: format!("Failed to build insert query for table {}", params.table),
+    })?;
 
     let client = state.db.get_client().await?;
 
-    let params_slice: Vec<&(dyn ToSql + Sync)> =
-        params.iter().map(|p| &**p as &(dyn ToSql + Sync)).collect();
+    let params_slice: Vec<&(dyn ToSql + Sync)> = insert_params
+        .iter()
+        .map(|p| &**p as &(dyn ToSql + Sync))
+        .collect();
     let row = client
         .query_one(&query, &params_slice)
         .await

@@ -1,4 +1,5 @@
 use super::super::schema::DatabaseSchema;
+use chrono::{TimeZone, Utc};
 use serde::Serialize;
 use tokio_postgres::types::ToSql;
 
@@ -265,31 +266,78 @@ impl<'a> QueryBuilder<'a> {
         let mut columns = Vec::new();
         let mut params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> = Vec::new();
         let mut param_positions = Vec::new();
+        let mut added_columns = std::collections::HashSet::new();
 
         for column in &table.columns {
-            if let Some(value) = value_map.get(&column.name) {
-                if !value.is_null() {
-                    columns.push(column.name.clone());
-                    param_positions.push(format!("${}", params.len() + 1));
+            if added_columns.contains(&column.name) {
+                continue;
+            }
 
-                    match value {
-                        serde_json::Value::String(s) => params.push(Box::new(s.clone())),
+            if let Some(val) = value_map.get(&column.name) {
+                if !val.is_null() {
+                    added_columns.insert(column.name.clone());
+
+                    match val {
+                        serde_json::Value::String(s) => {
+                            columns.push(column.name.clone());
+                            param_positions.push(format!("${}", params.len() + 1));
+                            params.push(Box::new(s.clone()))
+                        }
                         serde_json::Value::Number(n) => {
-                            if let Some(i) = n.as_i64() {
-                                params.push(Box::new(i));
-                            } else if let Some(f) = n.as_f64() {
-                                params.push(Box::new(f));
+                            if column.type_name == "timestamptz"
+                                || column.type_name == "timestamp"
+                                || column.type_name == "timestamp with time zone"
+                            {
+                                if let Some(millis) = n.as_i64() {
+                                    if let Some(datetime) =
+                                        Utc.timestamp_millis_opt(millis).single()
+                                    {
+                                        columns.push(column.name.clone());
+                                        param_positions.push(format!("${}", params.len() + 1));
+                                        params.push(Box::new(datetime));
+                                    } else {
+                                        added_columns.remove(&column.name);
+                                        continue;
+                                    }
+                                } else {
+                                    added_columns.remove(&column.name);
+                                    continue;
+                                }
+                            } else {
+                                if let Some(i) = n.as_i64() {
+                                    columns.push(column.name.clone());
+                                    param_positions.push(format!("${}", params.len() + 1));
+                                    params.push(Box::new(i));
+                                } else if let Some(f) = n.as_f64() {
+                                    columns.push(column.name.clone());
+                                    param_positions.push(format!("${}", params.len() + 1));
+                                    params.push(Box::new(f));
+                                } else {
+                                    added_columns.remove(&column.name);
+                                    continue;
+                                }
                             }
                         }
-                        serde_json::Value::Bool(b) => params.push(Box::new(*b)),
-                        _ => continue,
+                        serde_json::Value::Bool(b) => {
+                            columns.push(column.name.clone());
+                            param_positions.push(format!("${}", params.len() + 1));
+                            params.push(Box::new(*b));
+                        }
+                        _ => {
+                            added_columns.remove(&column.name);
+                            continue;
+                        }
                     }
                 }
             }
         }
 
+        if columns.is_empty() {
+            return None;
+        }
+
         let query = format!(
-            "INSERT INTO {}.{} ({}) VALUES ({})",
+            "INSERT INTO {}.{} ({}) VALUES ({}) RETURNING *",
             table.schema,
             table.name,
             columns.join(", "),

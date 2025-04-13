@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { ChevronDownIcon, ChevronUpIcon } from 'lucide-vue-next';
+import { useVirtualKeyboardDetection } from '@/composables';
 import { deviceService, type DeviceDetail, type DeviceInventory } from '@/lib/db';
 import { DeviceStatus } from '@/types/db/generated';
-import { useVirtualKeyboardDetection } from '@/hooks/useVirtualKeyboardDetection';
+import { ChevronDownIcon, ChevronUpIcon } from 'lucide-vue-next';
+import { onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const showMore = ref(false)
 const router = useRouter()

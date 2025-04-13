@@ -6,7 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuth } from "@/composables/useAuth";
+import { useAuth } from "@/composables";
 import type { AcceptableValue } from "reka-ui";
 import { onMounted, ref } from "vue";
 
