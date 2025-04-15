@@ -357,7 +357,6 @@ const completeAudit = async () => {
     });
     resetForm();
   } catch (error) {
-    console.error("Error recording audit:", error);
     toast({
       title: "Lỗi",
       description: "Không thể lưu dữ liệu kiểm đếm",

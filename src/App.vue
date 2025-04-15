@@ -1,16 +1,28 @@
 <script setup lang="ts">
-import MainLayout from '@/layouts/MainLayout.vue'
-import Toaster from '@/components/ui/toast/Toaster.vue'
+import Toaster from "@/components/ui/toast/Toaster.vue";
+import MainLayout from "@/layouts/MainLayout.vue";
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
+
+const layout = computed(() => {
+  return route.meta.layout || MainLayout;
+});
 </script>
 
 <template>
   <Toaster />
-  <MainLayout />
+  <component :is="layout">
+    <router-view />
+  </component>
 </template>
 
 <style>
 :root {
-  font-family: Aeonik Pro, sans-serif;
+  font-family:
+    Aeonik Pro,
+    sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;

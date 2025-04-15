@@ -5,6 +5,7 @@ import ConfirmReturnForm from "@/components/app/device/ConfirmReturnForm.vue";
 import DeviceDetail from "@/components/app/device/DeviceDetail.vue";
 import ReturnForm from "@/components/app/device/ReturnForm.vue";
 import ReturnInvoice from "@/components/app/device/ReturnInvoice.vue";
+import AuthLayout from "@/layouts/AuthLayout.vue";
 import AuditPage from "@/pages/audit/AuditPage.vue";
 import LoginPage from "@/pages/auth/LoginPage.vue";
 import BorrowReturn from "@/pages/borrow-return/index.vue";
@@ -20,6 +21,7 @@ const router = createRouter({
       path: "/login",
       name: "login",
       component: LoginPage,
+      meta: { layout: AuthLayout },
     },
     {
       path: "/",
@@ -96,19 +98,19 @@ const router = createRouter({
   ],
 });
 
-// router.beforeEach((to, _from, next) => {
-//   const isAuthenticated = localStorage.getItem("auth_token");
+router.beforeEach((to, _from, next) => {
+  const isAuthenticated = localStorage.getItem("auth_token");
 
-//   if (
-//     to.matched.some((record) => record.meta.requiresAuth) &&
-//     !isAuthenticated
-//   ) {
-//     next({ name: "login" });
-//   } else if (to.name === "login" && isAuthenticated) {
-//     next({ name: "home" });
-//   } else {
-//     next();
-//   }
-// });
+  if (
+    to.matched.some((record) => record.meta.requiresAuth) &&
+    !isAuthenticated
+  ) {
+    next({ name: "login" });
+  } else if (to.name === "login" && isAuthenticated) {
+    next({ name: "home" });
+  } else {
+    next();
+  }
+});
 
 export default router;

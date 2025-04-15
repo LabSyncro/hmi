@@ -356,7 +356,6 @@ const completeMaintenance = async () => {
     });
     resetForm();
   } catch (error) {
-    console.error("Error recording maintenance:", error);
     toast({
       title: "Lỗi",
       description: "Không thể lưu dữ liệu sửa chữa",
