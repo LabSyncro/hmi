@@ -1,20 +1,7 @@
 <script setup lang="ts">
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { AcceptableValue } from "reka-ui";
-import { ref } from "vue";
+import { useAuth } from "@/composables";
 
-const selectedLocation = ref("601 H6, Dĩ An");
-const locations = ["601 H6, Dĩ An", "602 H6, Dĩ An", "603 H6, Dĩ An"];
-
-const handleLocationChange = (value: AcceptableValue) => {
-  selectedLocation.value = value as string;
-};
+const { labInfo } = useAuth();
 </script>
 
 <template>
@@ -24,25 +11,11 @@ const handleLocationChange = (value: AcceptableValue) => {
 
       <div class="flex items-center gap-2">
         <span>Địa điểm:</span>
-        <Select
-          :model-value="selectedLocation"
-          @update:model-value="handleLocationChange"
+        <div
+          class="w-fit bg-white text-black border border-gray-200 shadow-sm rounded-md px-3 py-2"
         >
-          <SelectTrigger
-            class="w-[180px] bg-white text-black border border-gray-200 shadow-sm"
-          >
-            <SelectValue :placeholder="selectedLocation" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem
-              v-for="location in locations"
-              :key="location"
-              :value="location"
-            >
-              {{ location }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+          {{ labInfo?.name || "---" }}
+        </div>
       </div>
     </header>
 

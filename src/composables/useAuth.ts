@@ -8,10 +8,33 @@ const POLLING_TIMEOUT_MS = 5 * 60 * 1000;
 type LoginStatus =
   | "idle"
   | "polling"
+  | "awaiting_lab"
   | "success"
   | "error"
-  | "cancelled"
   | "timeout";
+
+interface LabInfo {
+  id: string;
+  name?: string;
+  room?: string;
+  branch?: string;
+}
+
+interface UserInfo {
+  id: string;
+  email: string;
+  name: string;
+  avatar: string;
+  roles: { name: string; key: string }[];
+}
+
+interface AuthResponse {
+  status: "success" | "pending" | "error";
+  token?: string;
+  lab?: LabInfo;
+  user?: UserInfo;
+  message?: string;
+}
 
 function isPolling(status: LoginStatus): boolean {
   return status === "polling";
@@ -24,6 +47,8 @@ export function useAuth() {
   const isGeneratingCode = ref(false);
   const error = ref<string | null>(null);
   const isAuthenticated = computed(() => !!localStorage.getItem("auth_token"));
+  const labInfo = ref<LabInfo | null>(null);
+  const userInfo = ref<UserInfo | null>(null);
 
   const loginStatus = ref<LoginStatus>("idle");
   const pollingIntervalId = ref<number | null>(null);
@@ -59,17 +84,21 @@ export function useAuth() {
     return hmiCode.value;
   };
 
-  const handleSuccessfulLogin = (token: string) => {
+  const handleSuccessfulLogin = (
+    token: string,
+    userData: UserInfo,
+    labData?: LabInfo
+  ) => {
     localStorage.setItem("auth_token", token);
-    localStorage.setItem(
-      "user_info",
-      JSON.stringify({
-        name: "Authenticated User",
-        role: "Lab User",
-        lab: "Determined by Auth",
-      })
-    );
-    loginStatus.value = "success";
+
+    const userStorage = {
+      ...userData,
+      lab: labData || null,
+    };
+    localStorage.setItem("user_info", JSON.stringify(userStorage));
+
+    userInfo.value = userData;
+    labInfo.value = labData || null;
   };
 
   const checkLoginStatus = async (codeWithoutSpace: string) => {
@@ -96,21 +125,30 @@ export function useAuth() {
         throw new Error(errorMsg);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as AuthResponse;
 
       switch (data.status) {
         case "success":
-          if (!data.token) {
-            throw new Error("Success status received but no token provided.");
+          if (!data.token || !data.user) {
+            throw new Error("Lỗi xác thực: Thiếu thông tin người dùng.");
           }
-          handleSuccessfulLogin(data.token);
+          if (!data.lab) {
+            loginStatus.value = "awaiting_lab";
+            isLoading.value = true;
+            return;
+          }
+          loginStatus.value = "success";
+          handleSuccessfulLogin(data.token, data.user, data.lab);
           stopLoginPolling();
           break;
         case "pending":
+          if (loginStatus.value !== "awaiting_lab") {
+            loginStatus.value = "polling";
+          }
           break;
         case "error":
           error.value =
-            data.message || "An unknown error occurred during login.";
+            data.message || "Đã xảy ra lỗi trong quá trình đăng nhập.";
           loginStatus.value = "error";
           stopLoginPolling();
           break;
@@ -121,7 +159,7 @@ export function useAuth() {
       error.value =
         fetchError instanceof Error
           ? fetchError.message
-          : "Polling failed. Check connection or server.";
+          : "Lỗi kết nối. Vui lòng kiểm tra kết nối mạng hoặc máy chủ.";
       loginStatus.value = "error";
       stopLoginPolling();
     }
@@ -143,7 +181,10 @@ export function useAuth() {
 
     checkLoginStatus(codeWithoutSpace);
     pollingIntervalId.value = window.setInterval(() => {
-      if (isPolling(loginStatus.value)) {
+      if (
+        isPolling(loginStatus.value) ||
+        loginStatus.value === "awaiting_lab"
+      ) {
         checkLoginStatus(codeWithoutSpace);
       } else {
         stopLoginPolling();
@@ -151,7 +192,10 @@ export function useAuth() {
     }, POLLING_INTERVAL_MS);
 
     pollingTimeoutId.value = window.setTimeout(() => {
-      if (isPolling(loginStatus.value)) {
+      if (
+        isPolling(loginStatus.value) ||
+        loginStatus.value === "awaiting_lab"
+      ) {
         error.value = "Login timed out. Please try generating a new code.";
         loginStatus.value = "timeout";
         stopLoginPolling();
@@ -168,11 +212,12 @@ export function useAuth() {
       window.clearTimeout(pollingTimeoutId.value);
       pollingTimeoutId.value = null;
     }
-    if (isLoading.value && loginStatus.value !== "success") {
+    if (
+      isLoading.value &&
+      loginStatus.value !== "success" &&
+      loginStatus.value !== "awaiting_lab"
+    ) {
       isLoading.value = false;
-    }
-    if (loginStatus.value === "polling" || loginStatus.value === "timeout") {
-      loginStatus.value = "idle";
     }
   };
 
@@ -182,11 +227,13 @@ export function useAuth() {
     router.push({ name: "login" });
     stopLoginPolling();
     loginStatus.value = "idle";
+    labInfo.value = null;
+    userInfo.value = null;
   };
 
   const getUserInfo = () => {
-    const userInfo = localStorage.getItem("user_info");
-    return userInfo ? JSON.parse(userInfo) : null;
+    const userInfoStr = localStorage.getItem("user_info");
+    return userInfoStr ? JSON.parse(userInfoStr) : null;
   };
 
   return {
@@ -196,6 +243,8 @@ export function useAuth() {
     error,
     isAuthenticated,
     loginStatus,
+    labInfo,
+    userInfo,
     generateHMICode,
     startLoginPolling,
     stopLoginPolling,
