@@ -1,37 +1,37 @@
 <script setup lang="ts">
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
-import { useVirtualKeyboardDetection } from "@/hooks/useVirtualKeyboardDetection";
+import { useVirtualKeyboardDetection } from "@/composables";
 import {
-  deviceService,
-  userService,
-  type AuditRecord,
-  type DeviceStatus,
+    deviceService,
+    userService,
+    type AuditRecord,
+    type DeviceStatus,
 } from "@/lib/db";
 import {
-  statusColorMap,
-  statusMap,
-  type AuditDevice,
-  type AuditDeviceItem,
-  type UserInfo,
+    statusColorMap,
+    statusMap,
+    type AuditDevice,
+    type AuditDeviceItem,
+    type UserInfo,
 } from "@/types/status";
 import {
-  Box,
-  Calendar,
-  ChevronDown,
-  ClipboardCheck,
-  MapPin,
-  Package,
-  Trash,
-  User,
+    Box,
+    Calendar,
+    ChevronDown,
+    ClipboardCheck,
+    MapPin,
+    Package,
+    Trash,
+    User,
 } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
@@ -357,7 +357,6 @@ const completeAudit = async () => {
     });
     resetForm();
   } catch (error) {
-    console.error("Error recording audit:", error);
     toast({
       title: "Lỗi",
       description: "Không thể lưu dữ liệu kiểm đếm",

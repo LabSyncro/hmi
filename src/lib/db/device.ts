@@ -138,7 +138,6 @@ export const deviceService = {
         borrowedLab: row.borrowedLab as string | null,
         expectedReturnLab: row.expectedReturnLab as string | null,
       };
-      console.log(deviceDetail)
 
       return deviceDetail;
     } catch (error) {

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
-import { useVirtualKeyboardDetection } from "@/hooks/useVirtualKeyboardDetection";
+import { useVirtualKeyboardDetection, useOneTimeQR } from "@/composables";
 import {
   deviceService,
   userService,
@@ -85,6 +85,8 @@ const rightColumnTitle = computed(() => {
   if (mode.value === "return") return "NGƯỜI TRẢ";
   return "THÔNG TIN NGƯỜI MƯỢN/TRẢ";
 });
+
+const { verifyScannedQrCode } = useOneTimeQR();
 
 onMounted(async () => {
   const {
@@ -309,6 +311,7 @@ const handleDeviceScan = async (input: string) => {
       toast({
         title: "Thành công",
         description: "Đã thêm thiết bị vào danh sách mượn",
+        variant: "success",
       });
     } else if (mode.value === "return") {
       const newItem: ReturnDeviceItem = {
@@ -336,6 +339,7 @@ const handleDeviceScan = async (input: string) => {
       toast({
         title: "Thành công",
         description: "Đã thêm thiết bị vào danh sách trả",
+        variant: "success",
       });
     }
   } catch (error) {
@@ -347,14 +351,43 @@ const handleDeviceScan = async (input: string) => {
   }
 };
 
+const handleOneTimeQRScan = async (input: string) => {
+  try {
+    const result = await verifyScannedQrCode(input);
+    if (result && result.user) {
+      const { user } = result;
+      userInfo.value = {
+        id: user.id,
+        name: user.name,
+        avatar: user.avatar,
+        roles: user.roles,
+      };
+
+      toast({
+        title: "Thành công",
+        description: `Đã nhận diện: ${user.name}`,
+        variant: "success",
+      });
+    }
+  } catch (error) {
+    toast({
+      title: "Lỗi xử lý mã QR",
+      description: "Vui lòng thử lại",
+      variant: "destructive",
+    });
+  }
+};
+
 const handleVirtualKeyboardDetection = async (
   input: string,
-  type?: "userId" | "device"
+  type?: "userId" | "device" | "oneTimeQR"
 ) => {
   if (type === "userId") {
     await handleUserCodeChange(input);
   } else if (type === "device") {
     await handleDeviceScan(input);
+  } else if (type === "oneTimeQR") {
+    await handleOneTimeQRScan(input);
   }
 };
 
@@ -388,6 +421,10 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
   device: {
     pattern: /^https?:\/\/[^/]+\/devices\/[a-fA-F0-9]{8}\?id=[a-fA-F0-9]+$/,
   },
+  oneTimeQR: {
+    pattern:
+      /^\{"token":"\d{6}","userId":"\d{7}","timestamp":\d+,"expiry":\d+\}$/,
+  },
   scannerThresholdMs: 100,
   maxInputTimeMs: 1000,
 });
@@ -411,7 +448,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           </h2>
         </div>
 
-        <div class="p-4">
+        <div>
           <div
             v-if="devices.length === 0"
             class="flex flex-col items-center justify-center py-20 text-center"

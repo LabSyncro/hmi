@@ -1,47 +1,48 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from "@tauri-apps/api/core";
 
 export type JoinParams = {
-  table: string
-  left_column: string
-  right_column: string
-  kind: 'inner' | 'left' | 'right'
-  alias?: string
-  parent_table?: string
-}
+  table: string;
+  left_column: string;
+  right_column: string;
+  kind: "inner" | "left" | "right";
+  alias?: string;
+  parent_table?: string;
+};
 
 export type QueryParams = {
-  table: string
-  columns?: string[]
-  conditions?: [string, unknown][]
-  order_by?: [string, boolean][]
-  limit?: number
-  offset?: number
-  joins?: JoinParams[]
-}
+  table: string;
+  columns?: string[];
+  conditions?: [string, unknown][];
+  order_by?: [string, boolean][];
+  limit?: number;
+  offset?: number;
+  joins?: JoinParams[];
+};
 
 export type RawQueryParams = {
-  sql: string
-  params?: unknown[]
-}
+  sql: string;
+  params?: unknown[];
+};
 
 export type InsertParams<T> = {
-  table: string
-  value: Partial<T>
-}
+  table: string;
+  value: Partial<T>;
+};
 
 export interface DbClient {
-  queryRaw<T>(params: RawQueryParams): Promise<T[]>
-  table<T>(name: string): TableQueryBuilder<T>
+  queryRaw<T>(params: RawQueryParams): Promise<T[]>;
+  table<T>(name: string): TableQueryBuilder<T>;
+  insert<T>(params: InsertParams<T>): Promise<T>;
 }
 
 class TauriDbClient implements DbClient {
   table<T>(name: string): TableQueryBuilder<T> {
-    return new TableQueryBuilder<T>(this as any as DatabaseClient, name);
+    return new TableQueryBuilder<T>(this, name);
   }
 
   async query<T>(params: QueryParams): Promise<T[]> {
     try {
-      return await invoke<T[]>('query_table', {
+      return await invoke<T[]>("query_table", {
         params: {
           table: params.table,
           columns: params.columns,
@@ -49,7 +50,7 @@ class TauriDbClient implements DbClient {
           order_by: params.order_by,
           limit: params.limit,
           offset: params.offset,
-          joins: params.joins
+          joins: params.joins,
         },
       });
     } catch (error) {
@@ -59,10 +60,27 @@ class TauriDbClient implements DbClient {
 
   async queryRaw<T>(params: RawQueryParams): Promise<T[]> {
     try {
-      return await invoke<T[]>('query_raw', {
+      return await invoke<T[]>("query_raw", {
         params: {
           sql: params.sql,
-          params: params.params || []
+          params: params.params || [],
+        },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async insert<T>(params: InsertParams<T>): Promise<T> {
+    try {
+      const tableName = params.table.includes(".")
+        ? params.table
+        : `public.${params.table}`;
+
+      return await invoke<T>("insert_into_table", {
+        params: {
+          table: tableName,
+          value: params.value,
         },
       });
     } catch (error) {
@@ -73,41 +91,8 @@ class TauriDbClient implements DbClient {
 
 export const db = new TauriDbClient();
 
-export class DatabaseClient {
-  private static instance: DatabaseClient;
-  private constructor() { }
-
-  public static getInstance(): DatabaseClient {
-    if (!DatabaseClient.instance) {
-      DatabaseClient.instance = new DatabaseClient();
-    }
-    return DatabaseClient.instance;
-  }
-
-  public async syncSchema(): Promise<void> {
-    await invoke('sync_schema');
-  }
-
-  public async insert<T>(params: InsertParams<T>): Promise<T> {
-    return invoke<T>('insert_into_table', {
-      params: {
-        table: params.table,
-        value: params.value,
-      },
-    });
-  }
-
-  public table<T>(name: string): TableQueryBuilder<T> {
-    return new TableQueryBuilder<T>(this, name);
-  }
-
-  public async query<T>(params: QueryParams): Promise<T[]> {
-    return db.query<T>(params);
-  }
-
-  public async queryRaw<T>(params: RawQueryParams): Promise<T[]> {
-    return db.queryRaw<T>(params);
-  }
+export async function syncSchema(): Promise<void> {
+  await invoke("sync_schema");
 }
 
 export class TableQueryBuilder<T> {
@@ -127,9 +112,9 @@ export class TableQueryBuilder<T> {
   }> = [];
 
   constructor(
-    private readonly client: DatabaseClient,
-    private readonly tableName: string,
-  ) { }
+    private readonly client: TauriDbClient,
+    private readonly tableName: string
+  ) {}
 
   select(columns: string[]): this {
     this.columns = columns;
@@ -177,30 +162,31 @@ export class TableQueryBuilder<T> {
   }
 
   async execute(): Promise<T[]> {
-    const joins = this.includeRelations.map(relation => ({
+    const joins = this.includeRelations.map((relation) => ({
       table: relation.table,
       left_column: relation.on.from,
       right_column: relation.on.to,
-      kind: 'left' as const
+      kind: "left" as const,
     }));
 
     const allColumns = [
       ...(this.columns || []),
-      ...this.includeRelations.flatMap(relation =>
-        (relation.select || []).map(col =>
-          `${relation.table}.${col} AS ${relation.table}_${col}`
+      ...this.includeRelations.flatMap((relation) =>
+        (relation.select || []).map(
+          (col) => `${relation.table}.${col} AS ${relation.table}_${col}`
         )
-      )
+      ),
     ];
 
     return this.client.query<T>({
       table: this.tableName,
       columns: allColumns.length > 0 ? allColumns : undefined,
       conditions: this.conditions,
-      order_by: this.orderByColumns.length > 0 ? this.orderByColumns : undefined,
+      order_by:
+        this.orderByColumns.length > 0 ? this.orderByColumns : undefined,
       limit: this.limitValue,
       offset: this.offsetValue,
-      joins: joins.length > 0 ? joins : undefined
+      joins: joins.length > 0 ? joins : undefined,
     });
   }
 
@@ -216,4 +202,4 @@ export class TableQueryBuilder<T> {
       value,
     });
   }
-} 
+}
