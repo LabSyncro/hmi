@@ -1,5 +1,5 @@
-import { db } from './client'
-import { DeviceStatus, DeviceQuality } from '@/types/db/generated'
+import { DeviceQuality, DeviceStatus } from "@/types/db/generated";
+import { db } from "./client";
 
 export type DeviceDetail = {
   fullId: string;
@@ -10,6 +10,7 @@ export type DeviceDetail = {
   deviceName: string;
   allowedBorrowRoles: string[];
   allowedViewRoles: string[];
+  isBorrowableLabOnly?: boolean;
   brand: string | null;
   manufacturer: string | null;
   description: string | null;
@@ -27,14 +28,14 @@ export type DeviceDetail = {
   borrowedLab?: string | null;
   expectedReturnLab?: string | null;
   receiptId?: string | null;
-}
+};
 
 export type DeviceInventory = {
   branch: string;
   room: string;
   borrowingQuantity: number;
   availableQuantity: number;
-}
+};
 
 export type AuditRecord = {
   deviceId: string;
@@ -42,7 +43,7 @@ export type AuditRecord = {
   auditCondition: DeviceStatus;
   location: string;
   notes?: string;
-}
+};
 
 export type MaintenanceRecord = {
   deviceId: string;
@@ -50,12 +51,12 @@ export type MaintenanceRecord = {
   maintenanceOutcome: DeviceStatus;
   location: string;
   notes?: string;
-}
+};
 
 export const deviceService = {
   async getDeviceById(id: string): Promise<DeviceDetail | null> {
     if (!id) {
-      return null
+      return null;
     }
 
     try {
@@ -102,11 +103,11 @@ export const deviceService = {
 
       const results = await db.queryRaw<Record<string, unknown>>({
         sql,
-        params: [id]
+        params: [id],
       });
 
       if (results.length === 0) {
-        return null
+        return null;
       }
 
       const row = results[0];
@@ -128,13 +129,17 @@ export const deviceService = {
         labBranch: row.branch as string | null,
         kind: row.kind as string,
         receiptId: row.receiptId as string | null,
-        borrower: row.borrowerId ? {
-          id: row.borrowerId as string,
-          name: row.borrowerName as string,
-          image: row.borrowerImage as string | null,
-        } : null,
+        borrower: row.borrowerId
+          ? {
+              id: row.borrowerId as string,
+              name: row.borrowerName as string,
+              image: row.borrowerImage as string | null,
+            }
+          : null,
         borrowedAt: row.borrowedAt ? new Date(row.borrowedAt as string) : null,
-        expectedReturnAt: row.expectedReturnedAt ? new Date(row.expectedReturnedAt as string) : null,
+        expectedReturnAt: row.expectedReturnedAt
+          ? new Date(row.expectedReturnedAt as string)
+          : null,
         borrowedLab: row.borrowedLab as string | null,
         expectedReturnLab: row.expectedReturnLab as string | null,
       };
@@ -171,14 +176,14 @@ export const deviceService = {
 
       const results = await db.queryRaw<Record<string, unknown>>({
         sql,
-        params: [kindId]
+        params: [kindId],
       });
 
-      return results.map(row => ({
+      return results.map((row) => ({
         branch: row.branch as string,
         room: row.room as string,
         borrowingQuantity: row.borrowingQuantity as number,
-        availableQuantity: row.availableQuantity as number
+        availableQuantity: row.availableQuantity as number,
       }));
     } catch (error) {
       throw error;
@@ -186,14 +191,14 @@ export const deviceService = {
   },
 
   async getDeviceStatusById(id: string): Promise<{
-    status: DeviceStatus,
-    kind: string,
-    deviceName: string,
-    image: any,
-    unit: string
+    status: DeviceStatus;
+    kind: string;
+    deviceName: string;
+    image: any;
+    unit: string;
   } | null> {
     if (!id) {
-      return null
+      return null;
     }
     try {
       type DeviceStatusResult = {
@@ -202,26 +207,27 @@ export const deviceService = {
         deviceKindsName: string;
         deviceKindsImage: any;
         deviceKindsUnit: string;
-      }
+      };
 
-      const device = await db.table<DeviceStatusResult>('devices')
-        .select(['status', 'kind'])
+      const device = await db
+        .table<DeviceStatusResult>("devices")
+        .select(["status", "kind"])
         .include({
-          table: 'device_kinds',
-          select: ['name', 'image', 'unit'],
+          table: "device_kinds",
+          select: ["name", "image", "unit"],
           on: {
-            from: 'kind',
-            to: 'id'
-          }
+            from: "kind",
+            to: "id",
+          },
         })
         .whereMany({
           id,
-          deleted_at: null
+          deleted_at: null,
         })
-        .first()
+        .first();
 
       if (!device || !Object.values(DeviceStatus).includes(device.status)) {
-        return null
+        return null;
       }
 
       return {
@@ -229,10 +235,10 @@ export const deviceService = {
         kind: device.kind,
         deviceName: device.deviceKindsName,
         image: device.deviceKindsImage,
-        unit: device.deviceKindsUnit
-      }
+        unit: device.deviceKindsUnit,
+      };
     } catch (error) {
-      return null
+      return null;
     }
   },
 
@@ -243,9 +249,9 @@ export const deviceService = {
         INSERT INTO activities (type, created_at)
         VALUES ('audit', CURRENT_TIMESTAMP)
         RETURNING id
-      `
-      const activity = await db.queryRaw<{ id: string }>({ sql: activitySql })
-      const activityId = activity[0].id
+      `;
+      const activity = await db.queryRaw<{ id: string }>({ sql: activitySql });
+      const activityId = activity[0].id;
 
       // Record each device audit
       for (const record of records) {
@@ -256,7 +262,7 @@ export const deviceService = {
           VALUES (
             $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP
           )
-        `
+        `;
         await db.queryRaw({
           sql: auditSql,
           params: [
@@ -265,25 +271,25 @@ export const deviceService = {
             activityId,
             record.auditCondition,
             record.location,
-            record.notes
-          ]
-        })
+            record.notes,
+          ],
+        });
 
         // Update device status if needed
-        if (record.auditCondition !== 'healthy') {
+        if (record.auditCondition !== "healthy") {
           const updateSql = `
             UPDATE devices
             SET status = $1
             WHERE id = $2
-          `
+          `;
           await db.queryRaw({
             sql: updateSql,
-            params: [record.auditCondition, record.deviceId]
-          })
+            params: [record.auditCondition, record.deviceId],
+          });
         }
       }
     } catch (error) {
-      throw error
+      throw error;
     }
   },
 
@@ -294,9 +300,9 @@ export const deviceService = {
         INSERT INTO activities (type, created_at)
         VALUES ('maintenance', CURRENT_TIMESTAMP)
         RETURNING id
-      `
-      const activity = await db.queryRaw<{ id: string }>({ sql: activitySql })
-      const activityId = activity[0].id
+      `;
+      const activity = await db.queryRaw<{ id: string }>({ sql: activitySql });
+      const activityId = activity[0].id;
 
       // Record each device maintenance
       for (const record of records) {
@@ -307,7 +313,7 @@ export const deviceService = {
           VALUES (
             $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP
           )
-        `
+        `;
         await db.queryRaw({
           sql: maintenanceSql,
           params: [
@@ -316,34 +322,36 @@ export const deviceService = {
             activityId,
             record.maintenanceOutcome,
             record.location,
-            record.notes
-          ]
-        })
+            record.notes,
+          ],
+        });
 
         // Update device status
         const updateSql = `
           UPDATE devices
           SET status = $1
           WHERE id = $2
-        `
+        `;
         await db.queryRaw({
           sql: updateSql,
-          params: [record.maintenanceOutcome, record.deviceId]
-        })
+          params: [record.maintenanceOutcome, record.deviceId],
+        });
       }
     } catch (error) {
-      throw error
+      throw error;
     }
   },
 
-  async getDeviceAuditHistory(deviceId: string): Promise<{
-    auditorName: string;
-    auditorImage: string | null;
-    condition: DeviceStatus;
-    location: string;
-    notes?: string;
-    createdAt: Date;
-  }[]> {
+  async getDeviceAuditHistory(deviceId: string): Promise<
+    {
+      auditorName: string;
+      auditorImage: string | null;
+      condition: DeviceStatus;
+      location: string;
+      notes?: string;
+      createdAt: Date;
+    }[]
+  > {
     try {
       const sql = `
         SELECT 
@@ -360,25 +368,27 @@ export const deviceService = {
           da.device_id = $1
         ORDER BY 
           da.created_at DESC
-      `
+      `;
 
       return await db.queryRaw({
         sql,
-        params: [deviceId]
-      })
+        params: [deviceId],
+      });
     } catch (error) {
-      throw error
+      throw error;
     }
   },
 
-  async getDeviceMaintenanceHistory(deviceId: string): Promise<{
-    technicianName: string;
-    technicianImage: string | null;
-    outcome: DeviceStatus;
-    location: string;
-    notes?: string;
-    createdAt: Date;
-  }[]> {
+  async getDeviceMaintenanceHistory(deviceId: string): Promise<
+    {
+      technicianName: string;
+      technicianImage: string | null;
+      outcome: DeviceStatus;
+      location: string;
+      notes?: string;
+      createdAt: Date;
+    }[]
+  > {
     try {
       const sql = `
         SELECT 
@@ -395,14 +405,14 @@ export const deviceService = {
           dm.device_id = $1
         ORDER BY 
           dm.created_at DESC
-      `
+      `;
 
       return await db.queryRaw({
         sql,
-        params: [deviceId]
-      })
+        params: [deviceId],
+      });
     } catch (error) {
-      throw error
+      throw error;
     }
-  }
-} 
+  },
+};

@@ -43,13 +43,11 @@ export type UserInfo = {
   roles: { name: string; key: string }[];
 };
 
-// Base device item type with common fields
 export type BaseDeviceItem = {
   id: string;
   status: DeviceStatus;
 };
 
-// Workflow-specific types
 export type AuditDeviceItem = BaseDeviceItem & {
   auditCondition: DeviceStatus;
 };
@@ -67,7 +65,6 @@ export type TransportDeviceItem = BaseDeviceItem & {
   transportDestination: string;
 };
 
-// Generic device type that can be used for any workflow
 export type Device = {
   code: string;
   name: string;
@@ -78,7 +75,6 @@ export type Device = {
   items: BaseDeviceItem[];
 };
 
-// Workflow-specific device types
 export type AuditDevice = Omit<Device, "items"> & {
   items: AuditDeviceItem[];
 };

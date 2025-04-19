@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -9,13 +16,15 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
-import { useVirtualKeyboardDetection, useOneTimeQR } from "@/composables";
+import { useOneTimeQR, useVirtualKeyboardDetection } from "@/composables";
 import {
   deviceService,
+  receiptService,
   userService,
   type DeviceQuality,
   type DeviceStatus,
 } from "@/lib/db";
+import { cn } from "@/lib/utils";
 import {
   qualityColorMap,
   qualityMap,
@@ -26,8 +35,15 @@ import {
   type UserInfo,
 } from "@/types/status";
 import {
+  CalendarDate,
+  DateFormatter,
+  getLocalTimeZone,
+  parseDate,
+  today,
+} from "@internationalized/date";
+import {
   Box,
-  Calendar,
+  CalendarIcon,
   ChevronDown,
   MapPin,
   Package,
@@ -40,27 +56,52 @@ import { useRoute } from "vue-router";
 
 const mode = ref<"idle" | "borrow" | "return">("idle");
 
+const df = new DateFormatter("vi-VN", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
 const userInfo = ref<UserInfo | null>(null);
 
-const devices = ref<(Device & { items: ReturnDeviceItem[] })[]>([]);
+const devices = ref<
+  (Device & { items: ReturnDeviceItem[]; isBorrowableLabOnly?: boolean })[]
+>([]);
 
 const notes = ref<string>("");
 
-const borrowDetails = ref({
-  location: "601 H6, Dĩ An",
-  borrowDate: new Date().toLocaleDateString("vi-VN"),
-  returnDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(
-    "vi-VN"
-  ),
+const borrowDetails = ref<{
+  location: string;
+  borrowDate: string;
+  returnDate?: Date;
+}>({
+  location: "",
+  borrowDate: df.format(new Date()),
+  returnDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
 });
 
-const returnDetails = ref({
+const returnDetails = ref<{
+  location: string;
+  borrowDate: string;
+  returnDate: string;
+  actualReturnDate: string;
+  returnProgress: string;
+}>({
   location: "601 H6, Dĩ An",
   borrowDate: "12/03/2025",
   returnDate: "16/03/2025",
   actualReturnDate: new Date().toLocaleDateString("vi-VN"),
   returnProgress: "Trễ hạn",
 });
+
+function generateUniqueId(): string {
+  const now = new Date();
+  const datePrefix = now.toISOString().split("T")[0].replace(/-/g, "");
+  const randomSuffix = Math.floor(Math.random() * 1000000)
+    .toString()
+    .padStart(6, "0");
+  return `${datePrefix}/${randomSuffix}`;
+}
 
 const route = useRoute();
 
@@ -88,7 +129,33 @@ const rightColumnTitle = computed(() => {
 
 const { verifyScannedQrCode } = useOneTimeQR();
 
+const calendarModel = computed({
+  get: () => {
+    if (borrowDetails.value.returnDate) {
+      return parseDate(
+        borrowDetails.value.returnDate.toISOString().split("T")[0]
+      );
+    }
+    return undefined;
+  },
+  set: (val: CalendarDate | undefined) => {
+    if (val) {
+      const date = new Date(val.year, val.month - 1, val.day, 12, 0, 0);
+      borrowDetails.value.returnDate = date;
+    } else {
+      borrowDetails.value.returnDate = undefined;
+    }
+  },
+});
+
 onMounted(async () => {
+  const stored = localStorage.getItem("user_info");
+  if (stored) {
+    const ui = JSON.parse(stored) as { lab?: { room: string; branch: string } };
+    const loc = ui.lab ? `${ui.lab.room}, ${ui.lab.branch}` : "";
+    borrowDetails.value.location = loc;
+    returnDetails.value.location = loc;
+  }
   const {
     userId,
     userName,
@@ -125,6 +192,9 @@ onMounted(async () => {
         prevQuality: "healthy" as DeviceQuality,
       };
 
+      const deviceDetail = await deviceService.getDeviceById(
+        deviceId as string
+      );
       devices.value.push({
         code: deviceKindId as string,
         name: deviceName as string,
@@ -133,6 +203,7 @@ onMounted(async () => {
         unit: deviceUnit as string,
         expanded: true,
         items: [initialItem],
+        isBorrowableLabOnly: deviceDetail?.isBorrowableLabOnly,
       });
     } else {
       mode.value = "borrow";
@@ -144,6 +215,9 @@ onMounted(async () => {
         prevQuality: "healthy" as DeviceQuality,
       };
 
+      const deviceDetail = await deviceService.getDeviceById(
+        deviceId as string
+      );
       devices.value.push({
         code: deviceKindId as string,
         name: deviceName as string,
@@ -152,6 +226,7 @@ onMounted(async () => {
         unit: deviceUnit as string,
         expanded: true,
         items: [initialItem],
+        isBorrowableLabOnly: deviceDetail?.isBorrowableLabOnly,
       });
     }
   }
@@ -306,6 +381,7 @@ const handleDeviceScan = async (input: string) => {
               prevQuality: "healthy" as DeviceQuality,
             },
           ],
+          isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
         });
       }
       toast({
@@ -334,6 +410,7 @@ const handleDeviceScan = async (input: string) => {
           unit: deviceDetails.unit,
           expanded: true,
           items: [newItem],
+          isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
         });
       }
       toast({
@@ -350,6 +427,125 @@ const handleDeviceScan = async (input: string) => {
     });
   }
 };
+
+async function handleConfirmBorrow() {
+  if (!userInfo.value?.id) {
+    toast({
+      title: "Lỗi",
+      description: "Vui lòng chọn người mượn",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (!borrowDetails.value.returnDate) {
+    toast({
+      title: "Lỗi",
+      description: "Vui lòng chọn ngày hẹn trả",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  try {
+    if (!devices.value || devices.value.length === 0) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng thêm thiết bị vào danh sách mượn",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const stored = localStorage.getItem("user_info");
+    if (!stored) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy thông tin phòng lab",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const storedUserInfo = JSON.parse(stored);
+    if (!storedUserInfo?.lab?.id) {
+      toast({
+        title: "Lỗi",
+        description: "Người dùng không thuộc phòng lab nào",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const deviceData = {
+      items: devices.value.flatMap((device) =>
+        device.items.map((item) => ({
+          id: item.id,
+          prevQuality: item.prevQuality,
+          expectedReturnedAt: borrowDetails.value.returnDate,
+        }))
+      ),
+    };
+
+    const uniqueId = generateUniqueId();
+    await receiptService.createReceipt({
+      id: uniqueId,
+      borrowerId: userInfo.value.id,
+      borrowCheckerId: storedUserInfo.user_info.id,
+      borrowedLabId: storedUserInfo.lab.id,
+      devices: deviceData,
+      expectedReturnAt: borrowDetails.value.returnDate,
+      borrowDetails: {
+        location: borrowDetails.value.location,
+      },
+    });
+    toast({
+      title: "Thành công",
+      description: "Mượn thiết bị thành công",
+      variant: "success",
+    });
+    resetForm();
+  } catch (e) {
+    toast({
+      title: "Lỗi",
+      description: (e as Error).message,
+      variant: "destructive",
+    });
+  }
+}
+
+async function handleConfirmReturn() {
+  if (!userInfo.value?.id) {
+    toast({
+      title: "Lỗi",
+      description: "Vui lòng chọn người trả",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  try {
+    const uniqueId = generateUniqueId();
+    await receiptService.returnReceipt({
+      id: uniqueId,
+      returnerId: userInfo.value.id,
+      devices: devices.value,
+      notes: notes.value,
+    });
+    toast({
+      title: "Thành công",
+      description: "Trả thiết bị thành công",
+      variant: "success",
+    });
+    resetForm();
+  } catch (e) {
+    toast({
+      title: "Lỗi",
+      description: (e as Error).message,
+      variant: "destructive",
+    });
+  }
+}
 
 const handleOneTimeQRScan = async (input: string) => {
   try {
@@ -473,8 +669,8 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 class="p-4 hover:bg-gray-50 cursor-pointer"
                 @click="toggleDevice(device)"
               >
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
+                <div class="grid grid-cols-10 items-center">
+                  <div class="flex items-center col-span-5 gap-3">
                     <img
                       :src="device.image.mainImage"
                       alt="Device image"
@@ -489,6 +685,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                           }}</span>
                         </h3>
                         <Badge
+                          v-if="device.isBorrowableLabOnly"
                           variant="outline"
                           class="text-blue-600 border-blue-200 bg-blue-50 text-xs"
                         >
@@ -500,10 +697,12 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                       </p>
                     </div>
                   </div>
-                  <div class="flex items-center gap-4">
-                    <span class="text-base text-gray-900 font-medium mr-32">
+                  <div class="col-span-4 text-center">
+                    <span class="text-base text-gray-900 font-medium">
                       SL: {{ device.quantity }} {{ device.unit }}
                     </span>
+                  </div>
+                  <div class="justify-self-end mr-2">
                     <ChevronDown
                       class="h-5 w-5 text-gray-400 transition-transform"
                       :class="{ 'rotate-180': device.expanded }"
@@ -528,26 +727,29 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                     <div
                       v-for="item in device.items"
                       :key="item.id"
-                      class="flex items-center justify-between"
+                      class="flex items-center justify-between grid grid-cols-10"
                     >
                       <div class="text-sm font-medium text-gray-900 col-span-5">
                         {{ device.code }}/{{ item.id }}
                       </div>
-                      <div class="flex items-center gap-3 col-span-4">
+                      <div class="col-span-4 text-center">
                         <Badge
                           :class="statusColorMap[item.status]"
-                          class="text-base font-semibold mr-32"
+                          class="text-base font-semibold text-center"
                           variant="outline"
                         >
                           {{ statusMap[item.status] }}
                         </Badge>
-                        <button
+                      </div>
+                      <div class="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           @click.stop="removeDeviceItem(device, item.id)"
-                          class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-100"
-                          aria-label="Remove device"
+                          class="text-red-500 hover:text-red-600 hover:bg-red-100 rounded-full"
                         >
                           <Trash class="h-4 w-4" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -586,6 +788,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                           }}</span>
                         </h3>
                         <Badge
+                          v-if="device.isBorrowableLabOnly"
                           variant="outline"
                           class="text-blue-600 border-blue-200 bg-blue-50 text-xs"
                         >
@@ -744,7 +947,9 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Tổng thiết bị</p>
-                <p class="font-medium text-gray-800">{{ totalDevices }} cái</p>
+                <p class="font-medium text-gray-800 text-right mr-4">
+                  {{ totalDevices }} cái
+                </p>
               </div>
             </div>
 
@@ -753,8 +958,8 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 <MapPin class="h-4 w-4 text-amber-600" />
               </div>
               <div class="grid grid-cols-2 w-full">
-                <p class="text-sm text-gray-500">Nơi mượn/trả</p>
-                <p class="font-medium text-gray-800">
+                <p class="text-sm text-gray-500">Nơi mượn</p>
+                <p class="font-medium text-gray-800 text-right mr-4">
                   {{ borrowDetails.location }}
                 </p>
               </div>
@@ -762,11 +967,11 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
             <div class="flex items-center gap-3">
               <div class="rounded-full bg-green-50 p-2">
-                <Calendar class="h-4 w-4 text-green-600" />
+                <CalendarIcon class="h-4 w-4 text-green-600" />
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Ngày mượn</p>
-                <p class="font-medium text-gray-800">
+                <p class="font-medium text-gray-800 text-right mr-4">
                   {{ borrowDetails.borrowDate }}
                 </p>
               </div>
@@ -774,20 +979,49 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
             <div class="flex items-center gap-3">
               <div class="rounded-full bg-purple-50 p-2">
-                <Calendar class="h-4 w-4 text-purple-600" />
+                <CalendarIcon class="h-4 w-4 text-purple-600" />
               </div>
-              <div class="grid grid-cols-2 w-full">
+              <div class="grid grid-cols-2 w-full items-center">
                 <p class="text-sm text-gray-500">Ngày hẹn trả</p>
-                <p class="font-medium text-gray-800">
-                  {{ borrowDetails.returnDate }}
-                </p>
+                <Popover class="text-right">
+                  <PopoverTrigger
+                    as-child
+                    class="font-medium text-gray-800 justify-self-end"
+                  >
+                    <Button
+                      variant="outline"
+                      :class="
+                        cn(
+                          'w-auto justify-end font-normal',
+                          !borrowDetails.returnDate && 'text-muted-foreground'
+                        )
+                      "
+                    >
+                      <CalendarIcon class="h-4 w-4 opacity-50" />
+                      <span class="text-base">{{
+                        borrowDetails.returnDate &&
+                        borrowDetails.returnDate instanceof Date
+                          ? df.format(borrowDetails.returnDate)
+                          : "Pick a date"
+                      }}</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-auto p-0">
+                    <Calendar
+                      v-model="calendarModel"
+                      calendar-label="Date of birth"
+                      initial-focus
+                      :min-value="today(getLocalTimeZone())"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
             <button
               :disabled="!userInfo || devices.length === 0"
               class="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              @click="resetForm"
+              @click="handleConfirmBorrow"
             >
               <PackageCheck class="h-5 w-5" />
               Xác nhận mượn
@@ -813,7 +1047,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 <MapPin class="h-4 w-4 text-amber-600" />
               </div>
               <div class="grid grid-cols-2 w-full">
-                <p class="text-sm text-gray-500">Nơi mượn/trả</p>
+                <p class="text-sm text-gray-500">Nơi trả</p>
                 <p class="font-medium text-gray-800">
                   {{ returnDetails.location }}
                 </p>
@@ -855,13 +1089,13 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 v-model="notes"
                 placeholder="Thêm ghi chú về tình trạng thiết bị hoặc lý do trả trễ (nếu có)..."
                 class="min-h-[80px]"
-              />
+              ></Textarea>
             </div>
 
             <button
               :disabled="!userInfo || devices.length === 0"
               class="w-full mt-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              @click="resetForm"
+              @click="handleConfirmReturn"
             >
               <PackageCheck class="h-5 w-5" />
               Xác nhận trả

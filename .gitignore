@@ -1,5 +1,4 @@
 # Generated database types
-/src/types/db/generated.ts
 /src/types/db/schema.json
 
 # Logs
@@ -30,8 +29,4 @@ dist-ssr
 .vscode
 
 .env
-memory_bank
-docs
-.cursorrules
-custom_modes
-tasks
+.windsurfrules

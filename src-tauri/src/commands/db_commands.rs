@@ -3,6 +3,7 @@ use serde_json::Value as JsonValue;
 use std::error::Error;
 use tauri::State;
 use tokio_postgres::types::{FromSql, ToSql, Type};
+use uuid::Uuid;
 
 use crate::db::{connection::DbError, queries::builder::QueryBuilder, schema::DatabaseSchema};
 
@@ -414,7 +415,22 @@ pub async fn query_raw(
         .unwrap_or_default()
         .into_iter()
         .map(|v| match v {
-            serde_json::Value::String(s) => Box::new(s) as Box<dyn ToSql + Send + Sync>,
+            serde_json::Value::String(s) => {
+                if let Ok(ts) = chrono::DateTime::parse_from_rfc3339(&s) {
+                    Box::new(ts.with_timezone(&chrono::Utc)) as Box<dyn ToSql + Send + Sync>
+                } else if let Ok(uuid_val) = Uuid::parse_str(&s) {
+                    Box::new(uuid_val) as Box<dyn ToSql + Send + Sync>
+                } else {
+                    Box::new(s) as Box<dyn ToSql + Send + Sync>
+                }
+            }
+            serde_json::Value::Array(arr) => {
+                let vec: Vec<String> = arr
+                    .iter()
+                    .map(|v| v.as_str().unwrap_or_default().to_string())
+                    .collect();
+                Box::new(vec) as Box<dyn ToSql + Send + Sync>
+            }
             serde_json::Value::Number(n) => {
                 if let Some(i) = n.as_i64() {
                     Box::new(i) as Box<dyn ToSql + Send + Sync>
