@@ -56,9 +56,9 @@ export type MaintenanceDeviceItem = BaseDeviceItem & {
   maintenanceOutcome: DeviceStatus;
 };
 
-export type ReturnDeviceItem = BaseDeviceItem & {
-  returnCondition: DeviceStatus;
-  prevQuality?: DeviceQuality;
+export type QualityDeviceItem = BaseDeviceItem & {
+  returnCondition: DeviceQuality;
+  prevQuality: DeviceQuality;
 };
 
 export type TransportDeviceItem = BaseDeviceItem & {
@@ -72,6 +72,7 @@ export type Device = {
   quantity: number;
   unit: string;
   expanded: boolean;
+  isBorrowableLabOnly: boolean;
   items: BaseDeviceItem[];
 };
 

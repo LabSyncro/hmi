@@ -9,8 +9,13 @@ interface DeviceItem {
   expectedReturnedAt: Date;
 }
 
-interface Device {
-  items: DeviceItem[];
+export interface Receipt {
+  id: string;
+  borrowerId: string;
+  borrowCheckerId: string;
+  borrowedLabId: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface CreateReceiptParams {
@@ -18,11 +23,7 @@ interface CreateReceiptParams {
   borrowerId: string;
   borrowCheckerId: string;
   borrowedLabId: string;
-  devices: Device;
-  expectedReturnAt: Date;
-  borrowDetails?: {
-    location?: string;
-  };
+  devices: DeviceItem[];
 }
 
 export const receiptService = {
@@ -326,115 +327,59 @@ export const receiptService = {
 
   async createReceipt(params: CreateReceiptParams) {
     try {
-      if (!params.borrowedLabId) {
-        throw new Error("borrowedLabId is required");
-      }
-
-      if (
-        !params.devices ||
-        !params.devices.items ||
-        params.devices.items.length === 0
-      ) {
+      if (!params.devices || params.devices.length === 0) {
         throw new Error("No devices specified for borrowing");
       }
 
-      await db.queryRaw({
-        sql: "BEGIN;",
-      });
-
-      try {
-        await db.queryRaw({
-          sql: `
-            INSERT INTO receipts (id, borrower_id, borrow_checker_id, borrowed_lab_id)
-            VALUES ($1, $2, $3, $4);
-          `,
-          params: [
-            params.id,
-            params.borrowerId,
-            params.borrowCheckerId,
-            params.borrowedLabId,
-          ],
-        });
-
-        for (const item of params.devices.items) {
-          const activityResult = await db.queryRaw<{ id: string }>({
-            sql: `
-              INSERT INTO activities (type)
-              VALUES ('borrow'::activity_type)
-              RETURNING id;
-            `,
-            params: [],
-          });
-
-          const borrowActivityId = activityResult[0]?.id;
-
-          if (!borrowActivityId) {
-            throw new Error("Failed to create borrow activity");
-          }
-
-          const deviceResult = await db.queryRaw<{
-            status: DeviceStatus;
-          }>({
-            sql: `
-              SELECT status
-              FROM devices
-              WHERE id = $1;
-            `,
-            params: [item.id],
-          });
-
-          if (!deviceResult.length) {
-            throw new Error(`Device with ID ${item.id} not found`);
-          }
-
+      const deviceValues = params.devices
+        .map((item) => {
           const prevQuality = item.prevQuality || DeviceQuality.HEALTHY;
-          const expectedReturnAt =
-            item.expectedReturnedAt || params.expectedReturnAt;
+          const expectedReturnedLabId =
+            item.expectedReturnedLabId || params.borrowedLabId;
+          return `'${item.id}', '${item.expectedReturnedAt.toISOString()}'::timestamptz, '${expectedReturnedLabId}'::uuid, '${prevQuality}'::device_quality`;
+        })
+        .join("),(");
 
-          const sql = `
+      await db.queryRaw<{ id: string }>({
+        sql: `
+          WITH receipt AS (
+            INSERT INTO receipts (id, borrower_id, borrow_checker_id, borrowed_lab_id)
+            VALUES ('${params.id}', '${params.borrowerId}', '${params.borrowCheckerId}', '${params.borrowedLabId}'::uuid)
+            RETURNING id
+          ),
+          activity AS (
+            INSERT INTO activities (type)
+            VALUES ('borrow'::activity_type)
+            RETURNING id
+          ),
+          receipts_devices_insert AS (
             INSERT INTO receipts_devices (
-              receipt_id, 
-              device_id, 
-              borrow_id, 
-              expected_returned_at, 
+              receipt_id,
+              device_id,
+              borrow_id,
+              expected_returned_at,
               expected_returned_lab_id,
               prev_quality
             )
-            VALUES ($1, $2, $3, $4, $5, '${prevQuality}'::device_quality);
-          `;
+            SELECT 
+              '${params.id}',
+              v.device_id,
+              (SELECT id FROM activity),
+              v.expected_returned_at,
+              v.expected_returned_lab_id,
+              v.prev_quality
+            FROM (
+              VALUES (${deviceValues})
+            ) AS v(device_id, expected_returned_at, expected_returned_lab_id, prev_quality)
+            RETURNING device_id
+          )
+          UPDATE devices 
+          SET status = 'borrowing'::device_status 
+          WHERE id IN (SELECT device_id FROM receipts_devices_insert)
+        `,
+      });
 
-          await db.queryRaw({
-            sql,
-            params: [
-              params.id,
-              item.id,
-              borrowActivityId,
-              expectedReturnAt,
-              item.expectedReturnedLabId || params.borrowedLabId,
-            ],
-          });
-
-          await db.queryRaw({
-            sql: `
-              UPDATE devices
-              SET status = 'borrowing'::device_status
-              WHERE id = $1;
-            `,
-            params: [item.id],
-          });
-        }
-
-        await db.queryRaw({
-          sql: "COMMIT;",
-        });
-
-        return { success: true, id: params.id };
-      } catch (error) {
-        await db.queryRaw({
-          sql: "ROLLBACK;",
-        });
-        throw error;
-      }
+      return { success: true, id: params.id };
     } catch (error) {
       throw error;
     }

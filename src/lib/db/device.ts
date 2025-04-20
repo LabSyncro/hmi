@@ -10,7 +10,7 @@ export type DeviceDetail = {
   deviceName: string;
   allowedBorrowRoles: string[];
   allowedViewRoles: string[];
-  isBorrowableLabOnly?: boolean;
+  isBorrowableLabOnly: boolean;
   brand: string | null;
   manufacturer: string | null;
   description: string | null;
@@ -73,6 +73,7 @@ export const deviceService = {
           dk.brand,
           dk.manufacturer,
           dk.description,
+          dk.is_borrowable_lab_only,
           c.name AS category_name,
           l.room,
           l.branch,
@@ -124,6 +125,7 @@ export const deviceService = {
         brand: row.brand as string | null,
         manufacturer: row.manufacturer as string | null,
         description: row.description as string | null,
+        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
         categoryName: row.categoryName as string,
         labRoom: row.room as string | null,
         labBranch: row.branch as string | null,

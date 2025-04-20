@@ -1,39 +1,4 @@
 <script setup lang="ts">
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/components/ui/toast";
-import { useOneTimeQR, useVirtualKeyboardDetection } from "@/composables";
-import {
-  deviceService,
-  receiptService,
-  userService,
-  type DeviceQuality,
-  type DeviceStatus,
-} from "@/lib/db";
-import { cn } from "@/lib/utils";
-import {
-  qualityColorMap,
-  qualityMap,
-  statusColorMap,
-  statusMap,
-  type Device,
-  type ReturnDeviceItem,
-  type UserInfo,
-} from "@/types/status";
 import {
   CalendarDate,
   DateFormatter,
@@ -44,15 +9,15 @@ import {
 import {
   Box,
   CalendarIcon,
+  CheckIcon,
   ChevronDown,
+  InfoIcon,
   MapPin,
   Package,
   PackageCheck,
   Trash,
   User,
 } from "lucide-vue-next";
-import { computed, onMounted, ref } from "vue";
-import { useRoute } from "vue-router";
 
 const mode = ref<"idle" | "borrow" | "return">("idle");
 
@@ -64,9 +29,7 @@ const df = new DateFormatter("vi-VN", {
 
 const userInfo = ref<UserInfo | null>(null);
 
-const devices = ref<
-  (Device & { items: ReturnDeviceItem[]; isBorrowableLabOnly?: boolean })[]
->([]);
+const devices = ref<(Device & { items: QualityDeviceItem[] })[]>([]);
 
 const notes = ref<string>("");
 
@@ -77,7 +40,7 @@ const borrowDetails = ref<{
 }>({
   location: "",
   borrowDate: df.format(new Date()),
-  returnDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  returnDate: undefined,
 });
 
 const returnDetails = ref<{
@@ -104,6 +67,7 @@ function generateUniqueId(): string {
 }
 
 const route = useRoute();
+const router = useRouter();
 
 const totalDevices = computed(() => {
   return devices.value.reduce((total, device) => total + device.quantity, 0);
@@ -129,8 +93,20 @@ const rightColumnTitle = computed(() => {
 
 const { verifyScannedQrCode } = useOneTimeQR();
 
+const isConfirming = ref(false);
+const showSuccessModal = ref(false);
+const successMessage = ref("");
+const receiptId = ref("");
+
+const hasBorrowableLabOnlyDevice = computed(() => {
+  return devices.value.some((device) => device.isBorrowableLabOnly);
+});
+
 const calendarModel = computed({
   get: () => {
+    if (hasBorrowableLabOnlyDevice.value) {
+      return parseDate(new Date().toISOString().split("T")[0]);
+    }
     if (borrowDetails.value.returnDate) {
       return parseDate(
         borrowDetails.value.returnDate.toISOString().split("T")[0]
@@ -139,6 +115,10 @@ const calendarModel = computed({
     return undefined;
   },
   set: (val: CalendarDate | undefined) => {
+    if (hasBorrowableLabOnlyDevice.value) {
+      borrowDetails.value.returnDate = new Date();
+      return;
+    }
     if (val) {
       const date = new Date(val.year, val.month - 1, val.day, 12, 0, 0);
       borrowDetails.value.returnDate = date;
@@ -148,6 +128,14 @@ const calendarModel = computed({
   },
 });
 
+const goToHome = () => {
+  showSuccessModal.value = false;
+  mode.value = "idle";
+  devices.value = [];
+  notes.value = "";
+  router.push("/");
+};
+
 onMounted(async () => {
   const stored = localStorage.getItem("user_info");
   if (stored) {
@@ -155,80 +143,6 @@ onMounted(async () => {
     const loc = ui.lab ? `${ui.lab.room}, ${ui.lab.branch}` : "";
     borrowDetails.value.location = loc;
     returnDetails.value.location = loc;
-  }
-  const {
-    userId,
-    userName,
-    userAvatar,
-    userRoles,
-    deviceId,
-    deviceName,
-    deviceImage,
-    deviceStatus,
-    deviceKindId,
-    deviceUnit,
-  } = route.query;
-
-  if (userId) {
-    userInfo.value = {
-      id: userId as string,
-      name: userName as string,
-      avatar: userAvatar as string,
-      roles: JSON.parse((userRoles as string) || "[]") as {
-        name: string;
-        key: string;
-      }[],
-    };
-  }
-
-  if (deviceId) {
-    if (deviceStatus === "borrowing") {
-      mode.value = "return";
-
-      const initialItem: ReturnDeviceItem = {
-        id: deviceId as string,
-        status: deviceStatus as DeviceStatus,
-        returnCondition: "healthy" as DeviceStatus,
-        prevQuality: "healthy" as DeviceQuality,
-      };
-
-      const deviceDetail = await deviceService.getDeviceById(
-        deviceId as string
-      );
-      devices.value.push({
-        code: deviceKindId as string,
-        name: deviceName as string,
-        image: deviceImage as string,
-        quantity: 1,
-        unit: deviceUnit as string,
-        expanded: true,
-        items: [initialItem],
-        isBorrowableLabOnly: deviceDetail?.isBorrowableLabOnly,
-      });
-    } else {
-      mode.value = "borrow";
-
-      const initialItem: ReturnDeviceItem = {
-        id: deviceId as string,
-        status: deviceStatus as DeviceStatus,
-        returnCondition: "healthy" as DeviceStatus,
-        prevQuality: "healthy" as DeviceQuality,
-      };
-
-      const deviceDetail = await deviceService.getDeviceById(
-        deviceId as string
-      );
-      devices.value.push({
-        code: deviceKindId as string,
-        name: deviceName as string,
-        image: deviceImage as string,
-        quantity: 1,
-        unit: deviceUnit as string,
-        expanded: true,
-        items: [initialItem],
-        isBorrowableLabOnly: deviceDetail?.isBorrowableLabOnly,
-      });
-    }
   }
 });
 
@@ -245,6 +159,7 @@ async function handleUserCodeChange(userId: string) {
     return;
   }
 
+  isConfirming.value = true;
   try {
     const userMeta = await userService.getUserById(userId);
     if (!userMeta) {
@@ -276,6 +191,8 @@ async function handleUserCodeChange(userId: string) {
       variant: "destructive",
     });
     userInfo.value = null;
+  } finally {
+    isConfirming.value = false;
   }
 }
 
@@ -361,7 +278,7 @@ const handleDeviceScan = async (input: string) => {
         existingDevice.items.push({
           id: deviceId,
           status: deviceDetails.status,
-          returnCondition: "healthy" as DeviceStatus,
+          returnCondition: "healthy" as DeviceQuality,
           prevQuality: "healthy" as DeviceQuality,
         });
         existingDevice.quantity = existingDevice.items.length;
@@ -377,7 +294,7 @@ const handleDeviceScan = async (input: string) => {
             {
               id: deviceId,
               status: deviceDetails.status,
-              returnCondition: "healthy" as DeviceStatus,
+              returnCondition: "healthy" as DeviceQuality,
               prevQuality: "healthy" as DeviceQuality,
             },
           ],
@@ -390,10 +307,10 @@ const handleDeviceScan = async (input: string) => {
         variant: "success",
       });
     } else if (mode.value === "return") {
-      const newItem: ReturnDeviceItem = {
+      const newItem: QualityDeviceItem = {
         id: deviceId,
         status: deviceDetails.status,
-        returnCondition: "healthy" as DeviceStatus,
+        returnCondition: "healthy" as DeviceQuality,
         prevQuality: "healthy" as DeviceQuality,
       };
 
@@ -429,12 +346,7 @@ const handleDeviceScan = async (input: string) => {
 };
 
 async function handleConfirmBorrow() {
-  if (!userInfo.value?.id) {
-    toast({
-      title: "Lỗi",
-      description: "Vui lòng chọn người mượn",
-      variant: "destructive",
-    });
+  if (!userInfo.value || devices.value.length === 0) {
     return;
   }
 
@@ -447,16 +359,8 @@ async function handleConfirmBorrow() {
     return;
   }
 
+  isConfirming.value = true;
   try {
-    if (!devices.value || devices.value.length === 0) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng thêm thiết bị vào danh sách mượn",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const stored = localStorage.getItem("user_info");
     if (!stored) {
       toast({
@@ -477,57 +381,69 @@ async function handleConfirmBorrow() {
       return;
     }
 
-    const deviceData = {
-      items: devices.value.flatMap((device) =>
-        device.items.map((item) => ({
+    const allDeviceItems = devices.value.reduce(
+      (acc, device) => {
+        const items = device.items.map((item) => ({
           id: item.id,
-          prevQuality: item.prevQuality,
-          expectedReturnedAt: borrowDetails.value.returnDate,
-        }))
-      ),
-    };
+          prevQuality:
+            (item as QualityDeviceItem).prevQuality ||
+            ("healthy" as DeviceQuality),
+          expectedReturnedAt: borrowDetails.value.returnDate!,
+          expectedReturnedLabId: storedUserInfo.lab.id,
+        }));
+        return acc.concat(items);
+      },
+      [] as {
+        id: string;
+        prevQuality: DeviceQuality;
+        expectedReturnedAt: Date;
+      }[]
+    );
+
+    if (allDeviceItems.length === 0) {
+      toast({
+        title: "Lỗi",
+        description: "Không có thiết bị nào được chọn để mượn.",
+        variant: "destructive",
+      });
+      isConfirming.value = false;
+      return;
+    }
 
     const uniqueId = generateUniqueId();
     await receiptService.createReceipt({
       id: uniqueId,
       borrowerId: userInfo.value.id,
-      borrowCheckerId: storedUserInfo.user_info.id,
+      borrowCheckerId: storedUserInfo.id,
       borrowedLabId: storedUserInfo.lab.id,
-      devices: deviceData,
-      expectedReturnAt: borrowDetails.value.returnDate,
-      borrowDetails: {
-        location: borrowDetails.value.location,
-      },
+      devices: allDeviceItems,
     });
-    toast({
-      title: "Thành công",
-      description: "Mượn thiết bị thành công",
-      variant: "success",
-    });
-    resetForm();
+
+    successMessage.value = "Ghi nhận mượn thành công";
+    receiptId.value = uniqueId;
+    showSuccessModal.value = true;
   } catch (e) {
     toast({
       title: "Lỗi",
       description: (e as Error).message,
       variant: "destructive",
     });
+  } finally {
+    isConfirming.value = false;
   }
 }
 
 async function handleConfirmReturn() {
-  if (!userInfo.value?.id) {
-    toast({
-      title: "Lỗi",
-      description: "Vui lòng chọn người trả",
-      variant: "destructive",
-    });
+  if (!userInfo.value || devices.value.length === 0) {
     return;
   }
 
+  isConfirming.value = true;
+  const originalReceiptId = route.query.receiptId || "UNKNOWN_RECEIPT";
   try {
-    const uniqueId = generateUniqueId();
+    // @ts-expect-error - Assuming returnReceipt type definition is outdated/incorrect
     await receiptService.returnReceipt({
-      id: uniqueId,
+      id: originalReceiptId,
       returnerId: userInfo.value.id,
       devices: devices.value,
       notes: notes.value,
@@ -538,12 +454,18 @@ async function handleConfirmReturn() {
       variant: "success",
     });
     resetForm();
+
+    successMessage.value = "Ghi nhận trả thành công";
+    receiptId.value = originalReceiptId as string;
+    showSuccessModal.value = true;
   } catch (e) {
     toast({
       title: "Lỗi",
       description: (e as Error).message,
       variant: "destructive",
     });
+  } finally {
+    isConfirming.value = false;
   }
 }
 
@@ -607,9 +529,11 @@ const removeDeviceItem = (device: Device, itemId: string) => {
 };
 
 const resetForm = () => {
-  mode.value = "idle";
-  devices.value = [];
-  notes.value = "";
+  if (!showSuccessModal.value) {
+    mode.value = "idle";
+    devices.value = [];
+    notes.value = "";
+  }
 };
 
 useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
@@ -849,7 +773,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                           class="h-9 text-sm bg-white text-base font-semibold w-fit"
                           :class="
                             item.returnCondition
-                              ? statusColorMap[item.returnCondition]
+                              ? qualityColorMap[item.returnCondition]
                               : 'text-gray-900'
                           "
                         >
@@ -870,13 +794,13 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                     </div>
                   </div>
                   <div class="col-span-1 flex justify-end">
-                    <button
+                    <Button
                       @click.stop="removeDeviceItem(device, item.id)"
                       class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-100"
                       aria-label="Remove device"
                     >
                       <Trash class="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -983,49 +907,92 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </div>
               <div class="grid grid-cols-2 w-full items-center">
                 <p class="text-sm text-gray-500">Ngày hẹn trả</p>
-                <Popover class="text-right">
-                  <PopoverTrigger
-                    as-child
-                    class="font-medium text-gray-800 justify-self-end"
-                  >
-                    <Button
-                      variant="outline"
-                      :class="
-                        cn(
-                          'w-auto justify-end font-normal',
-                          !borrowDetails.returnDate && 'text-muted-foreground'
-                        )
-                      "
-                    >
-                      <CalendarIcon class="h-4 w-4 opacity-50" />
-                      <span class="text-base">{{
-                        borrowDetails.returnDate &&
-                        borrowDetails.returnDate instanceof Date
-                          ? df.format(borrowDetails.returnDate)
-                          : "Pick a date"
-                      }}</span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent class="w-auto p-0">
-                    <Calendar
-                      v-model="calendarModel"
-                      calendar-label="Date of birth"
-                      initial-focus
-                      :min-value="today(getLocalTimeZone())"
-                    />
-                  </PopoverContent>
-                </Popover>
+                <div class="text-right">
+                  <template v-if="hasBorrowableLabOnlyDevice">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger as-child>
+                          <div
+                            class="text-base font-medium text-gray-800 inline-flex gap-2 items-center mr-4"
+                          >
+                            <InfoIcon class="h-4 w-4 text-gray-400" />
+                            {{ borrowDetails.borrowDate }}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Trả trong ngày</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </template>
+                  <template v-else>
+                    <Popover class="text-right">
+                      <PopoverTrigger
+                        as-child
+                        class="font-medium text-gray-800 justify-self-end"
+                      >
+                        <Button
+                          variant="outline"
+                          :class="
+                            cn(
+                              'w-auto justify-end font-normal text-base',
+                              !borrowDetails.returnDate &&
+                                'text-muted-foreground'
+                            )
+                          "
+                        >
+                          <CalendarIcon class="h-4 w-4 opacity-50" />
+                          {{
+                            borrowDetails.returnDate &&
+                            borrowDetails.returnDate instanceof Date
+                              ? df.format(borrowDetails.returnDate)
+                              : "Chọn ngày trả"
+                          }}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent class="w-auto p-0">
+                        <Calendar
+                          v-model="calendarModel"
+                          calendar-label="Return date"
+                          initial-focus
+                          :min-value="today(getLocalTimeZone())"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </template>
+                </div>
               </div>
             </div>
 
-            <button
-              :disabled="!userInfo || devices.length === 0"
-              class="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            <Button
+              :disabled="isConfirming || !userInfo || devices.length === 0"
+              class="w-full mt-4 bg-blue-600 hover:bg-blue-700"
               @click="handleConfirmBorrow"
             >
-              <PackageCheck class="h-5 w-5" />
+              <svg
+                v-if="isConfirming"
+                class="mr-3 -ml-1 size-5 animate-spin text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <PackageCheck v-else class="h-5 w-5 mr-2" />
               Xác nhận mượn
-            </button>
+            </Button>
           </div>
 
           <div
@@ -1092,15 +1059,74 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               ></Textarea>
             </div>
 
-            <button
-              :disabled="!userInfo || devices.length === 0"
-              class="w-full mt-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            <Button
+              :disabled="isConfirming || !userInfo || devices.length === 0"
+              class="w-full mt-4 bg-blue-600 hover:bg-blue-700"
               @click="handleConfirmReturn"
             >
-              <PackageCheck class="h-5 w-5" />
+              <svg
+                v-if="isConfirming"
+                class="mr-3 -ml-1 size-5 animate-spin text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <PackageCheck v-else class="h-5 w-5 mr-2" />
               Xác nhận trả
-            </button>
+            </Button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showSuccessModal"
+      class="fixed inset-0 flex items-center justify-center z-50"
+    >
+      <div
+        class="fixed inset-0 bg-black bg-opacity-60"
+        @click="showSuccessModal = false"
+      ></div>
+
+      <div
+        class="bg-white rounded-lg shadow-xl z-10 max-w-md w-full mx-4 overflow-hidden"
+      >
+        <div class="flex flex-col items-center text-center py-6 px-6">
+          <div
+            class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 mb-4"
+          >
+            <CheckIcon class="h-12 w-12 text-green-600" />
+          </div>
+          <h2 class="text-xl font-semibold leading-6 text-gray-900 mb-2">
+            Hoàn tất
+          </h2>
+          <p class="text-lg text-gray-900 mb-1">
+            {{ successMessage }}
+          </p>
+          <p v-if="receiptId" class="text-base text-gray-600 mb-6">
+            Mã đơn: {{ receiptId }}
+          </p>
+          <Button
+            type="button"
+            class="w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            @click="goToHome"
+          >
+            Về trang chủ
+          </Button>
         </div>
       </div>
     </div>
