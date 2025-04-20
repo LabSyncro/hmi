@@ -1,29 +1,29 @@
 import { DeviceQuality, DeviceStatus } from "@/types/db/generated";
 import { db } from "./client";
 
-interface DeviceItem {
-  id: string;
-  returnCondition?: string;
-  prevQuality?: string;
-  expectedReturnedLabId?: string;
-  expectedReturnedAt: Date;
-}
-
-export interface Receipt {
-  id: string;
-  borrowerId: string;
-  borrowCheckerId: string;
-  borrowedLabId: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 interface CreateReceiptParams {
   id: string;
   borrowerId: string;
   borrowCheckerId: string;
   borrowedLabId: string;
-  devices: DeviceItem[];
+  devices: {
+    id: string;
+    expectedReturnedAt: Date;
+    expectedReturnedLabId?: string;
+    prevQuality: DeviceQuality;
+  }[];
+}
+
+interface ReturnReceiptParams {
+  id: string;
+  returnerId: string;
+  returnedCheckerId: string;
+  returnedLabId: string;
+  devices: {
+    id: string;
+    afterQuality: DeviceQuality;
+  }[];
+  note?: string;
 }
 
 export const receiptService = {
@@ -343,7 +343,7 @@ export const receiptService = {
       await db.queryRaw<{ id: string }>({
         sql: `
           WITH receipt AS (
-            INSERT INTO receipts (id, borrower_id, borrow_checker_id, borrowed_lab_id)
+            INSERT INTO receipts (id, actor_id, checker_id, lab_id)
             VALUES ('${params.id}', '${params.borrowerId}', '${params.borrowCheckerId}', '${params.borrowedLabId}'::uuid)
             RETURNING id
           ),
@@ -354,7 +354,7 @@ export const receiptService = {
           ),
           receipts_devices_insert AS (
             INSERT INTO receipts_devices (
-              receipt_id,
+              borrowed_receipt_id,
               device_id,
               borrow_id,
               expected_returned_at,
@@ -385,5 +385,59 @@ export const receiptService = {
     }
   },
 
-  async returnReceipt() {},
+  async returnReceipt(params: ReturnReceiptParams) {
+    try {
+      if (!params.devices || params.devices.length === 0) {
+        throw new Error("No devices specified for return");
+      }
+
+      const deviceValues = params.devices
+        .map((item) => `('${item.id}', '${item.afterQuality}'::device_quality)`)
+        .join(",");
+
+      const overallNote = params.note ? `'${params.note}'` : "NULL";
+
+      await db.queryRaw({
+        sql: `
+          WITH return_receipt AS (
+            INSERT INTO receipts (id, actor_id, checker_id, lab_id)
+            VALUES ('${params.id}', '${params.returnedCheckerId}', '${params.returnedCheckerId}', '${params.returnedLabId}'::uuid)
+            RETURNING id
+          ),
+          return_activity AS (
+            INSERT INTO activities (type, note)
+            VALUES ('return'::activity_type, ${overallNote})
+            RETURNING id
+          ),
+          update_receipts_devices AS (
+            UPDATE receipts_devices rd
+            SET
+              returned_receipt_id = (SELECT id FROM return_receipt),
+              after_quality = v.after_quality,
+              return_id = (SELECT id FROM return_activity)
+            FROM
+              (VALUES ${deviceValues}) AS v(device_id, after_quality)
+            WHERE
+              rd.device_id = v.device_id::text
+              AND rd.returned_receipt_id IS NULL
+            RETURNING rd.device_id, v.after_quality
+          )
+          UPDATE devices d
+          SET
+            status = CASE
+              WHEN urd.after_quality = 'healthy' THEN 'healthy'::device_status
+              WHEN urd.after_quality = 'needs_fixing' THEN 'broken'::device_status
+              WHEN urd.after_quality = 'broken' THEN 'discarded'::device_status
+              WHEN urd.after_quality = 'lost' THEN 'lost'::device_status
+            END
+          FROM update_receipts_devices urd
+          WHERE d.id = urd.device_id
+        `,
+      });
+
+      return { success: true, id: params.id };
+    } catch (error) {
+      throw error;
+    }
+  },
 };

@@ -7,16 +7,16 @@ import {
   today,
 } from "@internationalized/date";
 import {
-  Box,
+  BoxIcon,
   CalendarIcon,
   CheckIcon,
-  ChevronDown,
+  ChevronDownIcon,
   InfoIcon,
-  MapPin,
-  Package,
-  PackageCheck,
-  Trash,
-  User,
+  MapPinIcon,
+  PackageCheckIcon,
+  PackageIcon,
+  TrashIcon,
+  UserIcon,
 } from "lucide-vue-next";
 
 const mode = ref<"idle" | "borrow" | "return">("idle");
@@ -45,16 +45,16 @@ const borrowDetails = ref<{
 
 const returnDetails = ref<{
   location: string;
-  borrowDate: string;
-  returnDate: string;
+  expectedReturnAt: string;
   actualReturnDate: string;
   returnProgress: string;
+  notes: string;
 }>({
-  location: "601 H6, Dĩ An",
-  borrowDate: "12/03/2025",
-  returnDate: "16/03/2025",
-  actualReturnDate: new Date().toLocaleDateString("vi-VN"),
-  returnProgress: "Trễ hạn",
+  location: "",
+  expectedReturnAt: df.format(new Date()),
+  actualReturnDate: df.format(new Date()),
+  returnProgress: "",
+  notes: "",
 });
 
 function generateUniqueId(): string {
@@ -66,7 +66,6 @@ function generateUniqueId(): string {
   return `${datePrefix}/${randomSuffix}`;
 }
 
-const route = useRoute();
 const router = useRouter();
 
 const totalDevices = computed(() => {
@@ -89,6 +88,24 @@ const rightColumnTitle = computed(() => {
   if (mode.value === "borrow") return "NGƯỜI MƯỢN";
   if (mode.value === "return") return "NGƯỜI TRẢ";
   return "THÔNG TIN NGƯỜI MƯỢN/TRẢ";
+});
+
+const overallReturnStatus = computed(() => {
+  if (!devices.value || devices.value.length === 0) {
+    return ""; // Or some default if no devices
+  }
+
+  const isAnyDeviceLate = devices.value.some((device) =>
+    device.items.some((item) => {
+      const qualityItem = item as QualityDeviceItem; // Assert type
+      if (!qualityItem.expectedReturnAt) return false; // Skip if no expected date
+      return calculateReturnProgress(qualityItem.expectedReturnAt).includes(
+        "Trễ"
+      );
+    })
+  );
+
+  return isAnyDeviceLate ? "Trễ hạn" : "Đúng hạn";
 });
 
 const { verifyScannedQrCode } = useOneTimeQR();
@@ -196,6 +213,18 @@ async function handleUserCodeChange(userId: string) {
   }
 }
 
+const calculateReturnProgress = (expectedDate: string) => {
+  const today = new Date();
+  const returnDate = new Date(expectedDate);
+  if (today > returnDate) {
+    return "Trễ hạn";
+  } else {
+    const diffTime = Math.abs(returnDate.getTime() - today.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return `Đúng hạn (còn ${diffDays} ngày)`;
+  }
+};
+
 const handleDeviceScan = async (input: string) => {
   try {
     const deviceKindId = input.match(/\/devices\/([a-fA-F0-9]+)/)?.[1];
@@ -278,8 +307,8 @@ const handleDeviceScan = async (input: string) => {
         existingDevice.items.push({
           id: deviceId,
           status: deviceDetails.status,
-          returnCondition: "healthy" as DeviceQuality,
-          prevQuality: "healthy" as DeviceQuality,
+          prevQuality: DeviceQuality.HEALTHY,
+          expectedReturnAt: deviceDetails.expectedReturnAt,
         });
         existingDevice.quantity = existingDevice.items.length;
       } else {
@@ -294,8 +323,8 @@ const handleDeviceScan = async (input: string) => {
             {
               id: deviceId,
               status: deviceDetails.status,
-              returnCondition: "healthy" as DeviceQuality,
-              prevQuality: "healthy" as DeviceQuality,
+              prevQuality: DeviceQuality.HEALTHY,
+              expectedReturnAt: deviceDetails.expectedReturnAt,
             },
           ],
           isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
@@ -307,11 +336,17 @@ const handleDeviceScan = async (input: string) => {
         variant: "success",
       });
     } else if (mode.value === "return") {
-      const newItem: QualityDeviceItem = {
+      const qualityValue = deviceDetails.prevQuality || DeviceQuality.HEALTHY;
+
+      const returnDate =
+        deviceDetails.expectedReturnAt || df.format(new Date());
+
+      const newItem = {
         id: deviceId,
         status: deviceDetails.status,
-        returnCondition: "healthy" as DeviceQuality,
-        prevQuality: "healthy" as DeviceQuality,
+        returnCondition: DeviceQuality.HEALTHY,
+        prevQuality: qualityValue,
+        expectedReturnAt: returnDate,
       };
 
       const existingDevice = devices.value.find((d) => d.code === deviceKindId);
@@ -337,6 +372,7 @@ const handleDeviceScan = async (input: string) => {
       });
     }
   } catch (error) {
+    console.error(error);
     toast({
       title: "Lỗi",
       description: "Không thể xử lý thiết bị",
@@ -381,24 +417,16 @@ async function handleConfirmBorrow() {
       return;
     }
 
-    const allDeviceItems = devices.value.reduce(
-      (acc, device) => {
-        const items = device.items.map((item) => ({
-          id: item.id,
-          prevQuality:
-            (item as QualityDeviceItem).prevQuality ||
-            ("healthy" as DeviceQuality),
-          expectedReturnedAt: borrowDetails.value.returnDate!,
-          expectedReturnedLabId: storedUserInfo.lab.id,
-        }));
-        return acc.concat(items);
-      },
-      [] as {
-        id: string;
-        prevQuality: DeviceQuality;
-        expectedReturnedAt: Date;
-      }[]
-    );
+    const allDeviceItems = devices.value.reduce((acc, device) => {
+      const items = device.items.map((item) => ({
+        id: item.id,
+        prevQuality:
+          (item as QualityDeviceItem).prevQuality || DeviceQuality.HEALTHY,
+        expectedReturnedAt: borrowDetails.value.returnDate!,
+        expectedReturnedLabId: storedUserInfo.lab.id,
+      }));
+      return acc.concat(items);
+    }, [] as any[]);
 
     if (allDeviceItems.length === 0) {
       toast({
@@ -439,24 +467,69 @@ async function handleConfirmReturn() {
   }
 
   isConfirming.value = true;
-  const originalReceiptId = route.query.receiptId || "UNKNOWN_RECEIPT";
   try {
-    // @ts-expect-error - Assuming returnReceipt type definition is outdated/incorrect
+    const stored = localStorage.getItem("user_info");
+    if (!stored) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy thông tin phòng lab",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const storedUserInfo = JSON.parse(stored);
+    if (!storedUserInfo?.lab?.id) {
+      toast({
+        title: "Lỗi",
+        description: "Người dùng không thuộc phòng lab nào",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const allDeviceItems = devices.value.reduce((acc, device) => {
+      const items = device.items.map((item: QualityDeviceItem) => ({
+        id: item.id,
+        afterQuality: item.returnCondition || DeviceQuality.HEALTHY,
+      }));
+      return acc.concat(items);
+    }, [] as any[]);
+
+    if (allDeviceItems.length === 0) {
+      toast({
+        title: "Lỗi",
+        description: "Không có thiết bị nào được chọn để trả.",
+        variant: "destructive",
+      });
+      isConfirming.value = false;
+      return;
+    }
+
+    const borrowReceiptId = devices.value[0]?.items[0]?.id;
+    if (!borrowReceiptId) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xác định mã phiếu mượn gốc.",
+        variant: "destructive",
+      });
+      isConfirming.value = false;
+      return;
+    }
+
+    const returnReceiptUniqueId = generateUniqueId();
+
     await receiptService.returnReceipt({
-      id: originalReceiptId,
+      id: returnReceiptUniqueId,
       returnerId: userInfo.value.id,
-      devices: devices.value,
-      notes: notes.value,
+      returnedCheckerId: storedUserInfo.id,
+      returnedLabId: storedUserInfo.lab.id,
+      devices: allDeviceItems,
+      note: notes.value,
     });
-    toast({
-      title: "Thành công",
-      description: "Trả thiết bị thành công",
-      variant: "success",
-    });
-    resetForm();
 
     successMessage.value = "Ghi nhận trả thành công";
-    receiptId.value = originalReceiptId as string;
+    receiptId.value = returnReceiptUniqueId;
     showSuccessModal.value = true;
   } catch (e) {
     toast({
@@ -528,14 +601,6 @@ const removeDeviceItem = (device: Device, itemId: string) => {
   }
 };
 
-const resetForm = () => {
-  if (!showSuccessModal.value) {
-    mode.value = "idle";
-    devices.value = [];
-    notes.value = "";
-  }
-};
-
 useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
   userId: { length: 7 },
   device: {
@@ -563,7 +628,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
       >
         <div class="p-4 border-b border-gray-200">
           <h2 class="text-lg font-semibold flex items-center gap-2">
-            <PackageCheck class="h-5 w-5" />
+            <PackageCheckIcon class="h-5 w-5" />
             {{ leftColumnTitle }}
           </h2>
         </div>
@@ -574,7 +639,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
             class="flex flex-col items-center justify-center py-20 text-center"
           >
             <div class="rounded-full bg-gray-100 p-3 mb-4">
-              <Package class="h-8 w-8 text-gray-400" />
+              <PackageIcon class="h-8 w-8 text-gray-400" />
             </div>
             <p class="text-sm text-gray-500 max-w-xs">
               Quét mã QR thiết bị để ghi nhận
@@ -627,7 +692,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                     </span>
                   </div>
                   <div class="justify-self-end mr-2">
-                    <ChevronDown
+                    <ChevronDownIcon
                       class="h-5 w-5 text-gray-400 transition-transform"
                       :class="{ 'rotate-180': device.expanded }"
                     />
@@ -672,7 +737,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                           @click.stop="removeDeviceItem(device, item.id)"
                           class="text-red-500 hover:text-red-600 hover:bg-red-100 rounded-full"
                         >
-                          <Trash class="h-4 w-4" />
+                          <TrashIcon class="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -696,8 +761,8 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 }"
                 @click="toggleDevice(device)"
               >
-                <div class="grid grid-cols-10 items-center">
-                  <div class="col-span-6 flex items-center gap-3">
+                <div class="grid grid-cols-12 items-center">
+                  <div class="col-span-8 flex items-center gap-3">
                     <img
                       :src="device.image.mainImage"
                       alt="Device image"
@@ -729,7 +794,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                   >
                     SL: {{ device.quantity }} {{ device.unit }}
                   </span>
-                  <ChevronDown
+                  <ChevronDownIcon
                     class="h-5 w-5 text-gray-400 transition-transform justify-self-end"
                     :class="{ 'rotate-180': device.expanded }"
                   />
@@ -741,39 +806,77 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 class="bg-gray-50"
               >
                 <div
-                  class="grid grid-cols-10 px-4 py-2 text-sm font-medium text-gray-500 border-b border-gray-200"
+                  class="grid grid-cols-12 px-4 py-2 text-sm font-medium text-gray-500 border-b border-gray-200"
                 >
                   <div class="col-span-3">THIẾT BỊ GHI NHẬN</div>
                   <div class="col-span-3">TIẾN ĐỘ TRẢ</div>
+                  <div class="col-span-2">HẸN TRẢ</div>
                   <div class="col-span-3">TÌNH TRẠNG</div>
                   <div class="col-span-1"></div>
                 </div>
                 <div
                   v-for="item in device.items"
                   :key="item.id"
-                  class="grid grid-cols-10 items-center px-4 py-3 border-b border-gray-100 last:border-b-0"
+                  class="grid grid-cols-12 items-center px-4 py-3 border-b border-gray-100 last:border-b-0"
                 >
                   <div class="col-span-3 text-sm font-medium text-gray-900">
                     {{ device.code }}/{{ item.id }}
                   </div>
-                  <div class="col-span-3 text-sm text-gray-600">
-                    Đúng hạn (còn 2 ngày)
+                  <div
+                    class="col-span-3 text-sm"
+                    :class="
+                      item.expectedReturnAt
+                        ? calculateReturnProgress(
+                            item.expectedReturnAt
+                          ).includes('Trễ')
+                          ? 'text-red-600'
+                          : 'text-gray-600'
+                        : 'text-gray-600'
+                    "
+                  >
+                    {{
+                      item.expectedReturnAt
+                        ? calculateReturnProgress(item.expectedReturnAt)
+                        : "Chưa có ngày hẹn"
+                    }}
+                  </div>
+                  <div class="col-span-2 text-sm text-gray-600">
+                    {{
+                      item.expectedReturnAt
+                        ? df.format(new Date(item.expectedReturnAt))
+                        : "---"
+                    }}
                   </div>
                   <div class="col-span-3">
                     <div class="flex items-center gap-1">
                       <span
-                        :class="qualityColorMap[item.prevQuality || 'healthy']"
+                        :class="
+                          qualityColorMap[
+                            (item as QualityDeviceItem).prevQuality ||
+                              DeviceQuality.HEALTHY
+                          ]
+                        "
                         class="text-base font-semibold w-fit text-right flex-shrink-0 bg-transparent"
                       >
-                        {{ qualityMap[item.prevQuality || "healthy"] }}
+                        {{
+                          qualityMap[
+                            (item as QualityDeviceItem).prevQuality ||
+                              DeviceQuality.HEALTHY
+                          ]
+                        }}
                       </span>
                       <span class="text-gray-400 mx-1">→</span>
-                      <Select v-model="item.returnCondition" class="flex-grow">
+                      <Select
+                        v-model="(item as QualityDeviceItem).returnCondition"
+                        class="flex-grow"
+                      >
                         <SelectTrigger
                           class="h-9 text-sm bg-white text-base font-semibold w-fit"
                           :class="
-                            item.returnCondition
-                              ? qualityColorMap[item.returnCondition]
+                            (item as QualityDeviceItem).returnCondition
+                              ? qualityColorMap[
+                                  (item as QualityDeviceItem).returnCondition!
+                                ]
                               : 'text-gray-900'
                           "
                         >
@@ -781,11 +884,11 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem
-                            v-for="(label, status) in statusMap"
+                            v-for="(label, status) in qualityMap"
                             :key="status"
                             :value="status"
                           >
-                            <span :class="statusColorMap[status]">{{
+                            <span :class="qualityColorMap[status]">{{
                               label
                             }}</span>
                           </SelectItem>
@@ -795,11 +898,12 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                   </div>
                   <div class="col-span-1 flex justify-end">
                     <Button
+                      variant="ghost"
+                      size="icon"
                       @click.stop="removeDeviceItem(device, item.id)"
-                      class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-100"
-                      aria-label="Remove device"
+                      class="text-red-500 hover:text-red-600 hover:bg-red-100 rounded-full"
                     >
-                      <Trash class="h-4 w-4" />
+                      <TrashIcon class="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -814,7 +918,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
       >
         <div class="p-4 border-b border-gray-200">
           <h2 class="text-lg font-semibold flex items-center gap-2">
-            <User class="h-5 w-5" />
+            <UserIcon class="h-5 w-5" />
             {{ rightColumnTitle }}
           </h2>
         </div>
@@ -826,7 +930,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               class="border border-dashed border-gray-300 rounded-lg p-1 flex flex-col items-center justify-center"
             >
               <div class="bg-gray-100 rounded-full p-3">
-                <User class="h-6 w-6 text-gray-400" />
+                <UserIcon class="h-6 w-6 text-gray-400" />
               </div>
               <p class="text-sm text-gray-500 text-center">
                 Quét QR định danh người dùng
@@ -836,7 +940,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
             <div v-else class="rounded-lg px-4 py-1">
               <div class="flex items-center">
                 <img
-                  :src="userInfo.avatar"
+                  :src="userInfo.avatar || undefined"
                   alt="User avatar"
                   class="h-12 w-12 rounded-full object-cover"
                 />
@@ -867,19 +971,19 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           >
             <div class="flex items-center gap-3">
               <div class="rounded-full bg-blue-50 p-2">
-                <Box class="h-4 w-4 text-blue-600" />
+                <BoxIcon class="h-4 w-4 text-blue-600" />
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Tổng thiết bị</p>
                 <p class="font-medium text-gray-800 text-right mr-4">
-                  {{ totalDevices }} cái
+                  {{ totalDevices }}
                 </p>
               </div>
             </div>
 
             <div class="flex items-center gap-3">
               <div class="rounded-full bg-amber-50 p-2">
-                <MapPin class="h-4 w-4 text-amber-600" />
+                <MapPinIcon class="h-4 w-4 text-amber-600" />
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Nơi mượn</p>
@@ -990,7 +1094,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              <PackageCheck v-else class="h-5 w-5 mr-2" />
+              <PackageCheckIcon v-else class="h-5 w-5 mr-2" />
               Xác nhận mượn
             </Button>
           </div>
@@ -1001,51 +1105,60 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           >
             <div class="flex items-center gap-3">
               <div class="rounded-full bg-blue-50 p-2">
-                <Box class="h-4 w-4 text-blue-600" />
+                <BoxIcon class="h-4 w-4 text-blue-600" />
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Tổng thiết bị</p>
-                <p class="font-medium text-gray-800">{{ totalDevices }} cái</p>
+                <p class="font-medium text-gray-800 text-right mr-4">
+                  {{ totalDevices }}
+                </p>
               </div>
             </div>
 
             <div class="flex items-center gap-3">
               <div class="rounded-full bg-amber-50 p-2">
-                <MapPin class="h-4 w-4 text-amber-600" />
+                <MapPinIcon class="h-4 w-4 text-amber-600" />
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Nơi trả</p>
-                <p class="font-medium text-gray-800">
+                <p class="font-medium text-gray-800 text-right mr-4">
                   {{ returnDetails.location }}
                 </p>
               </div>
             </div>
 
             <div class="flex items-center gap-3">
-              <div class="rounded-full bg-indigo-50 p-2">
-                <Calendar class="h-4 w-4 text-indigo-600" />
+              <div class="rounded-full bg-red-50 p-2">
+                <CalendarIcon class="h-4 w-4 text-red-600" />
               </div>
               <div class="grid grid-cols-2 w-full">
-                <p class="text-sm text-gray-500">Ngày trả</p>
-                <p class="font-medium text-gray-800">
-                  {{ returnDetails.actualReturnDate }}
+                <p class="text-sm text-gray-500">Tiến độ trả</p>
+                <p
+                  class="font-medium text-right mr-4"
+                  :class="
+                    overallReturnStatus === 'Trễ hạn'
+                      ? 'text-red-600'
+                      : 'text-green-600'
+                  "
+                >
+                  {{ overallReturnStatus }}
                 </p>
               </div>
             </div>
 
             <div class="flex items-center gap-3">
-              <div class="rounded-full bg-red-50 p-2">
-                <Calendar class="h-4 w-4 text-red-600" />
+              <div class="rounded-full bg-indigo-50 p-2">
+                <CalendarIcon class="h-4 w-4 text-indigo-600" />
               </div>
               <div class="grid grid-cols-2 w-full">
-                <p class="text-sm text-gray-500">Tiến độ trả</p>
-                <p class="font-medium text-red-600">
-                  {{ returnDetails.returnProgress }}
+                <p class="text-sm text-gray-500">Ngày trả thực tế</p>
+                <p class="font-medium text-gray-800 text-right mr-4">
+                  {{ returnDetails.actualReturnDate }}
                 </p>
               </div>
             </div>
 
-            <div>
+            <div class="mt-4">
               <label
                 for="notes"
                 class="block text-sm font-medium text-gray-700 mb-1"
@@ -1085,7 +1198,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              <PackageCheck v-else class="h-5 w-5 mr-2" />
+              <PackageCheckIcon v-else class="h-5 w-5 mr-2" />
               Xác nhận trả
             </Button>
           </div>

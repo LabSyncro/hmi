@@ -24,7 +24,7 @@ export type DeviceDetail = {
     image: string | null;
   } | null;
   borrowedAt?: Date | null;
-  expectedReturnAt?: Date | null;
+  expectedReturnAt?: string | null;
   borrowedLab?: string | null;
   expectedReturnLab?: string | null;
   receiptId?: string | null;
@@ -83,18 +83,18 @@ export const deviceService = {
           rd.prev_quality,
           bl.room || ', ' || bl.branch AS borrowed_lab,
           rl.room || ', ' || rl.branch AS expected_return_lab,
-          u.id AS borrower_id,
-          u.name AS borrower_name,
-          u.image AS borrower_image
+          actor.id AS borrower_id,
+          actor.name AS borrower_name,
+          actor.image AS borrower_image
         FROM 
           devices d
           LEFT JOIN device_kinds dk ON d.kind = dk.id
           LEFT JOIN labs l ON d.lab_id = l.id
           LEFT JOIN categories c ON dk.category_id = c.id
-          LEFT JOIN receipts_devices rd ON d.id = rd.device_id AND rd.return_id IS NULL
-          LEFT JOIN receipts r ON rd.receipt_id = r.id
-          LEFT JOIN users u ON r.borrower_id = u.id
-          LEFT JOIN labs bl ON r.borrowed_lab_id = bl.id
+          LEFT JOIN receipts_devices rd ON d.id = rd.device_id AND rd.returned_receipt_id IS NULL
+          LEFT JOIN receipts r ON rd.borrowed_receipt_id = r.id
+          LEFT JOIN users actor ON r.actor_id = actor.id
+          LEFT JOIN labs bl ON r.lab_id = bl.id
           LEFT JOIN labs rl ON rd.expected_returned_lab_id = rl.id
           LEFT JOIN activities a ON rd.borrow_id = a.id
         WHERE 
@@ -139,9 +139,7 @@ export const deviceService = {
             }
           : null,
         borrowedAt: row.borrowedAt ? new Date(row.borrowedAt as string) : null,
-        expectedReturnAt: row.expectedReturnedAt
-          ? new Date(row.expectedReturnedAt as string)
-          : null,
+        expectedReturnAt: row.expectedReturnedAt as string | null,
         borrowedLab: row.borrowedLab as string | null,
         expectedReturnLab: row.expectedReturnLab as string | null,
       };

@@ -44,7 +44,6 @@ export default defineConfig({
         {
           from: "@/types/db/generated",
           imports: ["DeviceQuality"],
-          type: true,
         },
         {
           from: "@/lib/utils",

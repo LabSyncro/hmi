@@ -33,7 +33,7 @@ export const qualityColorMap: Record<DeviceQuality, string> = {
   healthy: "text-green-600 bg-green-50 border-green-600",
   broken: "text-red-600 bg-red-50 border-red-600",
   needs_fixing: "text-yellow-600 bg-yellow-50 border-yellow-600",
-  lost: "text-black bg-gray-50 border-black",
+  lost: "text-black bg-gray-200 border-black",
 };
 
 export type UserInfo = {
@@ -57,8 +57,9 @@ export type MaintenanceDeviceItem = BaseDeviceItem & {
 };
 
 export type QualityDeviceItem = BaseDeviceItem & {
-  returnCondition: DeviceQuality;
+  returnCondition?: DeviceQuality;
   prevQuality: DeviceQuality;
+  expectedReturnAt?: string | null;
 };
 
 export type TransportDeviceItem = BaseDeviceItem & {

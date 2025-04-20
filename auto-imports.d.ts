@@ -356,9 +356,6 @@ declare global {
   export type { RouteLocationRaw } from 'vue-router'
   import('vue-router')
   // @ts-ignore
-  export type { DeviceQuality } from '@/types/db/generated'
-  import('@/types/db/generated')
-  // @ts-ignore
   export type { Device, QualityDeviceItem, UserInfo } from '@/types/status'
   import('@/types/status')
 }
@@ -368,6 +365,7 @@ import { UnwrapRef } from 'vue'
 declare module 'vue' {
   interface GlobalComponents {}
   interface ComponentCustomProperties {
+    readonly DeviceQuality: UnwrapRef<typeof import('@/types/db/generated')['DeviceQuality']>
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly FieldContextKey: UnwrapRef<typeof import('vee-validate')['FieldContextKey']>
     readonly FormContextKey: UnwrapRef<typeof import('vee-validate')['FormContextKey']>
