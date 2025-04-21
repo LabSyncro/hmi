@@ -37,14 +37,6 @@ export type DeviceInventory = {
   availableQuantity: number;
 };
 
-export type AuditRecord = {
-  deviceId: string;
-  auditorId: string;
-  auditCondition: DeviceStatus;
-  location: string;
-  notes?: string;
-};
-
 export type MaintenanceRecord = {
   deviceId: string;
   technicianId: string;
@@ -53,18 +45,36 @@ export type MaintenanceRecord = {
   notes?: string;
 };
 
+export type DeviceAuditDetail = {
+  id: string;
+  fullId: string;
+  status: DeviceStatus;
+  image: {
+    mainImage: string;
+  };
+  unit: string;
+  deviceName: string;
+  isBorrowableLabOnly: boolean;
+  labRoom: string;
+  labBranch: string;
+  kind: string;
+  categoryName: string;
+};
+
 export const deviceService = {
-  async getDeviceById(id: string): Promise<DeviceDetail | null> {
-    if (!id) {
-      return null;
+  async getDeviceReceiptById(id: string, labId: string): Promise<DeviceDetail> {
+    if (!id || !labId) {
+      throw new Error("Missing device ID or lab ID");
     }
 
     try {
       const sql = `
         SELECT 
+          d.id,
           d.full_id,
           d.status,
           d.kind,
+          d.lab_id,
           dk.image,
           dk.unit,
           dk.name AS device_name,
@@ -108,10 +118,14 @@ export const deviceService = {
       });
 
       if (results.length === 0) {
-        return null;
+        throw new Error("Device not found");
       }
 
       const row = results[0];
+
+      if (row.labId !== labId) {
+        throw new Error("Device does not belong to this lab");
+      }
 
       const deviceDetail: DeviceDetail = {
         fullId: row.fullId as string,
@@ -150,20 +164,98 @@ export const deviceService = {
     }
   },
 
-  async getDeviceInventoryByKindId(kindId: string): Promise<DeviceInventory[]> {
+  async getDeviceAuditById(
+    id: string,
+    labId: string
+  ): Promise<DeviceAuditDetail> {
+    if (!id || !labId) {
+      throw new Error("Missing device ID or lab ID");
+    }
+
+    try {
+      const sql = `
+        SELECT 
+          d.id,
+          d.full_id,
+          d.status,
+          d.kind,
+          d.lab_id,
+          dk.image,
+          dk.unit,
+          dk.name AS device_name,
+          dk.is_borrowable_lab_only,
+          l.room,
+          l.branch,
+          c.name AS category_name
+        FROM 
+          devices d
+          LEFT JOIN device_kinds dk ON d.kind = dk.id
+          LEFT JOIN labs l ON d.lab_id = l.id
+          LEFT JOIN categories c ON dk.category_id = c.id
+        WHERE 
+          d.id = $1
+          AND d.deleted_at IS NULL
+      `;
+
+      const results = await db.queryRaw<Record<string, unknown>>({
+        sql,
+        params: [id],
+      });
+
+      if (results.length === 0) {
+        throw new Error("Device not found");
+      }
+
+      const row = results[0];
+
+      if (row.labId !== labId) {
+        throw new Error("Device does not belong to this lab");
+      }
+
+      const deviceAuditDetail: DeviceAuditDetail = {
+        id: row.id as string,
+        fullId: row.fullId as string,
+        status: row.status as DeviceStatus,
+        image: {
+          mainImage: row.image ? (row.image as any).mainImage : "",
+        },
+        unit: row.unit as string,
+        deviceName: row.deviceName as string,
+        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
+        labRoom: row.room as string,
+        labBranch: row.branch as string,
+        kind: row.kind as string,
+        categoryName: row.categoryName as string,
+      };
+
+      return deviceAuditDetail;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getDeviceInventoryByKindId(
+    kindId: string,
+    labId: string
+  ): Promise<DeviceInventory[]> {
+    if (!kindId || !labId) {
+      return [];
+    }
+
     try {
       const sql = `
         SELECT 
           l.branch,
           l.room,
           SUM(CASE WHEN d.status = 'borrowing' THEN 1 ELSE 0 END)::int as borrowing_quantity,
-          SUM(CASE WHEN d.status IN ('healthy', 'borrowing') THEN 1 ELSE 0 END)::int as available_quantity
+          SUM(CASE WHEN d.status IN ('healthy', 'broken', 'discarded', 'lost') THEN 1 ELSE 0 END)::int as available_quantity
         FROM 
           labs l
           JOIN devices d ON l.id = d.lab_id
           JOIN device_kinds dk ON d.kind = dk.id
         WHERE 
           dk.id = $1
+          AND d.lab_id = $2
           AND d.deleted_at IS NULL
         GROUP BY
           l.id,
@@ -176,7 +268,7 @@ export const deviceService = {
 
       const results = await db.queryRaw<Record<string, unknown>>({
         sql,
-        params: [kindId],
+        params: [kindId, labId],
       });
 
       return results.map((row) => ({
@@ -242,57 +334,6 @@ export const deviceService = {
     }
   },
 
-  async recordAudit(records: AuditRecord[]): Promise<void> {
-    try {
-      // Create audit activity
-      const activitySql = `
-        INSERT INTO activities (type, created_at)
-        VALUES ('audit', CURRENT_TIMESTAMP)
-        RETURNING id
-      `;
-      const activity = await db.queryRaw<{ id: string }>({ sql: activitySql });
-      const activityId = activity[0].id;
-
-      // Record each device audit
-      for (const record of records) {
-        const auditSql = `
-          INSERT INTO devices_audit (
-            device_id, auditor_id, audit_id, condition, location, notes, created_at
-          )
-          VALUES (
-            $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP
-          )
-        `;
-        await db.queryRaw({
-          sql: auditSql,
-          params: [
-            record.deviceId,
-            record.auditorId,
-            activityId,
-            record.auditCondition,
-            record.location,
-            record.notes,
-          ],
-        });
-
-        // Update device status if needed
-        if (record.auditCondition !== "healthy") {
-          const updateSql = `
-            UPDATE devices
-            SET status = $1
-            WHERE id = $2
-          `;
-          await db.queryRaw({
-            sql: updateSql,
-            params: [record.auditCondition, record.deviceId],
-          });
-        }
-      }
-    } catch (error) {
-      throw error;
-    }
-  },
-
   async recordMaintenance(records: MaintenanceRecord[]): Promise<void> {
     try {
       // Create maintenance activity
@@ -337,43 +378,6 @@ export const deviceService = {
           params: [record.maintenanceOutcome, record.deviceId],
         });
       }
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getDeviceAuditHistory(deviceId: string): Promise<
-    {
-      auditorName: string;
-      auditorImage: string | null;
-      condition: DeviceStatus;
-      location: string;
-      notes?: string;
-      createdAt: Date;
-    }[]
-  > {
-    try {
-      const sql = `
-        SELECT 
-          u.name as auditor_name,
-          u.image as auditor_image,
-          da.condition,
-          da.location,
-          da.notes,
-          da.created_at
-        FROM 
-          devices_audit da
-          JOIN users u ON da.auditor_id = u.id
-        WHERE 
-          da.device_id = $1
-        ORDER BY 
-          da.created_at DESC
-      `;
-
-      return await db.queryRaw({
-        sql,
-        params: [deviceId],
-      });
     } catch (error) {
       throw error;
     }

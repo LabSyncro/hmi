@@ -21,6 +21,8 @@ import {
 
 const mode = ref<"idle" | "borrow" | "return">("idle");
 
+const deviceBorrowerMap = ref(new Map<string, string>());
+
 const df = new DateFormatter("vi-VN", {
   day: "2-digit",
   month: "2-digit",
@@ -28,6 +30,10 @@ const df = new DateFormatter("vi-VN", {
 });
 
 const userInfo = ref<UserInfo | null>(null);
+const storedUserInfo = ref<{
+  id: string;
+  lab: { id: string; room: string; branch: string };
+} | null>(null);
 
 const devices = ref<(Device & { items: QualityDeviceItem[] })[]>([]);
 
@@ -92,13 +98,13 @@ const rightColumnTitle = computed(() => {
 
 const overallReturnStatus = computed(() => {
   if (!devices.value || devices.value.length === 0) {
-    return ""; // Or some default if no devices
+    return "";
   }
 
   const isAnyDeviceLate = devices.value.some((device) =>
     device.items.some((item) => {
-      const qualityItem = item as QualityDeviceItem; // Assert type
-      if (!qualityItem.expectedReturnAt) return false; // Skip if no expected date
+      const qualityItem = item as QualityDeviceItem;
+      if (!qualityItem.expectedReturnAt) return false;
       return calculateReturnProgress(qualityItem.expectedReturnAt).includes(
         "Trễ"
       );
@@ -156,10 +162,14 @@ const goToHome = () => {
 onMounted(async () => {
   const stored = localStorage.getItem("user_info");
   if (stored) {
-    const ui = JSON.parse(stored) as { lab?: { room: string; branch: string } };
+    const ui = JSON.parse(stored) as {
+      id: string;
+      lab: { id: string; room: string; branch: string };
+    };
     const loc = ui.lab ? `${ui.lab.room}, ${ui.lab.branch}` : "";
     borrowDetails.value.location = loc;
     returnDetails.value.location = loc;
+    storedUserInfo.value = ui;
   }
 });
 
@@ -187,6 +197,24 @@ async function handleUserCodeChange(userId: string) {
       });
       userInfo.value = null;
       return;
+    }
+
+    if (mode.value === "return" && devices.value.length > 0) {
+      for (const device of devices.value) {
+        for (const item of device.items) {
+          const borrowerId = deviceBorrowerMap.value.get(item.id);
+          if (borrowerId && borrowerId !== userMeta.id) {
+            toast({
+              title: "Lỗi",
+              description:
+                "Người dùng không khớp với người mượn của một số thiết bị đã quét",
+              variant: "destructive",
+            });
+            userInfo.value = null;
+            return;
+          }
+        }
+      }
     }
 
     userInfo.value = {
@@ -252,130 +280,195 @@ const handleDeviceScan = async (input: string) => {
       return;
     }
 
-    const deviceDetails = await deviceService.getDeviceById(deviceId);
-    if (!deviceDetails || !deviceDetails.status) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể lấy thông tin thiết bị",
-        variant: "destructive",
-      });
-      return;
-    }
+    try {
+      const deviceDetails = await deviceService.getDeviceReceiptById(
+        deviceId,
+        storedUserInfo.value?.lab.id || ""
+      )!;
 
-    if (mode.value === "idle") {
+      if (deviceDetails.borrower?.id) {
+        deviceBorrowerMap.value.set(deviceId, deviceDetails.borrower.id);
+      }
+
+      if (mode.value === "return") {
+        if (userInfo.value) {
+          if (deviceDetails.borrower?.id !== userInfo.value.id) {
+            toast({
+              title: "Lỗi",
+              description: `Thiết bị này được mượn bởi người dùng khác (${deviceDetails.borrower?.name || "Không xác định"})`,
+              variant: "destructive",
+            });
+            return;
+          }
+        } else if (devices.value.length > 0) {
+          const firstItem = devices.value[0].items[0];
+          if (firstItem) {
+            const firstBorrowerId = deviceBorrowerMap.value.get(firstItem.id);
+            if (
+              firstBorrowerId &&
+              firstBorrowerId !== deviceDetails.borrower?.id
+            ) {
+              toast({
+                title: "Lỗi",
+                description:
+                  "Thiết bị này được mượn bởi người dùng khác, không khớp với các thiết bị đã quét",
+                variant: "destructive",
+              });
+              return;
+            }
+          }
+        }
+      }
+
+      if (mode.value === "idle") {
+        if (
+          deviceDetails.status === DeviceStatus.HEALTHY ||
+          deviceDetails.status === DeviceStatus.BROKEN
+        ) {
+          mode.value = "borrow";
+        } else if (deviceDetails.status === DeviceStatus.BORROWING) {
+          mode.value = "return";
+        } else {
+          toast({
+            title: "Thông báo",
+            description: `Thiết bị đang ở trạng thái '${statusMap[deviceDetails.status!]}', không thể mượn/trả.`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       if (
-        deviceDetails.status === "healthy" ||
-        deviceDetails.status === "broken"
+        mode.value === "borrow" &&
+        deviceDetails.status !== DeviceStatus.HEALTHY &&
+        deviceDetails.status !== DeviceStatus.BROKEN
       ) {
-        mode.value = "borrow";
-      } else if (deviceDetails.status === "borrowing") {
-        mode.value = "return";
-      } else {
         toast({
-          title: "Thông báo",
-          description: `Thiết bị đang ở trạng thái '${statusMap[deviceDetails.status]}', không thể mượn/trả.`,
+          title: "Lỗi",
+          description: `Thiết bị không khả dụng để mượn (ID: ${deviceId})`,
+          variant: "destructive",
         });
         return;
       }
-    }
 
-    if (
-      mode.value === "borrow" &&
-      deviceDetails.status !== "healthy" &&
-      deviceDetails.status !== "broken"
-    ) {
-      toast({
-        title: "Lỗi",
-        description: `Thiết bị không khả dụng để mượn (ID: ${deviceId})`,
-        variant: "destructive",
-      });
-      return;
-    }
+      if (
+        mode.value === "return" &&
+        deviceDetails.status !== DeviceStatus.BORROWING
+      ) {
+        toast({
+          title: "Lỗi",
+          description: `Thiết bị không ở trạng thái đang mượn (ID: ${deviceId})`,
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (mode.value === "return" && deviceDetails.status !== "borrowing") {
-      toast({
-        title: "Lỗi",
-        description: `Thiết bị không ở trạng thái đang mượn (ID: ${deviceId})`,
-        variant: "destructive",
-      });
-      return;
-    }
+      if (mode.value === "borrow") {
+        const existingDevice = devices.value.find(
+          (d) => d.code === deviceKindId
+        );
+        if (existingDevice) {
+          existingDevice.items.push({
+            id: deviceId,
+            status: deviceDetails.status!,
+            prevQuality: DeviceQuality.HEALTHY,
+            expectedReturnAt: deviceDetails.expectedReturnAt,
+          });
+          existingDevice.quantity = existingDevice.items.length;
+        } else {
+          devices.value.push({
+            code: deviceKindId!,
+            name: deviceDetails.deviceName,
+            image: deviceDetails.image,
+            quantity: 1,
+            unit: deviceDetails.unit,
+            expanded: true,
+            items: [
+              {
+                id: deviceId,
+                status: deviceDetails.status!,
+                prevQuality: DeviceQuality.HEALTHY,
+                expectedReturnAt: deviceDetails.expectedReturnAt,
+              },
+            ],
+            isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
+          });
+        }
+        toast({
+          title: "Thành công",
+          description: "Đã thêm thiết bị vào danh sách mượn",
+          variant: "success",
+        });
+      } else if (mode.value === "return") {
+        const qualityValue = deviceDetails.prevQuality || DeviceQuality.HEALTHY;
+        const returnDate =
+          deviceDetails.expectedReturnAt || df.format(new Date());
 
-    if (mode.value === "borrow") {
-      const existingDevice = devices.value.find((d) => d.code === deviceKindId);
-      if (existingDevice) {
-        existingDevice.items.push({
+        const newItem = {
           id: deviceId,
-          status: deviceDetails.status,
-          prevQuality: DeviceQuality.HEALTHY,
-          expectedReturnAt: deviceDetails.expectedReturnAt,
-        });
-        existingDevice.quantity = existingDevice.items.length;
-      } else {
-        devices.value.push({
-          code: deviceKindId!,
-          name: deviceDetails.deviceName,
-          image: deviceDetails.image,
-          quantity: 1,
-          unit: deviceDetails.unit,
-          expanded: true,
-          items: [
-            {
-              id: deviceId,
-              status: deviceDetails.status,
-              prevQuality: DeviceQuality.HEALTHY,
-              expectedReturnAt: deviceDetails.expectedReturnAt,
-            },
-          ],
-          isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
-        });
-      }
-      toast({
-        title: "Thành công",
-        description: "Đã thêm thiết bị vào danh sách mượn",
-        variant: "success",
-      });
-    } else if (mode.value === "return") {
-      const qualityValue = deviceDetails.prevQuality || DeviceQuality.HEALTHY;
+          status: deviceDetails.status!,
+          returnCondition: DeviceQuality.HEALTHY,
+          prevQuality: qualityValue,
+          expectedReturnAt: returnDate,
+        };
 
-      const returnDate =
-        deviceDetails.expectedReturnAt || df.format(new Date());
-
-      const newItem = {
-        id: deviceId,
-        status: deviceDetails.status,
-        returnCondition: DeviceQuality.HEALTHY,
-        prevQuality: qualityValue,
-        expectedReturnAt: returnDate,
-      };
-
-      const existingDevice = devices.value.find((d) => d.code === deviceKindId);
-      if (existingDevice) {
-        existingDevice.items.push(newItem);
-        existingDevice.quantity = existingDevice.items.length;
-      } else {
-        devices.value.push({
-          code: deviceKindId!,
-          name: deviceDetails.deviceName,
-          image: deviceDetails.image,
-          quantity: 1,
-          unit: deviceDetails.unit,
-          expanded: true,
-          items: [newItem],
-          isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
+        const existingDevice = devices.value.find(
+          (d) => d.code === deviceKindId
+        );
+        if (existingDevice) {
+          existingDevice.items.push(newItem);
+          existingDevice.quantity = existingDevice.items.length;
+        } else {
+          devices.value.push({
+            code: deviceKindId!,
+            name: deviceDetails.deviceName,
+            image: deviceDetails.image,
+            quantity: 1,
+            unit: deviceDetails.unit,
+            expanded: true,
+            items: [newItem],
+            isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
+          });
+        }
+        toast({
+          title: "Thành công",
+          description: "Đã thêm thiết bị vào danh sách trả",
+          variant: "success",
         });
       }
-      toast({
-        title: "Thành công",
-        description: "Đã thêm thiết bị vào danh sách trả",
-        variant: "success",
-      });
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === "Device not found") {
+          toast({
+            title: "Lỗi",
+            description: "Không tìm thấy thiết bị",
+            variant: "destructive",
+          });
+        } else if (error.message === "Device does not belong to this lab") {
+          toast({
+            title: "Lỗi",
+            description: "Thiết bị không thuộc phòng lab này",
+            variant: "destructive",
+          });
+        } else if (error.message === "Missing device ID or lab ID") {
+          toast({
+            title: "Lỗi",
+            description: "Thiếu thông tin thiết bị hoặc phòng lab",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Lỗi",
+            description: "Không thể xử lý thiết bị",
+            variant: "destructive",
+          });
+        }
+      }
     }
   } catch (error) {
-    console.error(error);
     toast({
       title: "Lỗi",
-      description: "Không thể xử lý thiết bị",
+      description: "Không thể xử lý mã QR",
       variant: "destructive",
     });
   }
@@ -397,21 +490,10 @@ async function handleConfirmBorrow() {
 
   isConfirming.value = true;
   try {
-    const stored = localStorage.getItem("user_info");
-    if (!stored) {
+    if (!storedUserInfo.value?.lab?.id) {
       toast({
         title: "Lỗi",
         description: "Không tìm thấy thông tin phòng lab",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const storedUserInfo = JSON.parse(stored);
-    if (!storedUserInfo?.lab?.id) {
-      toast({
-        title: "Lỗi",
-        description: "Người dùng không thuộc phòng lab nào",
         variant: "destructive",
       });
       return;
@@ -423,7 +505,7 @@ async function handleConfirmBorrow() {
         prevQuality:
           (item as QualityDeviceItem).prevQuality || DeviceQuality.HEALTHY,
         expectedReturnedAt: borrowDetails.value.returnDate!,
-        expectedReturnedLabId: storedUserInfo.lab.id,
+        expectedReturnedLabId: storedUserInfo.value?.lab.id,
       }));
       return acc.concat(items);
     }, [] as any[]);
@@ -442,8 +524,8 @@ async function handleConfirmBorrow() {
     await receiptService.createReceipt({
       id: uniqueId,
       borrowerId: userInfo.value.id,
-      borrowCheckerId: storedUserInfo.id,
-      borrowedLabId: storedUserInfo.lab.id,
+      borrowCheckerId: storedUserInfo.value?.id,
+      borrowedLabId: storedUserInfo.value?.lab.id,
       devices: allDeviceItems,
     });
 
@@ -468,18 +550,7 @@ async function handleConfirmReturn() {
 
   isConfirming.value = true;
   try {
-    const stored = localStorage.getItem("user_info");
-    if (!stored) {
-      toast({
-        title: "Lỗi",
-        description: "Không tìm thấy thông tin phòng lab",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const storedUserInfo = JSON.parse(stored);
-    if (!storedUserInfo?.lab?.id) {
+    if (!storedUserInfo.value?.lab?.id) {
       toast({
         title: "Lỗi",
         description: "Người dùng không thuộc phòng lab nào",
@@ -522,8 +593,8 @@ async function handleConfirmReturn() {
     await receiptService.returnReceipt({
       id: returnReceiptUniqueId,
       returnerId: userInfo.value.id,
-      returnedCheckerId: storedUserInfo.id,
-      returnedLabId: storedUserInfo.lab.id,
+      returnedCheckerId: storedUserInfo.value?.id,
+      returnedLabId: storedUserInfo.value?.lab.id,
       devices: allDeviceItems,
       note: notes.value,
     });
@@ -589,7 +660,9 @@ const toggleDevice = (device: Device) => {
 };
 
 const removeDeviceItem = (device: Device, itemId: string) => {
-  device.items = device.items.filter((item) => item.id !== itemId);
+  device.items = device.items.filter(
+    (item) => item.id !== itemId
+  ) as QualityDeviceItem[];
   device.quantity = device.items.length;
 
   if (device.items.length === 0) {
@@ -633,7 +706,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           </h2>
         </div>
 
-        <div>
+        <div class="h-[calc(100vh-16rem)] overflow-y-auto">
           <div
             v-if="devices.length === 0"
             class="flex flex-col items-center justify-center py-20 text-center"
@@ -659,7 +732,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 @click="toggleDevice(device)"
               >
                 <div class="grid grid-cols-10 items-center">
-                  <div class="flex items-center col-span-5 gap-3">
+                  <div class="flex items-center col-span-6 gap-3">
                     <img
                       :src="device.image.mainImage"
                       alt="Device image"
@@ -686,12 +759,10 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                       </p>
                     </div>
                   </div>
-                  <div class="col-span-4 text-center">
-                    <span class="text-base text-gray-900 font-medium">
+                  <div class="col-span-4 text-center flex items-center">
+                    <span class="text-base text-gray-900 font-medium w-full">
                       SL: {{ device.quantity }} {{ device.unit }}
                     </span>
-                  </div>
-                  <div class="justify-self-end mr-2">
                     <ChevronDownIcon
                       class="h-5 w-5 text-gray-400 transition-transform"
                       :class="{ 'rotate-180': device.expanded }"
@@ -703,6 +774,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               <div v-if="device.expanded" class="bg-gray-50">
                 <div class="p-4">
                   <div class="grid grid-cols-10 items-center mb-2">
+                    <div class="col-span-1"></div>
                     <h4 class="text-sm font-medium text-gray-500 col-span-5">
                       THIẾT BỊ GHI NHẬN
                     </h4>
@@ -718,6 +790,16 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                       :key="item.id"
                       class="flex items-center justify-between grid grid-cols-10"
                     >
+                      <div class="text-left">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          @click.stop="removeDeviceItem(device, item.id)"
+                          class="text-red-500 hover:text-red-600 hover:bg-red-100 rounded-full"
+                        >
+                          <TrashIcon class="h-4 w-4" />
+                        </Button>
+                      </div>
                       <div class="text-sm font-medium text-gray-900 col-span-5">
                         {{ device.code }}/{{ item.id }}
                       </div>
@@ -729,16 +811,6 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                         >
                           {{ statusMap[item.status] }}
                         </Badge>
-                      </div>
-                      <div class="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          @click.stop="removeDeviceItem(device, item.id)"
-                          class="text-red-500 hover:text-red-600 hover:bg-red-100 rounded-full"
-                        >
-                          <TrashIcon class="h-4 w-4" />
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -762,7 +834,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 @click="toggleDevice(device)"
               >
                 <div class="grid grid-cols-12 items-center">
-                  <div class="col-span-8 flex items-center gap-3">
+                  <div class="col-span-9 flex items-center gap-3">
                     <img
                       :src="device.image.mainImage"
                       alt="Device image"
@@ -789,15 +861,15 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                       </p>
                     </div>
                   </div>
-                  <span
-                    class="col-span-3 text-base text-gray-900 font-medium mr-4"
-                  >
-                    SL: {{ device.quantity }} {{ device.unit }}
-                  </span>
-                  <ChevronDownIcon
-                    class="h-5 w-5 text-gray-400 transition-transform justify-self-end"
-                    :class="{ 'rotate-180': device.expanded }"
-                  />
+                  <div class="col-span-3 flex items-center">
+                    <span class="text-base text-gray-900 font-medium w-full">
+                      SL: {{ device.quantity }} {{ device.unit }}
+                    </span>
+                    <ChevronDownIcon
+                      class="h-5 w-5 text-gray-400 transition-transform justify-self-end"
+                      :class="{ 'rotate-180': device.expanded }"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -808,17 +880,27 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 <div
                   class="grid grid-cols-12 px-4 py-2 text-sm font-medium text-gray-500 border-b border-gray-200"
                 >
+                  <div class="col-span-1"></div>
                   <div class="col-span-3">THIẾT BỊ GHI NHẬN</div>
                   <div class="col-span-3">TIẾN ĐỘ TRẢ</div>
                   <div class="col-span-2">HẸN TRẢ</div>
                   <div class="col-span-3">TÌNH TRẠNG</div>
-                  <div class="col-span-1"></div>
                 </div>
                 <div
                   v-for="item in device.items"
                   :key="item.id"
                   class="grid grid-cols-12 items-center px-4 py-3 border-b border-gray-100 last:border-b-0"
                 >
+                  <div class="col-span-1 flex justify-start">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      @click.stop="removeDeviceItem(device, item.id)"
+                      class="text-red-500 hover:text-red-600 hover:bg-red-100 rounded-full"
+                    >
+                      <TrashIcon class="h-4 w-4" />
+                    </Button>
+                  </div>
                   <div class="col-span-3 text-sm font-medium text-gray-900">
                     {{ device.code }}/{{ item.id }}
                   </div>
@@ -895,16 +977,6 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                  <div class="col-span-1 flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      @click.stop="removeDeviceItem(device, item.id)"
-                      class="text-red-500 hover:text-red-600 hover:bg-red-100 rounded-full"
-                    >
-                      <TrashIcon class="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
               </div>

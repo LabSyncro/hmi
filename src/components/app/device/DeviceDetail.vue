@@ -119,7 +119,7 @@ async function loadDeviceDetails() {
   error.value = null
   try {
     const id = route.params.id as string
-    deviceDetail.value = await deviceService.getDeviceById(id)
+    deviceDetail.value = await deviceService.getDeviceReceiptById(id)
     if (!deviceDetail.value) {
       error.value = 'Device not found'
     } else {

@@ -79,6 +79,8 @@ export type Device = {
 
 export type AuditDevice = Omit<Device, "items"> & {
   items: AuditDeviceItem[];
+  expectedQuantity?: number;
+  unscannedCondition?: DeviceStatus;
 };
 
 export type MaintenanceDevice = Omit<Device, "items"> & {

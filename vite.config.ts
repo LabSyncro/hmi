@@ -39,11 +39,16 @@ export default defineConfig({
         },
         {
           from: "@/lib/db",
-          imports: ["receiptService", "userService", "deviceService"],
+          imports: [
+            "receiptService",
+            "userService",
+            "deviceService",
+            "auditService",
+          ],
         },
         {
           from: "@/types/db/generated",
-          imports: ["DeviceQuality"],
+          imports: ["DeviceQuality", "DeviceStatus"],
         },
         {
           from: "@/lib/utils",
@@ -60,7 +65,13 @@ export default defineConfig({
         },
         {
           from: "@/types/status",
-          imports: ["Device", "QualityDeviceItem", "UserInfo"],
+          imports: [
+            "Device",
+            "QualityDeviceItem",
+            "UserInfo",
+            "AuditDevice",
+            "AuditDeviceItem",
+          ],
           type: true,
         },
       ],

@@ -5,21 +5,21 @@ import { toast } from "@/components/ui/toast";
 import { useVirtualKeyboardDetection } from "@/composables";
 import { deviceService, userService, type DeviceStatus } from "@/lib/db";
 import {
-  statusColorMap,
-  statusMap,
-  type Device,
-  type TransportDeviceItem,
-  type UserInfo,
+    statusColorMap,
+    statusMap,
+    type Device,
+    type TransportDeviceItem,
+    type UserInfo,
 } from "@/types/status";
 import {
-  Box,
-  Calendar,
-  ChevronDown,
-  MapPin,
-  Package,
-  Trash,
-  Truck,
-  User,
+    Box,
+    Calendar,
+    ChevronDown,
+    MapPin,
+    Package,
+    Trash,
+    Truck,
+    User,
 } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
@@ -174,7 +174,7 @@ const handleDeviceScan = async (input: string) => {
       return;
     }
 
-    const deviceDetails = await deviceService.getDeviceById(deviceId);
+    const deviceDetails = await deviceService.getDeviceReceiptById(deviceId);
     if (!deviceDetails || !deviceDetails.status) {
       toast({
         title: "Lỗi",

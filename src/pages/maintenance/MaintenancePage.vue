@@ -1,37 +1,37 @@
 <script setup lang="ts">
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { useVirtualKeyboardDetection } from "@/composables";
 import {
-  deviceService,
-  userService,
-  type DeviceStatus,
-  type MaintenanceRecord,
+    deviceService,
+    userService,
+    type DeviceStatus,
+    type MaintenanceRecord,
 } from "@/lib/db";
 import {
-  statusColorMap,
-  statusMap,
-  type MaintenanceDevice,
-  type MaintenanceDeviceItem,
-  type UserInfo,
+    statusColorMap,
+    statusMap,
+    type MaintenanceDevice,
+    type MaintenanceDeviceItem,
+    type UserInfo,
 } from "@/types/status";
 import {
-  Box,
-  Calendar,
-  ChevronDown,
-  MapPin,
-  Package,
-  Trash,
-  User,
-  Wrench,
+    Box,
+    Calendar,
+    ChevronDown,
+    MapPin,
+    Package,
+    Trash,
+    User,
+    Wrench,
 } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
@@ -187,7 +187,7 @@ const handleDeviceScan = async (input: string) => {
       return;
     }
 
-    const deviceDetails = await deviceService.getDeviceById(deviceId);
+    const deviceDetails = await deviceService.getDeviceReceiptById(deviceId);
     if (!deviceDetails || !deviceDetails.status) {
       toast({
         title: "Lỗi",

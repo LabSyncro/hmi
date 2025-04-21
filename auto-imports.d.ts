@@ -7,11 +7,13 @@
 export {}
 declare global {
   const DeviceQuality: typeof import('@/types/db/generated')['DeviceQuality']
+  const DeviceStatus: typeof import('@/types/db/generated')['DeviceStatus']
   const EffectScope: typeof import('vue')['EffectScope']
   const FieldContextKey: typeof import('vee-validate')['FieldContextKey']
   const FormContextKey: typeof import('vee-validate')['FormContextKey']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const asyncComputed: typeof import('@vueuse/core')['asyncComputed']
+  const auditService: typeof import('@/lib/db')['auditService']
   const autoResetRef: typeof import('@vueuse/core')['autoResetRef']
   const axios: typeof import('axios')['default']
   const cn: typeof import('@/lib/utils')['cn']
@@ -356,7 +358,7 @@ declare global {
   export type { RouteLocationRaw } from 'vue-router'
   import('vue-router')
   // @ts-ignore
-  export type { Device, QualityDeviceItem, UserInfo } from '@/types/status'
+  export type { Device, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem } from '@/types/status'
   import('@/types/status')
 }
 
@@ -366,11 +368,13 @@ declare module 'vue' {
   interface GlobalComponents {}
   interface ComponentCustomProperties {
     readonly DeviceQuality: UnwrapRef<typeof import('@/types/db/generated')['DeviceQuality']>
+    readonly DeviceStatus: UnwrapRef<typeof import('@/types/db/generated')['DeviceStatus']>
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly FieldContextKey: UnwrapRef<typeof import('vee-validate')['FieldContextKey']>
     readonly FormContextKey: UnwrapRef<typeof import('vee-validate')['FormContextKey']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly asyncComputed: UnwrapRef<typeof import('@vueuse/core')['asyncComputed']>
+    readonly auditService: UnwrapRef<typeof import('@/lib/db')['auditService']>
     readonly autoResetRef: UnwrapRef<typeof import('@vueuse/core')['autoResetRef']>
     readonly axios: UnwrapRef<typeof import('axios')['default']>
     readonly cn: UnwrapRef<typeof import('@/lib/utils')['cn']>
