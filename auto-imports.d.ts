@@ -6,6 +6,7 @@
 // biome-ignore lint: disable
 export {}
 declare global {
+  const AssessmentStatus: typeof import('@/types/db/generated')['AssessmentStatus']
   const DeviceQuality: typeof import('@/types/db/generated')['DeviceQuality']
   const DeviceStatus: typeof import('@/types/db/generated')['DeviceStatus']
   const EffectScope: typeof import('vue')['EffectScope']
@@ -358,7 +359,7 @@ declare global {
   export type { RouteLocationRaw } from 'vue-router'
   import('vue-router')
   // @ts-ignore
-  export type { Device, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem } from '@/types/status'
+  export type { Device, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit } from '@/types/status'
   import('@/types/status')
 }
 
@@ -367,6 +368,7 @@ import { UnwrapRef } from 'vue'
 declare module 'vue' {
   interface GlobalComponents {}
   interface ComponentCustomProperties {
+    readonly AssessmentStatus: UnwrapRef<typeof import('@/types/db/generated')['AssessmentStatus']>
     readonly DeviceQuality: UnwrapRef<typeof import('@/types/db/generated')['DeviceQuality']>
     readonly DeviceStatus: UnwrapRef<typeof import('@/types/db/generated')['DeviceStatus']>
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>

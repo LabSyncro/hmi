@@ -100,7 +100,7 @@ const getStatusText = (status: DeviceStatus | null) => {
     case DeviceStatus.DISCARDED:
       return 'ĐÃ LOẠI BỎ';
     case DeviceStatus.ASSESSING:
-      return 'ĐANG ĐÁNH GIÁ';
+      return 'ĐANG KIỂM ĐẾM';
     case DeviceStatus.MAINTAINING:
       return 'ĐANG BẢO TRÌ';
     case DeviceStatus.SHIPPING:

@@ -12,6 +12,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   InfoIcon,
+  LoaderIcon,
   MapPinIcon,
   PackageCheckIcon,
   PackageIcon,
@@ -117,6 +118,8 @@ const overallReturnStatus = computed(() => {
 const { verifyScannedQrCode } = useOneTimeQR();
 
 const isConfirming = ref(false);
+const isLoadingDeviceScan = ref(false);
+const isLoadingUser = ref(false);
 const showSuccessModal = ref(false);
 const successMessage = ref("");
 const receiptId = ref("");
@@ -187,6 +190,7 @@ async function handleUserCodeChange(userId: string) {
   }
 
   isConfirming.value = true;
+  isLoadingUser.value = true;
   try {
     const userMeta = await userService.getUserById(userId);
     if (!userMeta) {
@@ -238,6 +242,7 @@ async function handleUserCodeChange(userId: string) {
     userInfo.value = null;
   } finally {
     isConfirming.value = false;
+    isLoadingUser.value = false;
   }
 }
 
@@ -254,6 +259,7 @@ const calculateReturnProgress = (expectedDate: string) => {
 };
 
 const handleDeviceScan = async (input: string) => {
+  isLoadingDeviceScan.value = true;
   try {
     const deviceKindId = input.match(/\/devices\/([a-fA-F0-9]+)/)?.[1];
     const deviceId = input.match(/[?&]id=([a-fA-F0-9]+)/)?.[1];
@@ -471,6 +477,8 @@ const handleDeviceScan = async (input: string) => {
       description: "Không thể xử lý mã QR",
       variant: "destructive",
     });
+  } finally {
+    isLoadingDeviceScan.value = false;
   }
 };
 
@@ -614,6 +622,7 @@ async function handleConfirmReturn() {
 }
 
 const handleOneTimeQRScan = async (input: string) => {
+  isLoadingUser.value = true;
   try {
     const result = await verifyScannedQrCode(input);
     if (result && result.user) {
@@ -637,6 +646,8 @@ const handleOneTimeQRScan = async (input: string) => {
       description: "Vui lòng thử lại",
       variant: "destructive",
     });
+  } finally {
+    isLoadingUser.value = false;
   }
 };
 
@@ -712,12 +723,18 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
             class="flex flex-col items-center justify-center py-20 text-center"
           >
             <div class="rounded-full bg-gray-100 p-3 mb-4">
-              <PackageIcon class="h-8 w-8 text-gray-400" />
+              <LoaderIcon
+                v-if="isLoadingDeviceScan"
+                class="h-8 w-8 text-blue-500 animate-spin"
+              />
+              <PackageIcon v-else class="h-8 w-8 text-gray-400" />
             </div>
             <p class="text-sm text-gray-500 max-w-xs">
-              Quét mã QR thiết bị để ghi nhận
-              <br />
-              mượn trả thiết bị
+              {{
+                isLoadingDeviceScan
+                  ? "Đang xử lý thiết bị..."
+                  : "Quét mã QR thiết bị để ghi nhận mượn trả thiết bị"
+              }}
             </p>
           </div>
 
@@ -1002,10 +1019,18 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               class="border border-dashed border-gray-300 rounded-lg p-1 flex flex-col items-center justify-center"
             >
               <div class="bg-gray-100 rounded-full p-3">
-                <UserIcon class="h-6 w-6 text-gray-400" />
+                <LoaderIcon
+                  v-if="isLoadingUser"
+                  class="h-6 w-6 text-blue-500 animate-spin"
+                />
+                <UserIcon v-else class="h-6 w-6 text-gray-400" />
               </div>
               <p class="text-sm text-gray-500 text-center">
-                Quét QR định danh người dùng
+                {{
+                  isLoadingUser
+                    ? "Đang xử lý người dùng..."
+                    : "Quét QR định danh người dùng"
+                }}
               </p>
             </div>
 

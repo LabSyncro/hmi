@@ -48,7 +48,7 @@ export default defineConfig({
         },
         {
           from: "@/types/db/generated",
-          imports: ["DeviceQuality", "DeviceStatus"],
+          imports: ["DeviceQuality", "DeviceStatus", "AssessmentStatus"],
         },
         {
           from: "@/lib/utils",
@@ -71,6 +71,7 @@ export default defineConfig({
             "UserInfo",
             "AuditDevice",
             "AuditDeviceItem",
+            "IncompleteAudit",
           ],
           type: true,
         },

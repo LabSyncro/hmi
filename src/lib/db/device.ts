@@ -10,10 +10,10 @@ export type DeviceDetail = {
   deviceName: string;
   allowedBorrowRoles: string[];
   allowedViewRoles: string[];
-  isBorrowableLabOnly: boolean;
   brand: string | null;
   manufacturer: string | null;
   description: string | null;
+  isBorrowableLabOnly: boolean;
   categoryName: string;
   labRoom: string | null;
   labBranch: string | null;
@@ -31,10 +31,12 @@ export type DeviceDetail = {
 };
 
 export type DeviceInventory = {
-  branch: string;
-  room: string;
   borrowingQuantity: number;
+  assessingQuantity: number;
+  maintainingQuantity: number;
+  shippingQuantity: number;
   availableQuantity: number;
+  unscannedDeviceIds: string[];
 };
 
 export type MaintenanceRecord = {
@@ -49,6 +51,8 @@ export type DeviceAuditDetail = {
   id: string;
   fullId: string;
   status: DeviceStatus;
+  currentStatus: DeviceStatus;
+  auditCondition: DeviceStatus;
   image: {
     mainImage: string;
   };
@@ -174,10 +178,24 @@ export const deviceService = {
 
     try {
       const sql = `
+        WITH active_assessment AS (
+          SELECT 
+            ia.id
+          FROM inventory_assessments ia
+          WHERE ia.status = 'assessing'
+            AND ia.finished_at IS NULL
+            AND ia.lab_id = $2
+          LIMIT 1
+        )
         SELECT 
           d.id,
           d.full_id,
-          d.status,
+          CASE 
+            WHEN d.status = 'assessing' THEN COALESCE(iad.prev_status, d.status)
+            ELSE d.status
+          END as status,
+          iad.after_status as audit_condition,
+          d.status as current_status,
           d.kind,
           d.lab_id,
           dk.image,
@@ -192,6 +210,8 @@ export const deviceService = {
           LEFT JOIN device_kinds dk ON d.kind = dk.id
           LEFT JOIN labs l ON d.lab_id = l.id
           LEFT JOIN categories c ON dk.category_id = c.id
+          LEFT JOIN active_assessment aa ON true
+          LEFT JOIN inventory_assessments_devices iad ON iad.device_id = d.id AND iad.assessing_id = aa.id
         WHERE 
           d.id = $1
           AND d.deleted_at IS NULL
@@ -199,7 +219,7 @@ export const deviceService = {
 
       const results = await db.queryRaw<Record<string, unknown>>({
         sql,
-        params: [id],
+        params: [id, labId],
       });
 
       if (results.length === 0) {
@@ -216,6 +236,8 @@ export const deviceService = {
         id: row.id as string,
         fullId: row.fullId as string,
         status: row.status as DeviceStatus,
+        currentStatus: row.currentStatus as DeviceStatus,
+        auditCondition: row.auditCondition as DeviceStatus,
         image: {
           mainImage: row.image ? (row.image as any).mainImage : "",
         },
@@ -237,33 +259,48 @@ export const deviceService = {
   async getDeviceInventoryByKindId(
     kindId: string,
     labId: string
-  ): Promise<DeviceInventory[]> {
+  ): Promise<DeviceInventory> {
     if (!kindId || !labId) {
-      return [];
+      throw new Error("Missing kind ID or lab ID");
     }
 
     try {
       const sql = `
-        SELECT 
-          l.branch,
-          l.room,
-          SUM(CASE WHEN d.status = 'borrowing' THEN 1 ELSE 0 END)::int as borrowing_quantity,
-          SUM(CASE WHEN d.status IN ('healthy', 'broken', 'discarded', 'lost') THEN 1 ELSE 0 END)::int as available_quantity
-        FROM 
-          labs l
-          JOIN devices d ON l.id = d.lab_id
-          JOIN device_kinds dk ON d.kind = dk.id
-        WHERE 
-          dk.id = $1
-          AND d.lab_id = $2
+        WITH lab_devices AS (
+          SELECT 
+            d.id,
+            d.status
+          FROM devices d
+          WHERE d.kind = $1 
+          AND d.lab_id = $2 
           AND d.deleted_at IS NULL
-        GROUP BY
-          l.id,
-          l.branch,
-          l.room
-        ORDER BY
-          l.branch,
-          l.room
+        ),
+        lab_inventory AS (
+          SELECT 
+            COUNT(*) FILTER (WHERE status = 'borrowing') as borrowing_quantity,
+            COUNT(*) FILTER (WHERE status = 'assessing') as assessing_quantity,
+            COUNT(*) FILTER (WHERE status = 'maintaining') as maintaining_quantity,
+            COUNT(*) FILTER (WHERE status = 'shipping') as shipping_quantity,
+            COUNT(*) FILTER (WHERE status IN ('healthy', 'broken', 'discarded', 'lost', 'assessing')) as available_quantity
+          FROM lab_devices
+        ),
+        unscanned_devices AS (
+          SELECT 
+            id
+          FROM lab_devices
+          WHERE status IN ('healthy', 'broken', 'discarded', 'lost', 'assessing')
+        )
+        SELECT 
+          li.*,
+          ARRAY_AGG(ud.id) as unscanned_device_ids
+        FROM lab_inventory li
+        LEFT JOIN unscanned_devices ud ON TRUE
+        GROUP BY 
+          li.borrowing_quantity,
+          li.assessing_quantity,
+          li.maintaining_quantity,
+          li.shipping_quantity,
+          li.available_quantity
       `;
 
       const results = await db.queryRaw<Record<string, unknown>>({
@@ -271,12 +308,19 @@ export const deviceService = {
         params: [kindId, labId],
       });
 
-      return results.map((row) => ({
-        branch: row.branch as string,
-        room: row.room as string,
-        borrowingQuantity: row.borrowingQuantity as number,
-        availableQuantity: row.availableQuantity as number,
-      }));
+      if (results.length === 0) {
+        throw new Error("Device inventory not found");
+      }
+
+      const row = results[0];
+      return {
+        borrowingQuantity: (row.borrowingQuantity as number) || 0,
+        assessingQuantity: (row.assessingQuantity as number) || 0,
+        maintainingQuantity: (row.maintainingQuantity as number) || 0,
+        shippingQuantity: (row.shippingQuantity as number) || 0,
+        availableQuantity: (row.availableQuantity as number) || 0,
+        unscannedDeviceIds: (row.unscannedDeviceIds as string[]) || [],
+      };
     } catch (error) {
       throw error;
     }
