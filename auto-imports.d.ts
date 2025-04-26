@@ -13,6 +13,8 @@ declare global {
   const FormContextKey: typeof import('vee-validate')['FormContextKey']
   const MaintenanceSession: typeof import('@/types/status')['MaintenanceSession']
   const MaintenanceStatus: typeof import('@/types/db/generated')['MaintenanceStatus']
+  const Ship: typeof import('@/types/db/generated')['Ship']
+  const ShipmentStatus: typeof import('@/types/db/generated')['ShipmentStatus']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const asyncComputed: typeof import('@vueuse/core')['asyncComputed']
   const auditService: typeof import('@/lib/db')['auditService']
@@ -62,6 +64,7 @@ declare global {
   const isReactive: typeof import('vue')['isReactive']
   const isReadonly: typeof import('vue')['isReadonly']
   const isRef: typeof import('vue')['isRef']
+  const labService: typeof import('@/lib/db')['labService']
   const maintenanceService: typeof import('@/lib/db')['maintenanceService']
   const makeDestructurable: typeof import('@vueuse/core')['makeDestructurable']
   const mapActions: typeof import('pinia')['mapActions']
@@ -119,6 +122,7 @@ declare global {
   const shallowReactive: typeof import('vue')['shallowReactive']
   const shallowReadonly: typeof import('vue')['shallowReadonly']
   const shallowRef: typeof import('vue')['shallowRef']
+  const shipmentService: typeof import('@/lib/db')['shipmentService']
   const statusColorMap: typeof import('@/types/status')['statusColorMap']
   const statusMap: typeof import('@/types/status')['statusMap']
   const storeToRefs: typeof import('pinia')['storeToRefs']
@@ -361,7 +365,7 @@ declare global {
   export type { RouteLocationRaw } from 'vue-router'
   import('vue-router')
   // @ts-ignore
-  export type { Device, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit, MaintenanceDevice, MaintenanceDeviceItem, MaintenanceSession } from '@/types/status'
+  export type { Device, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit, MaintenanceDevice, MaintenanceDeviceItem, MaintenanceSession, ShipmentDevice, ShipmentDeviceItem } from '@/types/status'
   import('@/types/status')
 }
 
@@ -376,6 +380,7 @@ declare module 'vue' {
     readonly FieldContextKey: UnwrapRef<typeof import('vee-validate')['FieldContextKey']>
     readonly FormContextKey: UnwrapRef<typeof import('vee-validate')['FormContextKey']>
     readonly MaintenanceStatus: UnwrapRef<typeof import('@/types/db/generated')['MaintenanceStatus']>
+    readonly ShipmentStatus: UnwrapRef<typeof import('@/types/db/generated')['ShipmentStatus']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly asyncComputed: UnwrapRef<typeof import('@vueuse/core')['asyncComputed']>
     readonly auditService: UnwrapRef<typeof import('@/lib/db')['auditService']>
@@ -425,6 +430,7 @@ declare module 'vue' {
     readonly isReactive: UnwrapRef<typeof import('vue')['isReactive']>
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
+    readonly labService: UnwrapRef<typeof import('@/lib/db')['labService']>
     readonly maintenanceService: UnwrapRef<typeof import('@/lib/db')['maintenanceService']>
     readonly makeDestructurable: UnwrapRef<typeof import('@vueuse/core')['makeDestructurable']>
     readonly mapActions: UnwrapRef<typeof import('pinia')['mapActions']>
@@ -482,6 +488,7 @@ declare module 'vue' {
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>
     readonly shallowReadonly: UnwrapRef<typeof import('vue')['shallowReadonly']>
     readonly shallowRef: UnwrapRef<typeof import('vue')['shallowRef']>
+    readonly shipmentService: UnwrapRef<typeof import('@/lib/db')['shipmentService']>
     readonly statusColorMap: UnwrapRef<typeof import('@/types/status')['statusColorMap']>
     readonly statusMap: UnwrapRef<typeof import('@/types/status')['statusMap']>
     readonly storeToRefs: UnwrapRef<typeof import('pinia')['storeToRefs']>

@@ -45,6 +45,8 @@ export default defineConfig({
             "deviceService",
             "auditService",
             "maintenanceService",
+            "shipmentService",
+            "labService",
           ],
         },
         {
@@ -53,6 +55,7 @@ export default defineConfig({
             "DeviceStatus",
             "AssessmentStatus",
             "MaintenanceStatus",
+            "ShipmentStatus",
           ],
         },
         {
@@ -80,6 +83,8 @@ export default defineConfig({
             "MaintenanceDevice",
             "MaintenanceDeviceItem",
             "MaintenanceSession",
+            "ShipmentDevice",
+            "ShipmentDeviceItem",
           ],
           type: true,
         },

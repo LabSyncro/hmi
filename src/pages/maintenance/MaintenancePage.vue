@@ -1261,7 +1261,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           <div
             class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 mb-4"
           >
-            <div class="h-12 w-12 text-green-600">✓</div>
+            <CheckIcon class="h-12 w-12 text-green-600" />
           </div>
           <h2 class="text-xl font-semibold leading-6 text-gray-900 mb-2">
             Hoàn tất
@@ -1283,7 +1283,6 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
       </div>
     </div>
 
-    <!-- Maintenance Sessions Modal -->
     <div
       v-if="showMaintenanceSessionsModal"
       class="fixed inset-0 flex items-center justify-center z-50"

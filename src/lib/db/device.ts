@@ -477,4 +477,81 @@ export const deviceService = {
       throw error;
     }
   },
+
+  async getDeviceShipmentById(
+    deviceId: string,
+    labId?: string
+  ): Promise<DeviceDetail> {
+    if (!deviceId) {
+      throw new Error("Missing device ID");
+    }
+
+    try {
+      const sql = `
+        SELECT 
+          d.id,
+          d.full_id,
+          d.status,
+          d.kind,
+          d.lab_id,
+          dk.image,
+          dk.unit,
+          dk.name AS device_name,
+          dk.allowed_borrow_roles,
+          dk.allowed_view_roles,
+          dk.brand,
+          dk.manufacturer,
+          dk.description,
+          dk.is_borrowable_lab_only,
+          c.name AS category_name,
+          l.room,
+          l.branch
+        FROM 
+          devices d
+          LEFT JOIN device_kinds dk ON d.kind = dk.id
+          LEFT JOIN labs l ON d.lab_id = l.id
+          LEFT JOIN categories c ON dk.category_id = c.id
+        WHERE 
+          d.id = $1
+          AND d.deleted_at IS NULL
+      `;
+
+      const results = await db.queryRaw<Record<string, unknown>>({
+        sql,
+        params: [deviceId],
+      });
+
+      if (results.length === 0) {
+        throw new Error("Device not found");
+      }
+
+      const row = results[0];
+
+      if (labId && row.labId !== labId) {
+        throw new Error("Device does not belong to this lab");
+      }
+
+      const deviceDetail: DeviceDetail = {
+        fullId: row.fullId as string,
+        status: row.status as DeviceStatus | null,
+        image: row.image as any,
+        unit: row.unit as string,
+        deviceName: row.deviceName as string,
+        allowedBorrowRoles: row.allowedBorrowRoles as string[],
+        allowedViewRoles: row.allowedViewRoles as string[],
+        brand: row.brand as string | null,
+        manufacturer: row.manufacturer as string | null,
+        description: row.description as string | null,
+        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
+        categoryName: row.categoryName as string,
+        labRoom: row.room as string | null,
+        labBranch: row.branch as string | null,
+        kind: row.kind as string,
+      };
+
+      return deviceDetail;
+    } catch (error) {
+      throw error;
+    }
+  },
 };

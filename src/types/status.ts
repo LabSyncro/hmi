@@ -113,3 +113,11 @@ export type MaintenanceSession = {
   deviceIds?: string[];
   notes?: string;
 };
+
+export type ShipmentDeviceItem = BaseDeviceItem & {
+  shipmentCondition: DeviceStatus;
+};
+
+export type ShipmentDevice = Omit<Device, "items"> & {
+  items: ShipmentDeviceItem[];
+};
