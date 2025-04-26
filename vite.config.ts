@@ -44,11 +44,16 @@ export default defineConfig({
             "userService",
             "deviceService",
             "auditService",
+            "maintenanceService",
           ],
         },
         {
           from: "@/types/db/generated",
-          imports: ["DeviceQuality", "DeviceStatus", "AssessmentStatus"],
+          imports: [
+            "DeviceStatus",
+            "AssessmentStatus",
+            "MaintenanceStatus",
+          ],
         },
         {
           from: "@/lib/utils",
@@ -72,6 +77,9 @@ export default defineConfig({
             "AuditDevice",
             "AuditDeviceItem",
             "IncompleteAudit",
+            "MaintenanceDevice",
+            "MaintenanceDeviceItem",
+            "MaintenanceSession",
           ],
           type: true,
         },

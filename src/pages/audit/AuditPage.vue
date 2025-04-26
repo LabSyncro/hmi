@@ -298,7 +298,8 @@ const handleDeviceScan = async (input: string) => {
           await auditService.addDeviceToAudit(
             currentAuditId,
             deviceId,
-            deviceDetails.status
+            deviceDetails.status,
+            deviceDetails.auditCondition
           );
         } catch (error) {
           toast({
@@ -590,7 +591,8 @@ const goToHome = () => {
   mode.value = "idle";
   devices.value = [];
   notes.value = "";
-  router.push("/");
+  userInfo.value = null;
+  router.push("/audit");
 };
 
 const completeAudit = async () => {
@@ -712,7 +714,17 @@ const getUnscannedItems = (device: AuditDevice) => {
 async function fetchIncompleteAudits() {
   loadingIncompleteAudits.value = true;
   try {
-    const result = await auditService.getIncompleteAudits();
+    if (!storedUserInfo.value?.lab?.id) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy thông tin phòng lab",
+        variant: "destructive",
+      });
+      return;
+    }
+    const result = await auditService.getIncompleteAudits(
+      storedUserInfo.value.lab.id
+    );
     incompleteAudits.value = result as IncompleteAudit[];
   } catch (error) {
     toast({
@@ -1057,12 +1069,13 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                     <div
                       class="col-span-3 flex items-center justify-start gap-2"
                     >
-                      <span
+                      <Badge
                         :class="statusColorMap[item.status]"
-                        class="text-sm font-semibold"
+                        variant="outline"
+                        class="h-8 text-sm font-semibold w-fit"
                       >
                         {{ statusMap[item.status] }}
-                      </span>
+                      </Badge>
                       <span class="text-gray-400">→</span>
                       <div class="w-32">
                         <Select
@@ -1073,7 +1086,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                           "
                         >
                           <SelectTrigger
-                            class="h-9 text-sm bg-white text-base font-semibold w-fit"
+                            class="h-8 text-sm bg-white font-semibold w-fit"
                             :class="
                               item.auditCondition
                                 ? statusColorMap[item.auditCondition]
@@ -1085,41 +1098,47 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                           <SelectContent>
                             <SelectItem
                               :value="DeviceStatus.HEALTHY"
-                              :class="
-                                statusColorMap[DeviceStatus.HEALTHY] +
-                                ' cursor-pointer'
-                              "
+                              class="cursor-pointer"
                             >
-                              <span>{{ statusMap[DeviceStatus.HEALTHY] }}</span>
+                              <Badge
+                                :class="statusColorMap[DeviceStatus.HEALTHY]"
+                                variant="outline"
+                              >
+                                {{ statusMap[DeviceStatus.HEALTHY] }}
+                              </Badge>
                             </SelectItem>
                             <SelectItem
                               :value="DeviceStatus.BROKEN"
-                              :class="
-                                statusColorMap[DeviceStatus.BROKEN] +
-                                ' cursor-pointer'
-                              "
+                              class="cursor-pointer"
                             >
-                              <span>{{ statusMap[DeviceStatus.BROKEN] }}</span>
+                              <Badge
+                                :class="statusColorMap[DeviceStatus.BROKEN]"
+                                variant="outline"
+                              >
+                                {{ statusMap[DeviceStatus.BROKEN] }}
+                              </Badge>
                             </SelectItem>
                             <SelectItem
                               :value="DeviceStatus.LOST"
-                              :class="
-                                statusColorMap[DeviceStatus.LOST] +
-                                ' cursor-pointer'
-                              "
+                              class="cursor-pointer"
                             >
-                              <span>{{ statusMap[DeviceStatus.LOST] }}</span>
+                              <Badge
+                                :class="statusColorMap[DeviceStatus.LOST]"
+                                variant="outline"
+                              >
+                                {{ statusMap[DeviceStatus.LOST] }}
+                              </Badge>
                             </SelectItem>
                             <SelectItem
                               :value="DeviceStatus.DISCARDED"
-                              :class="
-                                statusColorMap[DeviceStatus.DISCARDED] +
-                                ' cursor-pointer'
-                              "
+                              class="cursor-pointer"
                             >
-                              <span>{{
-                                statusMap[DeviceStatus.DISCARDED]
-                              }}</span>
+                              <Badge
+                                :class="statusColorMap[DeviceStatus.DISCARDED]"
+                                variant="outline"
+                              >
+                                {{ statusMap[DeviceStatus.DISCARDED] }}
+                              </Badge>
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -1183,7 +1202,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                               class="flex-grow"
                             >
                               <SelectTrigger
-                                class="h-9 text-sm bg-white text-base font-semibold w-full"
+                                class="h-8 text-sm bg-white font-semibold w-fit"
                                 :class="
                                   unscannedItem.auditCondition
                                     ? statusColorMap[
@@ -1197,25 +1216,27 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                               <SelectContent>
                                 <SelectItem
                                   :value="DeviceStatus.LOST"
-                                  :class="
-                                    statusColorMap[DeviceStatus.LOST] +
-                                    ' cursor-pointer'
-                                  "
+                                  class="cursor-pointer"
                                 >
-                                  <span>{{
-                                    statusMap[DeviceStatus.LOST]
-                                  }}</span>
+                                  <Badge
+                                    :class="statusColorMap[DeviceStatus.LOST]"
+                                    variant="outline"
+                                  >
+                                    {{ statusMap[DeviceStatus.LOST] }}
+                                  </Badge>
                                 </SelectItem>
                                 <SelectItem
                                   :value="DeviceStatus.DISCARDED"
-                                  :class="
-                                    statusColorMap[DeviceStatus.DISCARDED] +
-                                    ' cursor-pointer'
-                                  "
+                                  class="cursor-pointer"
                                 >
-                                  <span>{{
-                                    statusMap[DeviceStatus.DISCARDED]
-                                  }}</span>
+                                  <Badge
+                                    :class="
+                                      statusColorMap[DeviceStatus.DISCARDED]
+                                    "
+                                    variant="outline"
+                                  >
+                                    {{ statusMap[DeviceStatus.DISCARDED] }}
+                                  </Badge>
                                 </SelectItem>
                               </SelectContent>
                             </Select>

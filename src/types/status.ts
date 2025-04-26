@@ -1,4 +1,4 @@
-import { AssessmentStatus, DeviceQuality, DeviceStatus } from "@/lib/db";
+import { AssessmentStatus, DeviceStatus, MaintenanceStatus } from "@/lib/db";
 
 export const statusMap: Record<DeviceStatus, string> = {
   healthy: "Tốt",
@@ -11,10 +11,9 @@ export const statusMap: Record<DeviceStatus, string> = {
   lost: "Đã mất",
 };
 
-export const qualityMap: Record<DeviceQuality, string> = {
+export const qualityMap: Partial<Record<DeviceStatus, string>> = {
   healthy: "Tốt",
   broken: "Hư hỏng",
-  needs_fixing: "Cần sửa chữa",
   lost: "Đã mất",
 };
 
@@ -29,10 +28,9 @@ export const statusColorMap: Record<DeviceStatus, string> = {
   lost: "text-gray-600 bg-gray-50 border-gray-600",
 };
 
-export const qualityColorMap: Record<DeviceQuality, string> = {
+export const qualityColorMap: Partial<Record<DeviceStatus, string>> = {
   healthy: "text-green-600 bg-green-50 border-green-600",
   broken: "text-red-600 bg-red-50 border-red-600",
-  needs_fixing: "text-yellow-600 bg-yellow-50 border-yellow-600",
   lost: "text-black bg-gray-200 border-black",
 };
 
@@ -57,8 +55,8 @@ export type MaintenanceDeviceItem = BaseDeviceItem & {
 };
 
 export type QualityDeviceItem = BaseDeviceItem & {
-  returnCondition?: DeviceQuality;
-  prevQuality: DeviceQuality;
+  returnCondition?: DeviceStatus;
+  prevQuality: DeviceStatus;
   expectedReturnAt?: string | null;
 };
 
@@ -99,4 +97,19 @@ export type IncompleteAudit = {
 
 export type MaintenanceDevice = Omit<Device, "items"> & {
   items: MaintenanceDeviceItem[];
+};
+
+export type MaintenanceSession = {
+  id: string;
+  maintainerId: string;
+  maintainerName: string;
+  deviceCount: number;
+  status: MaintenanceStatus;
+  createdAt: Date;
+  finishedAt: Date | null;
+  labId?: string;
+  labRoom?: string;
+  labBranch?: string;
+  deviceIds?: string[];
+  notes?: string;
 };

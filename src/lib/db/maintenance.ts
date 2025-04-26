@@ -1,59 +1,66 @@
-import { AssessmentStatus, DeviceStatus } from "@/types/db/generated";
+import { DeviceStatus, MaintenanceStatus } from "@/types/db/generated";
 import { db } from "./client";
 
-interface CreateAuditParams {
-  auditorId: string;
+type CreateMaintenanceParams = {
+  technicianId: string;
   location: string;
+  notes?: string;
+  status?: MaintenanceStatus;
   devices: {
     id: string;
-    condition: DeviceStatus;
+    maintenanceOutcome: DeviceStatus;
     prevStatus?: DeviceStatus;
   }[];
-  status?: AssessmentStatus;
-  notes?: string;
-}
+};
 
-export const auditService = {
-  async createAudit(params: CreateAuditParams) {
+export const maintenanceService = {
+  async createMaintenance(
+    params: CreateMaintenanceParams
+  ): Promise<{ id: string; success: boolean }> {
     try {
-      const status = params.status || AssessmentStatus.ASSESSING;
+      const status = params.status || MaintenanceStatus.MAINTAINING;
       const finishedAt =
-        status === AssessmentStatus.COMPLETED ? "CURRENT_TIMESTAMP" : "NULL";
+        status === MaintenanceStatus.COMPLETED ? "CURRENT_TIMESTAMP" : "NULL";
 
       const deviceRows = params.devices
         .map((device) => {
           const prev = device.prevStatus
             ? `'${device.prevStatus}'::device_status`
             : "NULL";
-          const after = `'${device.condition}'::device_status`;
+          const after = `'${device.maintenanceOutcome}'::device_status`;
           return `(${prev}, ${after}, '${device.id}')`;
         })
         .join(", ");
       const updateCases = params.devices
-        .map((d) => `WHEN id = '${d.id}' THEN 'assessing'::device_status`)
+        .map(
+          (device) =>
+            `WHEN id = '${device.id}' THEN 'maintaining'::device_status`
+        )
         .join(" ");
-      const updateIds = params.devices.map((d) => `'${d.id}'`).join(", ");
+      const updateIds = params.devices
+        .map((device) => `'${device.id}'`)
+        .join(", ");
 
       const sql = `
         WITH activity_insert AS (
           INSERT INTO activities (type${params.notes ? ", note" : ""})
           VALUES (
-            'assessment'::activity_type${params.notes ? `, '${params.notes.replace(/'/g, "''")}'` : ""}
+            'maintenance'::activity_type${params.notes ? `, '${params.notes.replace(/'/g, "''")}'` : ""}
           )
           RETURNING id
         ),
-        assessment_insert AS (
-          INSERT INTO inventory_assessments (
+        maintenance_insert AS (
+          INSERT INTO maintenances (
             id,
             lab_id,
-            accountant_id,
-            status${status === AssessmentStatus.COMPLETED ? ", finished_at" : ""}
+            maintainer_id,
+            status${status === MaintenanceStatus.COMPLETED ? ", finished_at" : ""}
           )
           SELECT
             id,
             '${params.location}'::uuid,
-            '${params.auditorId}',
-            '${status}'::assessment_status${status === AssessmentStatus.COMPLETED ? `, ${finishedAt}` : ""}
+            '${params.technicianId}',
+            '${status}'::maintenance_status${status === MaintenanceStatus.COMPLETED ? `, ${finishedAt}` : ""}
           FROM activity_insert
           RETURNING id
         ),
@@ -62,19 +69,19 @@ export const auditService = {
             ${deviceRows}
         ),
         device_insert AS (
-          INSERT INTO inventory_assessments_devices (
+          INSERT INTO maintenances_devices (
             prev_status,
             after_status,
-            assessing_id,
+            maintaining_id,
             device_id
           )
           SELECT
             dr.prev_status,
             dr.after_status,
-            ai.id,
+            mi.id,
             dr.device_id
-          FROM device_rows dr, assessment_insert ai
-          RETURNING assessing_id
+          FROM device_rows dr, maintenance_insert mi
+          RETURNING maintaining_id
         )${
           updateCases
             ? `,
@@ -88,101 +95,122 @@ export const auditService = {
         )`
             : ""
         }
-        SELECT id FROM assessment_insert;
+        SELECT id FROM maintenance_insert;
       `;
 
       const result = await db.queryRaw<{ id: string }>({ sql });
-      const assessmentId = result[0]?.id;
-      return { success: true, id: assessmentId };
+      const maintenanceId = result[0]?.id;
+
+      if (!maintenanceId) {
+        throw new Error("Failed to create maintenance record");
+      }
+
+      return { id: maintenanceId, success: true };
     } catch (error) {
       throw error;
     }
   },
 
-  async getIncompleteAudits(labId: string) {
+  async getIncompleteMaintenance(labId: string) {
     try {
       const sql = `
         SELECT 
-          ia.id, 
-          ia.status, 
-          ia.accountant_id, 
-          u.name as accountant_name,
-          ia.lab_id, 
+          m.id, 
+          m.status, 
+          m.maintainer_id, 
+          u.name as maintainer_name,
+          m.lab_id, 
           l.room as lab_room,
           l.branch as lab_branch,
           a.created_at,
-          (SELECT array_agg(iad.device_id)
-            FROM inventory_assessments_devices iad
-            WHERE iad.assessing_id = ia.id
+          a.note,
+          (SELECT array_agg(md.device_id)
+            FROM maintenances_devices md
+            WHERE md.maintaining_id = m.id
           ) as device_ids,
           (SELECT COUNT(*) 
-            FROM inventory_assessments_devices iad 
-            WHERE iad.assessing_id = ia.id
+            FROM maintenances_devices md 
+            WHERE md.maintaining_id = m.id
           ) as device_count
         FROM 
-          inventory_assessments ia
+          maintenances m
         JOIN
-          activities a ON ia.id = a.id
+          activities a ON m.id = a.id
         LEFT JOIN 
-          users u ON ia.accountant_id = u.id
+          users u ON m.maintainer_id = u.id
         LEFT JOIN 
-          labs l ON ia.lab_id = l.id
+          labs l ON m.lab_id = l.id
         WHERE 
-          ia.status = '${AssessmentStatus.ASSESSING}'
-          AND ia.lab_id = '${labId}'
+          m.status = '${MaintenanceStatus.MAINTAINING}'
+          AND m.lab_id = '${labId}'
         ORDER BY 
           a.created_at DESC
       `;
 
-      const result = await db.queryRaw<IncompleteAudit>({ sql });
+      const result = await db.queryRaw<Record<string, any>>({ sql });
 
-      return result;
+      return result.map((row) => ({
+        id: row.id,
+        status: row.status,
+        maintainerId: row.maintainerId,
+        maintainerName: row.maintainerName,
+        labId: row.labId,
+        labRoom: row.labRoom,
+        labBranch: row.labBranch,
+        notes: row.note,
+        createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+        finishedAt: null,
+        deviceCount: parseInt(row.deviceCount, 10),
+        deviceIds: row.deviceIds || [],
+      }));
     } catch (error) {
       throw error;
     }
   },
 
-  async addDeviceToAudit(
-    auditId: string,
+  async addDeviceToMaintenance(
+    maintenanceId: string,
     deviceId: string,
     prevStatus: DeviceStatus,
     afterStatus: DeviceStatus
   ): Promise<void> {
     try {
-      const currentAuditSql = `
+      const currentMaintenanceSql = `
         SELECT status
-        FROM inventory_assessments
-        WHERE id = '${auditId}'
+        FROM maintenances
+        WHERE id = '${maintenanceId}'
       `;
-      const currentAudit = await db.queryRaw<{ status: AssessmentStatus }>({
-        sql: currentAuditSql,
+      const currentMaintenance = await db.queryRaw<{
+        status: MaintenanceStatus;
+      }>({
+        sql: currentMaintenanceSql,
       });
-      if (currentAudit.length === 0) {
-        throw new Error(`Audit with ID ${auditId} not found`);
+      if (currentMaintenance.length === 0) {
+        throw new Error(`Maintenance with ID ${maintenanceId} not found`);
       }
-      if (currentAudit[0].status !== AssessmentStatus.ASSESSING) {
+      if (currentMaintenance[0].status !== MaintenanceStatus.MAINTAINING) {
         return;
       }
 
       const sql = `
         WITH ins AS (
-          INSERT INTO inventory_assessments_devices (
+          INSERT INTO maintenances_devices (
             prev_status,
             after_status,
-            assessing_id,
+            maintaining_id,
             device_id
           )
           VALUES (
             '${prevStatus}'::device_status,
             '${afterStatus}'::device_status,
-            '${auditId}',
+            '${maintenanceId}',
             '${deviceId}'
           )
           RETURNING id
         ),
         upd AS (
           UPDATE devices
-          SET status = 'assessing'::device_status
+          SET status = 'maintaining'::device_status
           WHERE id = '${deviceId}'
           RETURNING id
         )
@@ -195,7 +223,7 @@ export const auditService = {
   },
 
   async updateListDeviceConditions(
-    auditId: string,
+    maintenanceId: string,
     devices: {
       id: string;
       condition: DeviceStatus;
@@ -212,11 +240,11 @@ export const auditService = {
         WITH device_updates(device_id, new_condition) AS (
           VALUES ${values}
         )
-        UPDATE inventory_assessments_devices
+        UPDATE maintenances_devices
         SET after_status = du.new_condition
         FROM device_updates du
-        WHERE inventory_assessments_devices.assessing_id = '${auditId}'
-          AND inventory_assessments_devices.device_id = du.device_id
+        WHERE maintenances_devices.maintaining_id = '${maintenanceId}'
+          AND maintenances_devices.device_id = du.device_id
       `;
 
       await db.queryRaw({ sql });
@@ -226,16 +254,16 @@ export const auditService = {
   },
 
   async updateDeviceCondition(
-    auditId: string,
+    maintenanceId: string,
     deviceId: string,
     condition: DeviceStatus
   ): Promise<void> {
     try {
       const sql = `
         WITH update_device AS (
-          UPDATE inventory_assessments_devices
+          UPDATE maintenances_devices
           SET after_status = '${condition}'::device_status
-          WHERE assessing_id = '${auditId}'
+          WHERE maintaining_id = '${maintenanceId}'
             AND device_id = '${deviceId}'
           RETURNING device_id
         )
@@ -246,76 +274,22 @@ export const auditService = {
       throw error;
     }
   },
-  async addUnscannedDevices(
-    auditId: string,
-    unscannedItems: {
-      deviceId: string;
-      condition: DeviceStatus;
-    }[]
-  ): Promise<void> {
-    try {
-      if (!unscannedItems.length) return;
 
-      const deviceValues = unscannedItems
-        .map(
-          (item) => `('${item.deviceId}', '${item.condition}'::device_status)`
-        )
-        .join(", ");
-
-      const sql = `
-        WITH device_info(device_id, desired_condition) AS (
-          VALUES ${deviceValues}
-        ),
-        available_devices AS (
-          SELECT 
-            di.device_id,
-            di.desired_condition,
-            d.status as current_status
-          FROM device_info di
-          JOIN devices d ON di.device_id = d.id
-          LEFT JOIN inventory_assessments_devices iad ON 
-            iad.assessing_id = '${auditId}' AND iad.device_id = di.device_id
-          WHERE 
-            iad.device_id IS NULL
-            AND d.deleted_at IS NULL
-            AND d.status != 'assessing'::device_status
-        ),
-        insert_records AS (
-          INSERT INTO inventory_assessments_devices (assessing_id, device_id, prev_status, after_status)
-          SELECT 
-            '${auditId}',
-            device_id,
-            current_status::device_status,
-            desired_condition::device_status
-          FROM available_devices
-          RETURNING device_id
-        )
-        UPDATE devices
-        SET status = 'assessing'::device_status
-        WHERE id IN (SELECT device_id FROM insert_records)
-      `;
-
-      await db.queryRaw({ sql });
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async removeDeviceFromAudit(
-    auditId: string,
+  async removeDeviceFromMaintenance(
+    maintenanceId: string,
     deviceId: string
   ): Promise<void> {
     try {
       const sql = `
         WITH device_info AS (
           SELECT prev_status 
-          FROM inventory_assessments_devices
-          WHERE assessing_id = '${auditId}'
+          FROM maintenances_devices
+          WHERE maintaining_id = '${maintenanceId}'
             AND device_id = '${deviceId}'
         ),
         delete_device AS (
-          DELETE FROM inventory_assessments_devices
-          WHERE assessing_id = '${auditId}'
+          DELETE FROM maintenances_devices
+          WHERE maintaining_id = '${maintenanceId}'
             AND device_id = '${deviceId}'
           RETURNING device_id
         ),
@@ -334,25 +308,28 @@ export const auditService = {
     }
   },
 
-  async completeAudit(auditId: string, notes?: string): Promise<void> {
+  async completeMaintenance(
+    maintenanceId: string,
+    notes?: string
+  ): Promise<void> {
     try {
       const notesValue = notes ? `'${notes.replace(/'/g, "''")}'` : "NULL";
 
       const sql = `
-        WITH update_assessment AS (
-          UPDATE inventory_assessments
+        WITH update_maintenance AS (
+          UPDATE maintenances
           SET 
-            status = '${AssessmentStatus.COMPLETED}'::assessment_status,
+            status = '${MaintenanceStatus.COMPLETED}'::maintenance_status,
             finished_at = CURRENT_TIMESTAMP
-          WHERE id = '${auditId}'
+          WHERE id = '${maintenanceId}'
           RETURNING id
         ),
         device_rows AS (
           SELECT 
             device_id,
             COALESCE(after_status, prev_status, '${DeviceStatus.HEALTHY}'::device_status) AS status_to_set
-          FROM inventory_assessments_devices
-          WHERE assessing_id = '${auditId}'
+          FROM maintenances_devices
+          WHERE maintaining_id = '${maintenanceId}'
         ),
         update_devices AS (
           UPDATE devices
@@ -364,10 +341,10 @@ export const auditService = {
         update_activities AS (
           UPDATE activities
           SET note = ${notesValue}
-          WHERE id = '${auditId}'
+          WHERE id = '${maintenanceId}'
           RETURNING id
         )
-        SELECT id FROM update_assessment
+        SELECT id FROM update_maintenance
       `;
       await db.queryRaw({ sql });
     } catch (error) {
@@ -375,23 +352,23 @@ export const auditService = {
     }
   },
 
-  async cancelAudit(auditId: string): Promise<void> {
+  async cancelMaintenance(maintenanceId: string): Promise<void> {
     try {
       const sql = `
-        WITH upd_assess AS (
-          UPDATE inventory_assessments
+        WITH upd_maintenance AS (
+          UPDATE maintenances
           SET
-            status = '${AssessmentStatus.CANCELLED}'::assessment_status,
+            status = '${MaintenanceStatus.CANCELLED}'::maintenance_status,
             finished_at = CURRENT_TIMESTAMP
-          WHERE id = '${auditId}'
+          WHERE id = '${maintenanceId}'
           RETURNING id
         ),
         device_rows AS (
           SELECT
             device_id,
             COALESCE(prev_status, '${DeviceStatus.HEALTHY}'::device_status) AS status_to_set
-          FROM inventory_assessments_devices
-          WHERE assessing_id = '${auditId}'
+          FROM maintenances_devices
+          WHERE maintaining_id = '${maintenanceId}'
         ),
         upd_devices AS (
           UPDATE devices
@@ -400,7 +377,7 @@ export const auditService = {
           WHERE devices.id = dr.device_id
           RETURNING devices.id
         )
-        SELECT id FROM upd_assess;
+        SELECT id FROM upd_maintenance;
       `;
       await db.queryRaw({ sql });
     } catch (error) {

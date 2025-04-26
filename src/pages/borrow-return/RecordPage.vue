@@ -159,6 +159,7 @@ const goToHome = () => {
   mode.value = "idle";
   devices.value = [];
   notes.value = "";
+  userInfo.value = null;
   router.push("/");
 };
 
@@ -377,7 +378,7 @@ const handleDeviceScan = async (input: string) => {
           existingDevice.items.push({
             id: deviceId,
             status: deviceDetails.status!,
-            prevQuality: DeviceQuality.HEALTHY,
+            prevQuality: DeviceStatus.HEALTHY,
             expectedReturnAt: deviceDetails.expectedReturnAt,
           });
           existingDevice.quantity = existingDevice.items.length;
@@ -393,7 +394,7 @@ const handleDeviceScan = async (input: string) => {
               {
                 id: deviceId,
                 status: deviceDetails.status!,
-                prevQuality: DeviceQuality.HEALTHY,
+                prevQuality: DeviceStatus.HEALTHY,
                 expectedReturnAt: deviceDetails.expectedReturnAt,
               },
             ],
@@ -406,14 +407,14 @@ const handleDeviceScan = async (input: string) => {
           variant: "success",
         });
       } else if (mode.value === "return") {
-        const qualityValue = deviceDetails.prevQuality || DeviceQuality.HEALTHY;
+        const qualityValue = deviceDetails.prevQuality || DeviceStatus.HEALTHY;
         const returnDate =
           deviceDetails.expectedReturnAt || df.format(new Date());
 
         const newItem = {
           id: deviceId,
           status: deviceDetails.status!,
-          returnCondition: DeviceQuality.HEALTHY,
+          returnCondition: DeviceStatus.HEALTHY,
           prevQuality: qualityValue,
           expectedReturnAt: returnDate,
         };
@@ -511,7 +512,7 @@ async function handleConfirmBorrow() {
       const items = device.items.map((item) => ({
         id: item.id,
         prevQuality:
-          (item as QualityDeviceItem).prevQuality || DeviceQuality.HEALTHY,
+          (item as QualityDeviceItem).prevQuality || DeviceStatus.HEALTHY,
         expectedReturnedAt: borrowDetails.value.returnDate!,
         expectedReturnedLabId: storedUserInfo.value?.lab.id,
       }));
@@ -570,7 +571,7 @@ async function handleConfirmReturn() {
     const allDeviceItems = devices.value.reduce((acc, device) => {
       const items = device.items.map((item: QualityDeviceItem) => ({
         id: item.id,
-        afterQuality: item.returnCondition || DeviceQuality.HEALTHY,
+        afterQuality: item.returnCondition || DeviceStatus.HEALTHY,
       }));
       return acc.concat(items);
     }, [] as any[]);
@@ -948,29 +949,30 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                   </div>
                   <div class="col-span-3">
                     <div class="flex items-center gap-1">
-                      <span
+                      <Badge
                         :class="
                           qualityColorMap[
                             (item as QualityDeviceItem).prevQuality ||
-                              DeviceQuality.HEALTHY
+                              DeviceStatus.HEALTHY
                           ]
                         "
-                        class="text-base font-semibold w-fit text-right flex-shrink-0 bg-transparent"
+                        class="h-8 text-sm font-semibold w-fit"
+                        variant="outline"
                       >
                         {{
                           qualityMap[
                             (item as QualityDeviceItem).prevQuality ||
-                              DeviceQuality.HEALTHY
+                              DeviceStatus.HEALTHY
                           ]
                         }}
-                      </span>
+                      </Badge>
                       <span class="text-gray-400 mx-1">→</span>
                       <Select
                         v-model="(item as QualityDeviceItem).returnCondition"
                         class="flex-grow"
                       >
                         <SelectTrigger
-                          class="h-9 text-sm bg-white text-base font-semibold w-fit"
+                          class="h-8 text-sm bg-white font-semibold w-fit"
                           :class="
                             (item as QualityDeviceItem).returnCondition
                               ? qualityColorMap[
@@ -986,10 +988,14 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                             v-for="(label, status) in qualityMap"
                             :key="status"
                             :value="status"
+                            class="cursor-pointer"
                           >
-                            <span :class="qualityColorMap[status]">{{
-                              label
-                            }}</span>
+                            <Badge
+                              :class="qualityColorMap[status]"
+                              variant="outline"
+                            >
+                              {{ label }}
+                            </Badge>
                           </SelectItem>
                         </SelectContent>
                       </Select>

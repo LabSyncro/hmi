@@ -1,4 +1,4 @@
-import { DeviceQuality, DeviceStatus } from "@/types/db/generated";
+import { DeviceStatus } from "@/types/db/generated";
 import { db } from "./client";
 
 interface CreateReceiptParams {
@@ -10,7 +10,7 @@ interface CreateReceiptParams {
     id: string;
     expectedReturnedAt: Date;
     expectedReturnedLabId?: string;
-    prevQuality: DeviceQuality;
+    prevQuality: DeviceStatus;
   }[];
 }
 
@@ -21,7 +21,7 @@ interface ReturnReceiptParams {
   returnedLabId: string;
   devices: {
     id: string;
-    afterQuality: DeviceQuality;
+    afterQuality: DeviceStatus;
   }[];
   note?: string;
 }
@@ -333,10 +333,10 @@ export const receiptService = {
 
       const deviceValues = params.devices
         .map((item) => {
-          const prevQuality = item.prevQuality || DeviceQuality.HEALTHY;
+          const prevQuality = item.prevQuality || DeviceStatus.HEALTHY;
           const expectedReturnedLabId =
             item.expectedReturnedLabId || params.borrowedLabId;
-          return `'${item.id}', '${item.expectedReturnedAt.toISOString()}'::timestamptz, '${expectedReturnedLabId}'::uuid, '${prevQuality}'::device_quality`;
+          return `'${item.id}', '${item.expectedReturnedAt.toISOString()}'::timestamptz, '${expectedReturnedLabId}'::uuid, '${prevQuality}'::device_status`;
         })
         .join("),(");
 
@@ -392,7 +392,7 @@ export const receiptService = {
       }
 
       const deviceValues = params.devices
-        .map((item) => `('${item.id}', '${item.afterQuality}'::device_quality)`)
+        .map((item) => `('${item.id}', '${item.afterQuality}'::device_status)`)
         .join(",");
 
       const overallNote = params.note ? `'${params.note}'` : "NULL";
@@ -401,7 +401,7 @@ export const receiptService = {
         sql: `
           WITH return_receipt AS (
             INSERT INTO receipts (id, actor_id, checker_id, lab_id)
-            VALUES ('${params.id}', '${params.returnedCheckerId}', '${params.returnedCheckerId}', '${params.returnedLabId}'::uuid)
+            VALUES ('${params.id}', '${params.returnerId}', '${params.returnedCheckerId}', '${params.returnedLabId}'::uuid)
             RETURNING id
           ),
           return_activity AS (
@@ -424,12 +424,7 @@ export const receiptService = {
           )
           UPDATE devices d
           SET
-            status = CASE
-              WHEN urd.after_quality = 'healthy' THEN 'healthy'::device_status
-              WHEN urd.after_quality = 'needs_fixing' THEN 'broken'::device_status
-              WHEN urd.after_quality = 'broken' THEN 'discarded'::device_status
-              WHEN urd.after_quality = 'lost' THEN 'lost'::device_status
-            END
+            status = urd.after_quality::device_status
           FROM update_receipts_devices urd
           WHERE d.id = urd.device_id
         `,

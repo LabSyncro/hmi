@@ -7,11 +7,12 @@
 export {}
 declare global {
   const AssessmentStatus: typeof import('@/types/db/generated')['AssessmentStatus']
-  const DeviceQuality: typeof import('@/types/db/generated')['DeviceQuality']
   const DeviceStatus: typeof import('@/types/db/generated')['DeviceStatus']
   const EffectScope: typeof import('vue')['EffectScope']
   const FieldContextKey: typeof import('vee-validate')['FieldContextKey']
   const FormContextKey: typeof import('vee-validate')['FormContextKey']
+  const MaintenanceSession: typeof import('@/types/status')['MaintenanceSession']
+  const MaintenanceStatus: typeof import('@/types/db/generated')['MaintenanceStatus']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const asyncComputed: typeof import('@vueuse/core')['asyncComputed']
   const auditService: typeof import('@/lib/db')['auditService']
@@ -61,6 +62,7 @@ declare global {
   const isReactive: typeof import('vue')['isReactive']
   const isReadonly: typeof import('vue')['isReadonly']
   const isRef: typeof import('vue')['isRef']
+  const maintenanceService: typeof import('@/lib/db')['maintenanceService']
   const makeDestructurable: typeof import('@vueuse/core')['makeDestructurable']
   const mapActions: typeof import('pinia')['mapActions']
   const mapGetters: typeof import('pinia')['mapGetters']
@@ -359,7 +361,7 @@ declare global {
   export type { RouteLocationRaw } from 'vue-router'
   import('vue-router')
   // @ts-ignore
-  export type { Device, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit } from '@/types/status'
+  export type { Device, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit, MaintenanceDevice, MaintenanceDeviceItem, MaintenanceSession } from '@/types/status'
   import('@/types/status')
 }
 
@@ -369,11 +371,11 @@ declare module 'vue' {
   interface GlobalComponents {}
   interface ComponentCustomProperties {
     readonly AssessmentStatus: UnwrapRef<typeof import('@/types/db/generated')['AssessmentStatus']>
-    readonly DeviceQuality: UnwrapRef<typeof import('@/types/db/generated')['DeviceQuality']>
     readonly DeviceStatus: UnwrapRef<typeof import('@/types/db/generated')['DeviceStatus']>
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly FieldContextKey: UnwrapRef<typeof import('vee-validate')['FieldContextKey']>
     readonly FormContextKey: UnwrapRef<typeof import('vee-validate')['FormContextKey']>
+    readonly MaintenanceStatus: UnwrapRef<typeof import('@/types/db/generated')['MaintenanceStatus']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly asyncComputed: UnwrapRef<typeof import('@vueuse/core')['asyncComputed']>
     readonly auditService: UnwrapRef<typeof import('@/lib/db')['auditService']>
@@ -423,6 +425,7 @@ declare module 'vue' {
     readonly isReactive: UnwrapRef<typeof import('vue')['isReactive']>
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
+    readonly maintenanceService: UnwrapRef<typeof import('@/lib/db')['maintenanceService']>
     readonly makeDestructurable: UnwrapRef<typeof import('@vueuse/core')['makeDestructurable']>
     readonly mapActions: UnwrapRef<typeof import('pinia')['mapActions']>
     readonly mapGetters: UnwrapRef<typeof import('pinia')['mapGetters']>
