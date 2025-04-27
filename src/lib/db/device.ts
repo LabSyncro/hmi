@@ -28,6 +28,14 @@ type DeviceDetail = {
   borrowedLab?: string | null;
   expectedReturnLab?: string | null;
   receiptId?: string | null;
+  prevCondition?: DeviceStatus | null;
+  afterCondition?: DeviceStatus | null;
+  shipmentId?: string | null;
+  shipmentStatus?: string | null;
+  sourceLocation?: string | null;
+  destinationLocation?: string | null;
+  senderName?: string | null;
+  receiverName?: string | null;
 };
 
 type DeviceInventory = {
@@ -505,15 +513,32 @@ export const deviceService = {
           dk.is_borrowable_lab_only,
           c.name AS category_name,
           l.room,
-          l.branch
+          l.branch,
+          sd.prev_status as prev_condition,
+          sd.after_status as after_condition,
+          s.id as shipment_id,
+          s.status as shipment_status,
+          s_start.room || ', ' || s_start.branch AS source_location,
+          s_arrive.room || ', ' || s_arrive.branch AS destination_location,
+          sender.name AS sender_name,
+          receiver.name AS receiver_name
         FROM 
           devices d
           LEFT JOIN device_kinds dk ON d.kind = dk.id
           LEFT JOIN labs l ON d.lab_id = l.id
           LEFT JOIN categories c ON dk.category_id = c.id
+          LEFT JOIN shipments_devices sd ON d.id = sd.device_id
+          LEFT JOIN shipments s ON sd.shipment_id = s.id
+          LEFT JOIN labs s_start ON s.start_lab_id = s_start.id
+          LEFT JOIN labs s_arrive ON s.arrive_lab_id = s_arrive.id
+          LEFT JOIN users sender ON s.sender_id = sender.id
+          LEFT JOIN users receiver ON s.receiver_id = receiver.id
         WHERE 
           d.id = $1
           AND d.deleted_at IS NULL
+        ORDER BY
+          s.from_at DESC
+        LIMIT 1
       `;
 
       const results = await db.queryRaw<Record<string, unknown>>({
@@ -534,6 +559,14 @@ export const deviceService = {
       const deviceDetail: DeviceDetail = {
         fullId: row.fullId as string,
         status: row.status as DeviceStatus | null,
+        prevCondition: row.prevCondition as DeviceStatus | null,
+        afterCondition: row.afterCondition as DeviceStatus | null,
+        shipmentId: row.shipmentId as string | null,
+        shipmentStatus: row.shipmentStatus as string | null,
+        sourceLocation: row.sourceLocation as string | null,
+        destinationLocation: row.destinationLocation as string | null,
+        senderName: row.senderName as string | null,
+        receiverName: row.receiverName as string | null,
         image: row.image as any,
         unit: row.unit as string,
         deviceName: row.deviceName as string,

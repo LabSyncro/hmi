@@ -26,7 +26,6 @@ export const shipmentService = {
     notes?: string;
     devices: {
       id: string;
-      status: DeviceStatus;
       inboundCondition: DeviceStatus;
     }[];
   }) {
@@ -37,7 +36,7 @@ export const shipmentService = {
         devices.length > 0
           ? devices
               .map((device) => {
-                return `('${shipmentId}', '${device.id}', '${device.status}'::device_status, '${device.inboundCondition}'::device_status)`;
+                return `('${shipmentId}', '${device.id}', '${device.inboundCondition}'::device_status)`;
               })
               .join(", ")
           : "";
@@ -79,21 +78,19 @@ export const shipmentService = {
         )
         ${
           devices.length > 0
-            ? `, device_rows(shipment_id, device_id, prev_status, after_status) AS (
+            ? `, device_rows(shipment_id, device_id, prev_status) AS (
             VALUES ${deviceRows}
           ),
           device_insert AS (
             INSERT INTO shipments_devices (
               shipment_id, 
               device_id, 
-              prev_status, 
-              after_status
+              prev_status
             )
             SELECT
               dr.shipment_id,
               dr.device_id,
-              dr.prev_status,
-              dr.after_status
+              dr.prev_status
             FROM device_rows dr
             RETURNING device_id
           ),
@@ -118,14 +115,15 @@ export const shipmentService = {
 
   async confirmOutboundShipment({
     technicianId,
+    shipmentId,
     notes,
     devices,
   }: {
     technicianId: string;
+    shipmentId: string;
     notes?: string;
     devices: {
       id: string;
-      status: DeviceStatus;
       outboundCondition: DeviceStatus;
     }[];
   }) {
@@ -133,8 +131,6 @@ export const shipmentService = {
       if (devices.length === 0) {
         throw new Error("No devices provided");
       }
-
-      const deviceId = devices[0].id;
 
       const deviceUpdateCases = devices
         .map(
@@ -169,17 +165,13 @@ export const shipmentService = {
             receiver_id = '${technicianId}',
             status = '${ShipmentStatus.COMPLETED}'::shipment_status,
             to_at = (SELECT id FROM activity_insert)
-          WHERE id IN (
-            SELECT shipment_id 
-            FROM shipments_devices 
-            WHERE device_id = '${deviceId}'
-          )
+          WHERE id = '${shipmentId}'
           RETURNING id
         ),
         shipment_device_update AS (
           UPDATE shipments_devices
           SET after_status = CASE ${deviceUpdateCases} END
-          WHERE shipment_id = (SELECT id FROM shipment_update)
+          WHERE shipment_id = '${shipmentId}'
             AND device_id IN (${deviceIds})
           RETURNING device_id
         ),
@@ -195,7 +187,7 @@ export const shipmentService = {
       const result = await db.queryRaw<ShipmentResult>({ sql });
 
       if (!result || result.length === 0) {
-        throw new Error("No shipment found for the provided devices");
+        throw new Error("No shipment found for the provided ID");
       }
 
       return { id: result[0].id };

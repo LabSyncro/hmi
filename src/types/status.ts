@@ -7,7 +7,7 @@ export const statusMap: Record<DeviceStatus, string> = {
   discarded: "Đã bỏ",
   assessing: "Đang kiểm đếm",
   maintaining: "Đang bảo trì",
-  shipping: "Đang giao hàng",
+  shipping: "Đang vận chuyển",
   lost: "Đã mất",
 };
 
@@ -116,6 +116,9 @@ export type MaintenanceSession = {
 
 export type ShipmentDeviceItem = BaseDeviceItem & {
   shipmentCondition: DeviceStatus;
+  prevCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus] | null;
+  afterCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus] | null;
+  shipmentId?: string | null;
 };
 
 export type ShipmentDevice = Omit<Device, "items"> & {

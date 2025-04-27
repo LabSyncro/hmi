@@ -31,6 +31,9 @@ const pendingDevices = ref<
     id: string;
     status: (typeof DeviceStatus)[keyof typeof DeviceStatus];
     shipmentCondition: (typeof DeviceStatus)[keyof typeof DeviceStatus];
+    prevCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus] | null;
+    afterCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus] | null;
+    shipmentId?: string | null;
   }[]
 >([]);
 
@@ -198,9 +201,12 @@ const handleDeviceScan = async (input: string) => {
       ) {
         mode.value = "inbound";
       } else {
+        const status = deviceDetails.status
+          ? statusMap[deviceDetails.status].toLowerCase()
+          : "không xác định";
         toast({
           title: "Thông báo",
-          description: `Thiết bị đang ở trạng thái '${deviceDetails.status ? statusMap[deviceDetails.status] : "Không xác định"}', không thể vận chuyển.`,
+          description: `Thiết bị ${status}, không thể vận chuyển.`,
           variant: "destructive",
         });
         return;
@@ -215,7 +221,7 @@ const handleDeviceScan = async (input: string) => {
     ) {
       toast({
         title: "Lỗi",
-        description: `Thiết bị không ở trạng thái có thể nhập kho.`,
+        description: `Thiết bị ${statusMap[deviceDetails.status].toLowerCase()}, không thể chuyển đi. Chỉ có thể chuyển đi thiết bị đang ở trạng thái tốt hoặc hư hỏng.`,
         variant: "destructive",
       });
       return;
@@ -228,7 +234,7 @@ const handleDeviceScan = async (input: string) => {
     ) {
       toast({
         title: "Lỗi",
-        description: `Thiết bị không ở trạng thái có thể xuất kho.`,
+        description: `Thiết bị ${statusMap[deviceDetails.status].toLowerCase()}, không thể nhận về. Chỉ có thể nhận về thiết bị đang trong quá trình vận chuyển.`,
         variant: "destructive",
       });
       return;
@@ -239,6 +245,9 @@ const handleDeviceScan = async (input: string) => {
         id: deviceId,
         status: deviceDetails.status || DeviceStatus.HEALTHY,
         shipmentCondition: DeviceStatus.HEALTHY,
+        prevCondition: deviceDetails.prevCondition || null,
+        afterCondition: deviceDetails.afterCondition || null,
+        shipmentId: deviceDetails.shipmentId || null,
       });
 
       addDeviceToList(deviceId, deviceDetails, deviceKindId as string);
@@ -287,6 +296,9 @@ const addDeviceToList = (
     id: deviceId,
     status: deviceDetails.status || DeviceStatus.HEALTHY,
     shipmentCondition: DeviceStatus.HEALTHY,
+    prevCondition: deviceDetails.prevCondition || null,
+    afterCondition: deviceDetails.afterCondition || null,
+    shipmentId: deviceDetails.shipmentId || null,
   };
 
   const existingDevice = devices.value.find((d) => d.code === deviceKindId);
@@ -385,7 +397,7 @@ const removeDeviceItem = async (device: ShipmentDevice, itemId: string) => {
     devices.value = devices.value.filter((d) => d.code !== device.code);
   }
 
-  if (devices.value.length === 0 && pendingDevices.value.length === 0) {
+  if (devices.value.length === 0) {
     mode.value = "idle";
   }
 
@@ -425,7 +437,7 @@ const completeShipment = async () => {
     return;
   }
 
-  if (mode.value === "outbound" && !selectedDestinationLab.value) {
+  if (mode.value === "inbound" && !selectedDestinationLab.value) {
     toast({
       title: "Lỗi",
       description: "Vui lòng chọn địa điểm đích",
@@ -459,23 +471,39 @@ const completeShipment = async () => {
       const response = await shipmentService.confirmInboundShipment({
         technicianId: userInfo.value.id,
         sourceLabId: storedUserInfo.value?.lab.id || "",
-        destinationLabId: storedUserInfo.value?.lab.id || "",
+        destinationLabId: selectedDestinationLab.value || "",
         notes: notes.value || undefined,
         devices: deviceItems.map((d) => ({
           id: d.id,
-          status: d.status,
           inboundCondition: d.condition,
         })),
       });
       shipmentId.value = response?.id || "";
       successMessage.value = "Ghi nhận chuyển đi thành công!";
     } else {
+      let currentShipmentId = "";
+
+      if (devices.value.length > 0 && devices.value[0].items.length > 0) {
+        const firstItem = devices.value[0].items[0];
+        currentShipmentId = firstItem.shipmentId || "";
+      }
+
+      if (!currentShipmentId) {
+        toast({
+          title: "Lỗi",
+          description: "Không tìm thấy mã vận chuyển",
+          variant: "destructive",
+        });
+        isConfirming.value = false;
+        return;
+      }
+
       const response = await shipmentService.confirmOutboundShipment({
         technicianId: userInfo.value.id,
+        shipmentId: currentShipmentId,
         notes: notes.value || undefined,
         devices: deviceItems.map((d) => ({
           id: d.id,
-          status: d.status,
           outboundCondition: d.condition,
         })),
       });
@@ -533,6 +561,28 @@ const handleOneTimeQRScan = async (input: string) => {
   } finally {
     isLoadingUser.value = false;
   }
+};
+
+const getStatusClass = (item: ShipmentDeviceItem) => {
+  if (
+    mode.value === "outbound" &&
+    item.prevCondition &&
+    statusColorMap[item.prevCondition]
+  ) {
+    return statusColorMap[item.prevCondition];
+  }
+  return statusColorMap[item.status];
+};
+
+const getStatusText = (item: ShipmentDeviceItem) => {
+  if (
+    mode.value === "outbound" &&
+    item.prevCondition &&
+    statusMap[item.prevCondition]
+  ) {
+    return statusMap[item.prevCondition];
+  }
+  return statusMap[item.status];
 };
 
 useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
@@ -670,11 +720,11 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                   </div>
                   <div class="col-span-3 flex items-center justify-start gap-2">
                     <Badge
-                      :class="statusColorMap[item.status]"
+                      :class="getStatusClass(item)"
                       variant="outline"
                       class="h-8 text-sm font-semibold w-fit"
                     >
-                      {{ statusMap[item.status] }}
+                      {{ getStatusText(item) }}
                     </Badge>
                     <span class="text-gray-400">→</span>
                     <div class="w-32">
@@ -686,7 +736,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                         "
                       >
                         <SelectTrigger
-                          class="h-8 text-sm bg-white font-semibold w-fit select-trigger"
+                          class="h-8 text-sm bg-white font-semibold w-fit"
                           :class="
                             item.shipmentCondition
                               ? statusColorMap[item.shipmentCondition]
@@ -821,7 +871,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div v-if="mode === 'outbound'" class="flex items-center gap-3">
               <div class="rounded-full bg-amber-50 p-2">
                 <MapPinIcon class="h-4 w-4 text-amber-600" />
               </div>
@@ -833,13 +883,13 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div v-if="mode === 'inbound'" class="flex items-center gap-3">
               <div class="rounded-full bg-purple-50 p-2">
                 <MapPinIcon class="h-4 w-4 text-purple-600" />
               </div>
               <div class="flex justify-between items-center w-full">
                 <p class="text-sm text-gray-500">Địa điểm đích</p>
-                <div v-if="mode === 'inbound'" class="w-fit">
+                <div class="w-fit">
                   <Select
                     v-model="selectedDestinationLab"
                     @update:modelValue="
@@ -871,9 +921,6 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                     </SelectContent>
                   </Select>
                 </div>
-                <p v-else class="font-medium text-gray-800 text-right">
-                  {{ shipmentDetails.destinationLocation }}
-                </p>
               </div>
             </div>
 
@@ -882,7 +929,12 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 <CalendarIcon class="h-4 w-4 text-green-600" />
               </div>
               <div class="flex justify-between w-full">
-                <p class="text-sm text-gray-500">Ngày chuyển</p>
+                <p v-if="mode === 'inbound'" class="text-sm text-gray-500">
+                  Ngày chuyển
+                </p>
+                <p v-if="mode === 'outbound'" class="text-sm text-gray-500">
+                  Ngày nhận
+                </p>
                 <p class="font-medium text-gray-800">
                   {{ shipmentDetails.transportDate }}
                 </p>
@@ -908,7 +960,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 isConfirming ||
                 !userInfo ||
                 devices.length === 0 ||
-                (mode === 'outbound' && !selectedDestinationLab)
+                (mode === 'inbound' && !selectedDestinationLab)
               "
               class="w-full mt-4 bg-blue-600 hover:bg-blue-700"
               @click="completeShipment"
@@ -919,9 +971,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               />
               <TruckIcon v-else class="h-5 w-5 mr-2" />
               {{
-                mode === "inbound"
-                  ? "Xác nhận nhập thiết bị"
-                  : "Xác nhận xuất thiết bị"
+                mode === "inbound" ? "Xác nhận chuyển đi" : "Xác nhận nhận về"
               }}
             </Button>
           </div>
@@ -954,7 +1004,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
             {{ successMessage }}
           </p>
           <p class="text-base text-gray-600 mb-6">
-            Mã vận chuyển: {{ shipmentId.slice(0, 8) }}
+            Mã vận chuyển: {{ shipmentId }}
           </p>
           <Button
             type="button"
