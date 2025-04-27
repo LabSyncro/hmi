@@ -100,7 +100,7 @@ const getStatusText = (status: DeviceStatus | null) => {
     case DeviceStatus.DISCARDED:
       return 'ĐÃ LOẠI BỎ';
     case DeviceStatus.ASSESSING:
-      return 'ĐANG ĐÁNH GIÁ';
+      return 'ĐANG KIỂM ĐẾM';
     case DeviceStatus.MAINTAINING:
       return 'ĐANG BẢO TRÌ';
     case DeviceStatus.SHIPPING:
@@ -119,7 +119,7 @@ async function loadDeviceDetails() {
   error.value = null
   try {
     const id = route.params.id as string
-    deviceDetail.value = await deviceService.getDeviceById(id)
+    deviceDetail.value = await deviceService.getDeviceReceiptById(id)
     if (!deviceDetail.value) {
       error.value = 'Device not found'
     } else {

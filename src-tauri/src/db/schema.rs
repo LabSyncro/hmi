@@ -216,10 +216,12 @@ impl DatabaseSchema {
 
             typescript.push_str(&format!("export interface {} {{\n", interface_name));
 
-            let mut seen_columns = std::collections::HashSet::new();
+            let mut seen_columns: std::collections::HashSet<String> =
+                std::collections::HashSet::new();
 
             for column in &table.columns {
-                if !seen_columns.insert(&column.name) {
+                let clean_name = column.name.replace('\u{200B}', "");
+                if !seen_columns.insert(clean_name.clone()) {
                     continue;
                 }
 
@@ -239,7 +241,7 @@ impl DatabaseSchema {
                 let nullable = if column.is_nullable { " | null" } else { "" };
                 typescript.push_str(&format!(
                     "  {}: {}{}\n",
-                    camel_case(&column.name),
+                    camel_case(&clean_name),
                     ts_type,
                     nullable
                 ));

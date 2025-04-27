@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { CalendarIcon, TriangleAlertIcon, CheckIcon } from 'lucide-vue-next'
-import { DatePicker } from 'v-calendar'
 import { useRouter } from 'vue-router'
-import 'v-calendar/style.css'
 
 const router = useRouter()
 const showSuccessModal = ref(false)

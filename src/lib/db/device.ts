@@ -1,10 +1,10 @@
-import { db } from './client'
-import { DeviceStatus, DeviceQuality } from '@/types/db/generated'
+import { DeviceStatus } from "@/types/db/generated";
+import { db } from "./client";
 
-export type DeviceDetail = {
+type DeviceDetail = {
   fullId: string;
   status: DeviceStatus | null;
-  prevQuality?: DeviceQuality | null;
+  prevQuality?: DeviceStatus | null;
   image: any;
   unit: string;
   deviceName: string;
@@ -13,6 +13,7 @@ export type DeviceDetail = {
   brand: string | null;
   manufacturer: string | null;
   description: string | null;
+  isBorrowableLabOnly: boolean;
   categoryName: string;
   labRoom: string | null;
   labBranch: string | null;
@@ -23,47 +24,81 @@ export type DeviceDetail = {
     image: string | null;
   } | null;
   borrowedAt?: Date | null;
-  expectedReturnAt?: Date | null;
+  expectedReturnAt?: string | null;
   borrowedLab?: string | null;
   expectedReturnLab?: string | null;
   receiptId?: string | null;
-}
+  prevCondition?: DeviceStatus | null;
+  afterCondition?: DeviceStatus | null;
+  shipmentId?: string | null;
+  shipmentStatus?: string | null;
+  sourceLocation?: string | null;
+  destinationLocation?: string | null;
+  senderName?: string | null;
+  receiverName?: string | null;
+};
 
-export type DeviceInventory = {
-  branch: string;
-  room: string;
+type DeviceInventory = {
   borrowingQuantity: number;
+  assessingQuantity: number;
+  maintainingQuantity: number;
+  shippingQuantity: number;
   availableQuantity: number;
-}
+  unscannedDeviceIds: string[];
+};
 
-export type AuditRecord = {
-  deviceId: string;
-  auditorId: string;
+type DeviceAuditDetail = {
+  id: string;
+  fullId: string;
+  status: DeviceStatus;
+  currentStatus: DeviceStatus;
   auditCondition: DeviceStatus;
-  location: string;
-  notes?: string;
-}
+  image: {
+    mainImage: string;
+  };
+  unit: string;
+  deviceName: string;
+  isBorrowableLabOnly: boolean;
+  labRoom: string;
+  labBranch: string;
+  kind: string;
+  categoryName: string;
+};
 
-export type MaintenanceRecord = {
-  deviceId: string;
-  technicianId: string;
-  maintenanceOutcome: DeviceStatus;
+type DeviceMaintenanceDetail = {
+  id: string;
+  maintenanceId: string;
+  technician: {
+    id: string;
+    name: string;
+  };
+  status: DeviceStatus;
+  currentStatus: DeviceStatus;
+  outcome: DeviceStatus;
+  kind: string;
+  deviceName: string;
+  image: any;
+  unit: string;
+  isBorrowableLabOnly: boolean;
   location: string;
   notes?: string;
-}
+  createdAt: Date;
+};
 
 export const deviceService = {
-  async getDeviceById(id: string): Promise<DeviceDetail | null> {
-    if (!id) {
-      return null
+  async getDeviceReceiptById(id: string, labId: string): Promise<DeviceDetail> {
+    if (!id || !labId) {
+      throw new Error("Missing device ID or lab ID");
     }
 
     try {
       const sql = `
         SELECT 
+          d.id,
           d.full_id,
           d.status,
           d.kind,
+          d.lab_id,
           dk.image,
           dk.unit,
           dk.name AS device_name,
@@ -72,6 +107,7 @@ export const deviceService = {
           dk.brand,
           dk.manufacturer,
           dk.description,
+          dk.is_borrowable_lab_only,
           c.name AS category_name,
           l.room,
           l.branch,
@@ -81,18 +117,18 @@ export const deviceService = {
           rd.prev_quality,
           bl.room || ', ' || bl.branch AS borrowed_lab,
           rl.room || ', ' || rl.branch AS expected_return_lab,
-          u.id AS borrower_id,
-          u.name AS borrower_name,
-          u.image AS borrower_image
+          actor.id AS borrower_id,
+          actor.name AS borrower_name,
+          actor.image AS borrower_image
         FROM 
           devices d
           LEFT JOIN device_kinds dk ON d.kind = dk.id
           LEFT JOIN labs l ON d.lab_id = l.id
           LEFT JOIN categories c ON dk.category_id = c.id
-          LEFT JOIN receipts_devices rd ON d.id = rd.device_id AND rd.return_id IS NULL
-          LEFT JOIN receipts r ON rd.receipt_id = r.id
-          LEFT JOIN users u ON r.borrower_id = u.id
-          LEFT JOIN labs bl ON r.borrowed_lab_id = bl.id
+          LEFT JOIN receipts_devices rd ON d.id = rd.device_id AND rd.returned_receipt_id IS NULL
+          LEFT JOIN receipts r ON rd.borrowed_receipt_id = r.id
+          LEFT JOIN users actor ON r.actor_id = actor.id
+          LEFT JOIN labs bl ON r.lab_id = bl.id
           LEFT JOIN labs rl ON rd.expected_returned_lab_id = rl.id
           LEFT JOIN activities a ON rd.borrow_id = a.id
         WHERE 
@@ -102,19 +138,23 @@ export const deviceService = {
 
       const results = await db.queryRaw<Record<string, unknown>>({
         sql,
-        params: [id]
+        params: [id],
       });
 
       if (results.length === 0) {
-        return null
+        throw new Error("Device not found");
       }
 
       const row = results[0];
 
+      if (row.labId !== labId) {
+        throw new Error("Device does not belong to this lab");
+      }
+
       const deviceDetail: DeviceDetail = {
         fullId: row.fullId as string,
         status: row.status as DeviceStatus | null,
-        prevQuality: row.prevQuality as DeviceQuality | null,
+        prevQuality: row.prevQuality as DeviceStatus | null,
         image: row.image as string,
         unit: row.unit as string,
         deviceName: row.deviceName as string,
@@ -123,18 +163,21 @@ export const deviceService = {
         brand: row.brand as string | null,
         manufacturer: row.manufacturer as string | null,
         description: row.description as string | null,
+        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
         categoryName: row.categoryName as string,
         labRoom: row.room as string | null,
         labBranch: row.branch as string | null,
         kind: row.kind as string,
         receiptId: row.receiptId as string | null,
-        borrower: row.borrowerId ? {
-          id: row.borrowerId as string,
-          name: row.borrowerName as string,
-          image: row.borrowerImage as string | null,
-        } : null,
+        borrower: row.borrowerId
+          ? {
+              id: row.borrowerId as string,
+              name: row.borrowerName as string,
+              image: row.borrowerImage as string | null,
+            }
+          : null,
         borrowedAt: row.borrowedAt ? new Date(row.borrowedAt as string) : null,
-        expectedReturnAt: row.expectedReturnedAt ? new Date(row.expectedReturnedAt as string) : null,
+        expectedReturnAt: row.expectedReturnedAt as string | null,
         borrowedLab: row.borrowedLab as string | null,
         expectedReturnLab: row.expectedReturnLab as string | null,
       };
@@ -145,55 +188,173 @@ export const deviceService = {
     }
   },
 
-  async getDeviceInventoryByKindId(kindId: string): Promise<DeviceInventory[]> {
+  async getDeviceAuditById(
+    id: string,
+    labId: string
+  ): Promise<DeviceAuditDetail> {
+    if (!id || !labId) {
+      throw new Error("Missing device ID or lab ID");
+    }
+
     try {
       const sql = `
+        WITH active_assessment AS (
+          SELECT 
+            ia.id
+          FROM inventory_assessments ia
+          WHERE ia.status = 'assessing'
+            AND ia.finished_at IS NULL
+            AND ia.lab_id = $2
+          LIMIT 1
+        )
         SELECT 
-          l.branch,
+          d.id,
+          d.full_id,
+          CASE 
+            WHEN d.status = 'assessing' THEN COALESCE(iad.prev_status, d.status)
+            ELSE d.status
+          END as status,
+          iad.after_status as audit_condition,
+          d.status as current_status,
+          d.kind,
+          d.lab_id,
+          dk.image,
+          dk.unit,
+          dk.name AS device_name,
+          dk.is_borrowable_lab_only,
           l.room,
-          SUM(CASE WHEN d.status = 'borrowing' THEN 1 ELSE 0 END)::int as borrowing_quantity,
-          SUM(CASE WHEN d.status IN ('healthy', 'borrowing') THEN 1 ELSE 0 END)::int as available_quantity
+          l.branch,
+          c.name AS category_name
         FROM 
-          labs l
-          JOIN devices d ON l.id = d.lab_id
-          JOIN device_kinds dk ON d.kind = dk.id
+          devices d
+          LEFT JOIN device_kinds dk ON d.kind = dk.id
+          LEFT JOIN labs l ON d.lab_id = l.id
+          LEFT JOIN categories c ON dk.category_id = c.id
+          LEFT JOIN active_assessment aa ON true
+          LEFT JOIN inventory_assessments_devices iad ON iad.device_id = d.id AND iad.assessing_id = aa.id
         WHERE 
-          dk.id = $1
+          d.id = $1
           AND d.deleted_at IS NULL
-        GROUP BY
-          l.id,
-          l.branch,
-          l.room
-        ORDER BY
-          l.branch,
-          l.room
       `;
 
       const results = await db.queryRaw<Record<string, unknown>>({
         sql,
-        params: [kindId]
+        params: [id, labId],
       });
 
-      return results.map(row => ({
-        branch: row.branch as string,
-        room: row.room as string,
-        borrowingQuantity: row.borrowingQuantity as number,
-        availableQuantity: row.availableQuantity as number
-      }));
+      if (results.length === 0) {
+        throw new Error("Device not found");
+      }
+
+      const row = results[0];
+
+      if (row.labId !== labId) {
+        throw new Error("Device does not belong to this lab");
+      }
+
+      const deviceAuditDetail: DeviceAuditDetail = {
+        id: row.id as string,
+        fullId: row.fullId as string,
+        status: row.status as DeviceStatus,
+        currentStatus: row.currentStatus as DeviceStatus,
+        auditCondition: row.auditCondition as DeviceStatus,
+        image: {
+          mainImage: row.image ? (row.image as any).mainImage : "",
+        },
+        unit: row.unit as string,
+        deviceName: row.deviceName as string,
+        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
+        labRoom: row.room as string,
+        labBranch: row.branch as string,
+        kind: row.kind as string,
+        categoryName: row.categoryName as string,
+      };
+
+      return deviceAuditDetail;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getDeviceInventoryByKindId(
+    kindId: string,
+    labId: string
+  ): Promise<DeviceInventory> {
+    if (!kindId || !labId) {
+      throw new Error("Missing kind ID or lab ID");
+    }
+
+    try {
+      const sql = `
+        WITH lab_devices AS (
+          SELECT 
+            d.id,
+            d.status
+          FROM devices d
+          WHERE d.kind = $1 
+          AND d.lab_id = $2 
+          AND d.deleted_at IS NULL
+        ),
+        lab_inventory AS (
+          SELECT 
+            COUNT(*) FILTER (WHERE status = 'borrowing') as borrowing_quantity,
+            COUNT(*) FILTER (WHERE status = 'assessing') as assessing_quantity,
+            COUNT(*) FILTER (WHERE status = 'maintaining') as maintaining_quantity,
+            COUNT(*) FILTER (WHERE status = 'shipping') as shipping_quantity,
+            COUNT(*) FILTER (WHERE status IN ('healthy', 'broken', 'discarded', 'lost', 'assessing')) as available_quantity
+          FROM lab_devices
+        ),
+        unscanned_devices AS (
+          SELECT 
+            id
+          FROM lab_devices
+          WHERE status IN ('healthy', 'broken', 'discarded', 'lost', 'assessing')
+        )
+        SELECT 
+          li.*,
+          ARRAY_AGG(ud.id) as unscanned_device_ids
+        FROM lab_inventory li
+        LEFT JOIN unscanned_devices ud ON TRUE
+        GROUP BY 
+          li.borrowing_quantity,
+          li.assessing_quantity,
+          li.maintaining_quantity,
+          li.shipping_quantity,
+          li.available_quantity
+      `;
+
+      const results = await db.queryRaw<Record<string, unknown>>({
+        sql,
+        params: [kindId, labId],
+      });
+
+      if (results.length === 0) {
+        throw new Error("Device inventory not found");
+      }
+
+      const row = results[0];
+      return {
+        borrowingQuantity: (row.borrowingQuantity as number) || 0,
+        assessingQuantity: (row.assessingQuantity as number) || 0,
+        maintainingQuantity: (row.maintainingQuantity as number) || 0,
+        shippingQuantity: (row.shippingQuantity as number) || 0,
+        availableQuantity: (row.availableQuantity as number) || 0,
+        unscannedDeviceIds: (row.unscannedDeviceIds as string[]) || [],
+      };
     } catch (error) {
       throw error;
     }
   },
 
   async getDeviceStatusById(id: string): Promise<{
-    status: DeviceStatus,
-    kind: string,
-    deviceName: string,
-    image: any,
-    unit: string
+    status: DeviceStatus;
+    kind: string;
+    deviceName: string;
+    image: any;
+    unit: string;
   } | null> {
     if (!id) {
-      return null
+      return null;
     }
     try {
       type DeviceStatusResult = {
@@ -202,26 +363,27 @@ export const deviceService = {
         deviceKindsName: string;
         deviceKindsImage: any;
         deviceKindsUnit: string;
-      }
+      };
 
-      const device = await db.table<DeviceStatusResult>('devices')
-        .select(['status', 'kind'])
+      const device = await db
+        .table<DeviceStatusResult>("devices")
+        .select(["status", "kind"])
         .include({
-          table: 'device_kinds',
-          select: ['name', 'image', 'unit'],
+          table: "device_kinds",
+          select: ["name", "image", "unit"],
           on: {
-            from: 'kind',
-            to: 'id'
-          }
+            from: "kind",
+            to: "id",
+          },
         })
         .whereMany({
           id,
-          deleted_at: null
+          deleted_at: null,
         })
-        .first()
+        .first();
 
       if (!device || !Object.values(DeviceStatus).includes(device.status)) {
-        return null
+        return null;
       }
 
       return {
@@ -229,180 +391,200 @@ export const deviceService = {
         kind: device.kind,
         deviceName: device.deviceKindsName,
         image: device.deviceKindsImage,
-        unit: device.deviceKindsUnit
-      }
+        unit: device.deviceKindsUnit,
+      };
     } catch (error) {
-      return null
+      return null;
     }
   },
 
-  async recordAudit(records: AuditRecord[]): Promise<void> {
-    try {
-      // Create audit activity
-      const activitySql = `
-        INSERT INTO activities (type, created_at)
-        VALUES ('audit', CURRENT_TIMESTAMP)
-        RETURNING id
-      `
-      const activity = await db.queryRaw<{ id: string }>({ sql: activitySql })
-      const activityId = activity[0].id
-
-      // Record each device audit
-      for (const record of records) {
-        const auditSql = `
-          INSERT INTO devices_audit (
-            device_id, auditor_id, audit_id, condition, location, notes, created_at
-          )
-          VALUES (
-            $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP
-          )
-        `
-        await db.queryRaw({
-          sql: auditSql,
-          params: [
-            record.deviceId,
-            record.auditorId,
-            activityId,
-            record.auditCondition,
-            record.location,
-            record.notes
-          ]
-        })
-
-        // Update device status if needed
-        if (record.auditCondition !== 'healthy') {
-          const updateSql = `
-            UPDATE devices
-            SET status = $1
-            WHERE id = $2
-          `
-          await db.queryRaw({
-            sql: updateSql,
-            params: [record.auditCondition, record.deviceId]
-          })
-        }
-      }
-    } catch (error) {
-      throw error
+  async getDeviceMaintenanceById(
+    deviceId: string,
+    labId?: string
+  ): Promise<DeviceMaintenanceDetail> {
+    if (!deviceId) {
+      throw new Error("Missing device ID");
     }
-  },
 
-  async recordMaintenance(records: MaintenanceRecord[]): Promise<void> {
-    try {
-      // Create maintenance activity
-      const activitySql = `
-        INSERT INTO activities (type, created_at)
-        VALUES ('maintenance', CURRENT_TIMESTAMP)
-        RETURNING id
-      `
-      const activity = await db.queryRaw<{ id: string }>({ sql: activitySql })
-      const activityId = activity[0].id
-
-      // Record each device maintenance
-      for (const record of records) {
-        const maintenanceSql = `
-          INSERT INTO devices_maintenance (
-            device_id, technician_id, maintenance_id, outcome, location, notes, created_at
-          )
-          VALUES (
-            $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP
-          )
-        `
-        await db.queryRaw({
-          sql: maintenanceSql,
-          params: [
-            record.deviceId,
-            record.technicianId,
-            activityId,
-            record.maintenanceOutcome,
-            record.location,
-            record.notes
-          ]
-        })
-
-        // Update device status
-        const updateSql = `
-          UPDATE devices
-          SET status = $1
-          WHERE id = $2
-        `
-        await db.queryRaw({
-          sql: updateSql,
-          params: [record.maintenanceOutcome, record.deviceId]
-        })
-      }
-    } catch (error) {
-      throw error
-    }
-  },
-
-  async getDeviceAuditHistory(deviceId: string): Promise<{
-    auditorName: string;
-    auditorImage: string | null;
-    condition: DeviceStatus;
-    location: string;
-    notes?: string;
-    createdAt: Date;
-  }[]> {
     try {
       const sql = `
         SELECT 
-          u.name as auditor_name,
-          u.image as auditor_image,
-          da.condition,
-          da.location,
-          da.notes,
-          da.created_at
-        FROM 
-          devices_audit da
-          JOIN users u ON da.auditor_id = u.id
-        WHERE 
-          da.device_id = $1
-        ORDER BY 
-          da.created_at DESC
-      `
-
-      return await db.queryRaw({
-        sql,
-        params: [deviceId]
-      })
-    } catch (error) {
-      throw error
-    }
-  },
-
-  async getDeviceMaintenanceHistory(deviceId: string): Promise<{
-    technicianName: string;
-    technicianImage: string | null;
-    outcome: DeviceStatus;
-    location: string;
-    notes?: string;
-    createdAt: Date;
-  }[]> {
-    try {
-      const sql = `
-        SELECT 
+          d.id,
+          CASE 
+            WHEN d.status = 'maintaining' THEN COALESCE(md.prev_status, d.status)
+            ELSE d.status
+          END as status,
+          d.status as current_status,
+          md.after_status as outcome,
+          d.kind,
+          d.lab_id,
+          dk.image,
+          dk.unit,
+          dk.name AS device_name,
+          dk.is_borrowable_lab_only,
+          l.room,
+          l.branch,
+          m.id as maintenance_id,
+          m.maintainer_id as technician_id,
           u.name as technician_name,
-          u.image as technician_image,
-          dm.outcome,
-          dm.location,
-          dm.notes,
-          dm.created_at
+          a.note as notes,
+          a.created_at
         FROM 
-          devices_maintenance dm
-          JOIN users u ON dm.technician_id = u.id
+          devices d
+          LEFT JOIN device_kinds dk ON d.kind = dk.id
+          LEFT JOIN labs l ON d.lab_id = l.id
+          LEFT JOIN maintenances_devices md ON d.id = md.device_id
+          LEFT JOIN maintenances m ON md.maintaining_id = m.id
+          LEFT JOIN users u ON m.maintainer_id = u.id
+          LEFT JOIN activities a ON m.id = a.id
         WHERE 
-          dm.device_id = $1
+          d.id = $1
+          AND d.deleted_at IS NULL
         ORDER BY 
-          dm.created_at DESC
-      `
+          a.created_at DESC
+        LIMIT 1
+      `;
 
-      return await db.queryRaw({
+      const results = await db.queryRaw<Record<string, unknown>>({
         sql,
-        params: [deviceId]
-      })
+        params: [deviceId],
+      });
+
+      if (results.length === 0) {
+        throw new Error("Device not found");
+      }
+
+      const row = results[0];
+
+      if (labId && row.labId !== labId) {
+        throw new Error("Device does not belong to this lab");
+      }
+
+      return {
+        id: row.id as string,
+        maintenanceId: row.maintenanceId as string,
+        technician: {
+          id: row.technicianId as string,
+          name: row.technicianName as string,
+        },
+        status: row.status as DeviceStatus,
+        currentStatus: row.currentStatus as DeviceStatus,
+        outcome: row.outcome as DeviceStatus,
+        kind: row.kind as string,
+        deviceName: row.deviceName as string,
+        image: row.image as any,
+        unit: row.unit as string,
+        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
+        location: row.room && row.branch ? `${row.room}, ${row.branch}` : "",
+        notes: (row.notes as string) || undefined,
+        createdAt: row.createdAt
+          ? new Date(row.createdAt as string)
+          : new Date(),
+      };
     } catch (error) {
-      throw error
+      throw error;
     }
-  }
-} 
+  },
+
+  async getDeviceShipmentById(
+    deviceId: string,
+    labId?: string
+  ): Promise<DeviceDetail> {
+    if (!deviceId) {
+      throw new Error("Missing device ID");
+    }
+
+    try {
+      const sql = `
+        SELECT 
+          d.id,
+          d.full_id,
+          d.status,
+          d.kind,
+          d.lab_id,
+          dk.image,
+          dk.unit,
+          dk.name AS device_name,
+          dk.allowed_borrow_roles,
+          dk.allowed_view_roles,
+          dk.brand,
+          dk.manufacturer,
+          dk.description,
+          dk.is_borrowable_lab_only,
+          c.name AS category_name,
+          l.room,
+          l.branch,
+          sd.prev_status as prev_condition,
+          sd.after_status as after_condition,
+          s.id as shipment_id,
+          s.status as shipment_status,
+          s_start.room || ', ' || s_start.branch AS source_location,
+          s_arrive.room || ', ' || s_arrive.branch AS destination_location,
+          sender.name AS sender_name,
+          receiver.name AS receiver_name
+        FROM 
+          devices d
+          LEFT JOIN device_kinds dk ON d.kind = dk.id
+          LEFT JOIN labs l ON d.lab_id = l.id
+          LEFT JOIN categories c ON dk.category_id = c.id
+          LEFT JOIN shipments_devices sd ON d.id = sd.device_id
+          LEFT JOIN shipments s ON sd.shipment_id = s.id
+          LEFT JOIN labs s_start ON s.start_lab_id = s_start.id
+          LEFT JOIN labs s_arrive ON s.arrive_lab_id = s_arrive.id
+          LEFT JOIN users sender ON s.sender_id = sender.id
+          LEFT JOIN users receiver ON s.receiver_id = receiver.id
+        WHERE 
+          d.id = $1
+          AND d.deleted_at IS NULL
+        ORDER BY
+          s.from_at DESC
+        LIMIT 1
+      `;
+
+      const results = await db.queryRaw<Record<string, unknown>>({
+        sql,
+        params: [deviceId],
+      });
+
+      if (results.length === 0) {
+        throw new Error("Device not found");
+      }
+
+      const row = results[0];
+
+      if (labId && row.labId !== labId) {
+        throw new Error("Device does not belong to this lab");
+      }
+
+      const deviceDetail: DeviceDetail = {
+        fullId: row.fullId as string,
+        status: row.status as DeviceStatus | null,
+        prevCondition: row.prevCondition as DeviceStatus | null,
+        afterCondition: row.afterCondition as DeviceStatus | null,
+        shipmentId: row.shipmentId as string | null,
+        shipmentStatus: row.shipmentStatus as string | null,
+        sourceLocation: row.sourceLocation as string | null,
+        destinationLocation: row.destinationLocation as string | null,
+        senderName: row.senderName as string | null,
+        receiverName: row.receiverName as string | null,
+        image: row.image as any,
+        unit: row.unit as string,
+        deviceName: row.deviceName as string,
+        allowedBorrowRoles: row.allowedBorrowRoles as string[],
+        allowedViewRoles: row.allowedViewRoles as string[],
+        brand: row.brand as string | null,
+        manufacturer: row.manufacturer as string | null,
+        description: row.description as string | null,
+        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
+        categoryName: row.categoryName as string,
+        labRoom: row.room as string | null,
+        labBranch: row.branch as string | null,
+        kind: row.kind as string,
+      };
+
+      return deviceDetail;
+    } catch (error) {
+      throw error;
+    }
+  },
+};

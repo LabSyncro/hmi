@@ -1,6 +1,11 @@
-export * from "@/lib/db/client";
-export * from "@/lib/db/device";
-export * from "@/lib/db/hmi";
-export * from "@/lib/db/receipt";
-export * from "@/lib/db/user";
 export * from "@/types/db/generated";
+export * from "./audit";
+export * from "./client";
+export * from "./device";
+export * from "./hmi";
+export * from "./lab";
+export * from "./maintenance";
+export * from "./receipt";
+export * from "./shipment";
+export * from "./user";
+

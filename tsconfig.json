@@ -23,8 +23,7 @@
     /* Paths */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "db-types/*": ["./db-types/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -32,7 +31,8 @@
     "src/**/*.d.ts",
     "src/**/*.tsx",
     "src/**/*.vue",
-    "db-types/**/*.ts"
+    "auto-imports.d.ts",
+    "components.d.ts",
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
