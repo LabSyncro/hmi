@@ -11,7 +11,7 @@ declare global {
   const EffectScope: typeof import('vue')['EffectScope']
   const FieldContextKey: typeof import('vee-validate')['FieldContextKey']
   const FormContextKey: typeof import('vee-validate')['FormContextKey']
-  const MaintenanceSession: typeof import('@/types/status')['MaintenanceSession']
+  const MaintenanceSession: typeof import('@/types')['MaintenanceSession']
   const MaintenanceStatus: typeof import('@/types/db/generated')['MaintenanceStatus']
   const Ship: typeof import('@/types/db/generated')['Ship']
   const ShipmentStatus: typeof import('@/types/db/generated')['ShipmentStatus']
@@ -98,8 +98,8 @@ declare global {
   const pausableWatch: typeof import('@vueuse/core')['pausableWatch']
   const provide: typeof import('vue')['provide']
   const provideLocal: typeof import('@vueuse/core')['provideLocal']
-  const qualityColorMap: typeof import('@/types/status')['qualityColorMap']
-  const qualityMap: typeof import('@/types/status')['qualityMap']
+  const qualityColorMap: typeof import('@/types')['qualityColorMap']
+  const qualityMap: typeof import('@/types')['qualityMap']
   const reactify: typeof import('@vueuse/core')['reactify']
   const reactifyObject: typeof import('@vueuse/core')['reactifyObject']
   const reactive: typeof import('vue')['reactive']
@@ -123,8 +123,8 @@ declare global {
   const shallowReadonly: typeof import('vue')['shallowReadonly']
   const shallowRef: typeof import('vue')['shallowRef']
   const shipmentService: typeof import('@/lib/db')['shipmentService']
-  const statusColorMap: typeof import('@/types/status')['statusColorMap']
-  const statusMap: typeof import('@/types/status')['statusMap']
+  const statusColorMap: typeof import('@/types')['statusColorMap']
+  const statusMap: typeof import('@/types')['statusMap']
   const storeToRefs: typeof import('pinia')['storeToRefs']
   const syncRef: typeof import('@vueuse/core')['syncRef']
   const syncRefs: typeof import('@vueuse/core')['syncRefs']
@@ -365,8 +365,8 @@ declare global {
   export type { RouteLocationRaw } from 'vue-router'
   import('vue-router')
   // @ts-ignore
-  export type { Device, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit, MaintenanceDevice, MaintenanceDeviceItem, MaintenanceSession, ShipmentDevice, ShipmentDeviceItem } from '@/types/status'
-  import('@/types/status')
+  export type { Device, DeviceDetail, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit, MaintenanceDevice, MaintenanceDeviceItem, MaintenanceSession, ShipmentDevice, ShipmentDeviceItem } from '@/types'
+  import('@/types')
 }
 
 // for vue template auto import
@@ -464,8 +464,8 @@ declare module 'vue' {
     readonly pausableWatch: UnwrapRef<typeof import('@vueuse/core')['pausableWatch']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
     readonly provideLocal: UnwrapRef<typeof import('@vueuse/core')['provideLocal']>
-    readonly qualityColorMap: UnwrapRef<typeof import('@/types/status')['qualityColorMap']>
-    readonly qualityMap: UnwrapRef<typeof import('@/types/status')['qualityMap']>
+    readonly qualityColorMap: UnwrapRef<typeof import('@/types')['qualityColorMap']>
+    readonly qualityMap: UnwrapRef<typeof import('@/types')['qualityMap']>
     readonly reactify: UnwrapRef<typeof import('@vueuse/core')['reactify']>
     readonly reactifyObject: UnwrapRef<typeof import('@vueuse/core')['reactifyObject']>
     readonly reactive: UnwrapRef<typeof import('vue')['reactive']>
@@ -489,8 +489,8 @@ declare module 'vue' {
     readonly shallowReadonly: UnwrapRef<typeof import('vue')['shallowReadonly']>
     readonly shallowRef: UnwrapRef<typeof import('vue')['shallowRef']>
     readonly shipmentService: UnwrapRef<typeof import('@/lib/db')['shipmentService']>
-    readonly statusColorMap: UnwrapRef<typeof import('@/types/status')['statusColorMap']>
-    readonly statusMap: UnwrapRef<typeof import('@/types/status')['statusMap']>
+    readonly statusColorMap: UnwrapRef<typeof import('@/types')['statusColorMap']>
+    readonly statusMap: UnwrapRef<typeof import('@/types')['statusMap']>
     readonly storeToRefs: UnwrapRef<typeof import('pinia')['storeToRefs']>
     readonly syncRef: UnwrapRef<typeof import('@vueuse/core')['syncRef']>
     readonly syncRefs: UnwrapRef<typeof import('@vueuse/core')['syncRefs']>

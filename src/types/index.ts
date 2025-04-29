@@ -1,5 +1,42 @@
 import { AssessmentStatus, DeviceStatus, MaintenanceStatus } from "@/lib/db";
 
+export type DeviceDetail = {
+  fullId: string;
+  status: DeviceStatus | null;
+  prevQuality?: DeviceStatus | null;
+  image: any;
+  unit: string;
+  deviceName: string;
+  allowedBorrowRoles: string[];
+  allowedViewRoles: string[];
+  brand: string | null;
+  manufacturer: string | null;
+  description: string | null;
+  isBorrowableLabOnly: boolean;
+  categoryName: string;
+  labRoom: string | null;
+  labBranch: string | null;
+  kind: string;
+  borrower?: {
+    id: string;
+    name: string;
+    image: string | null;
+  } | null;
+  borrowedAt?: Date | null;
+  expectedReturnAt?: string | null;
+  borrowedLab?: string | null;
+  expectedReturnLab?: string | null;
+  receiptId?: string | null;
+  prevCondition?: DeviceStatus | null;
+  afterCondition?: DeviceStatus | null;
+  shipmentId?: string | null;
+  shipmentStatus?: string | null;
+  sourceLocation?: string | null;
+  destinationLocation?: string | null;
+  senderName?: string | null;
+  receiverName?: string | null;
+};
+
 export const statusMap: Record<DeviceStatus, string> = {
   healthy: "Tốt",
   broken: "Hư hỏng",

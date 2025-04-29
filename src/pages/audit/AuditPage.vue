@@ -938,7 +938,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 <template>
   <div>
     <h1 class="text-2xl font-bold text-center">GHI NHẬN KIỂM ĐẾM</h1>
-    <p class="text-center text-gray-500 mb-6">
+    <p class="text-center text-gray-500 mb-2">
       Sử dụng máy scan quét mã QR thiết bị/người dùng để ghi nhận kiểm đếm
     </p>
 

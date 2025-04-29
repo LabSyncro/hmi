@@ -63,7 +63,7 @@ export default defineConfig({
           imports: ["cn"],
         },
         {
-          from: "@/types/status",
+          from: "@/types",
           imports: [
             "statusMap",
             "statusColorMap",
@@ -72,9 +72,10 @@ export default defineConfig({
           ],
         },
         {
-          from: "@/types/status",
+          from: "@/types",
           imports: [
             "Device",
+            "DeviceDetail",
             "QualityDeviceItem",
             "UserInfo",
             "AuditDevice",
