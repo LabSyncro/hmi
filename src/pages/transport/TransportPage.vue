@@ -420,6 +420,7 @@ const addUnscannedDevice = (
       expanded: true,
       isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
       items: [newItem],
+      bulkUnscannedCondition: DeviceStatus.HEALTHY,
     });
   }
 };
@@ -453,6 +454,7 @@ const addDeviceToList = (
       expanded: true,
       isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
       items: [newItem],
+      bulkUnscannedCondition: DeviceStatus.HEALTHY,
     });
   }
 };
@@ -731,6 +733,20 @@ const getUnscannedItems = (device: ShipmentDevice) => {
   return device.items.filter((item) => !item.scanned);
 };
 
+const updateAllUnscannedDevices = (device: ShipmentDevice) => {
+  if (!device.bulkUnscannedCondition) return;
+
+  const unscannedItems = getUnscannedItems(device);
+  unscannedItems.forEach((item) => {
+    if (device.bulkUnscannedCondition) {
+      item.shipmentCondition = device.bulkUnscannedCondition;
+      updateShipmentCondition(item, device.bulkUnscannedCondition);
+    }
+  });
+
+  updateDeviceCount();
+};
+
 useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
   userId: { length: 7 },
   device: {
@@ -758,7 +774,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           </h2>
         </div>
 
-        <div class="h-[calc(100vh-16rem)] overflow-y-auto">
+        <div class="h-[calc(100vh-10rem)] overflow-y-auto">
           <div
             v-if="devices.length === 0"
             class="flex flex-col items-center justify-center py-20 text-center"
@@ -863,7 +879,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                     <Badge
                       :class="getStatusClass(item)"
                       variant="outline"
-                      class="h-8 text-sm font-semibold w-fit"
+                      class="h-8 text-sm font-semibold w-fit whitespace-nowrap"
                     >
                       {{ getStatusText(item) }}
                     </Badge>
@@ -920,98 +936,57 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                     <span class="col-span-3">TÌNH TRẠNG</span>
                   </div>
 
-                  <div class="bg-amber-50 px-4 py-3 border-b border-amber-100">
+                  <div class="bg-white px-4 py-3 border-b border-gray-100">
                     <div class="grid grid-cols-10 items-center">
-                      <div
-                        class="h-6 w-6 rounded-full bg-amber-100 flex items-center justify-center"
-                      >
-                        <span class="text-amber-600 text-xs font-bold">!</span>
-                      </div>
-                      <span
-                        class="text-sm font-medium text-gray-900 col-span-6"
-                      >
-                        Chưa ghi nhận:
-                        <span class="font-bold text-amber-600"
-                          >{{ getUnscannedCount(device) }}
-                          {{ device.unit }}</span
-                        >
-                      </span>
-                      <div class="text-sm text-amber-600 col-span-3">
-                        Cần được xác định tình trạng
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="divide-y divide-gray-100">
-                    <div
-                      v-for="unscannedItem in getUnscannedItems(device)"
-                      :key="unscannedItem.id"
-                      class="grid grid-cols-10 items-center px-4 py-3"
-                    >
-                      <div class="col-span-1 flex justify-start"></div>
-                      <div class="col-span-6 text-sm font-medium text-gray-900">
-                        {{ device.code }}/{{ unscannedItem.id }}
+                      <span class="col-span-1"></span>
+                      <div class="col-span-6">
+                        <span class="text-sm font-medium text-gray-900">
+                          {{ getUnscannedCount(device) }} {{ device.unit }}
+                        </span>
                       </div>
                       <div class="col-span-3">
-                        <div class="flex items-center justify-start gap-2">
-                          <div class="w-32">
-                            <Select
-                              v-model="unscannedItem.shipmentCondition"
-                              @update:modelValue="
-                                updateShipmentCondition(
-                                  unscannedItem,
-                                  unscannedItem.shipmentCondition
-                                )
-                              "
-                              class="flex-grow"
-                            >
-                              <SelectTrigger
-                                class="h-8 text-sm bg-white font-semibold w-fit"
-                                :class="
-                                  unscannedItem.shipmentCondition
-                                    ? statusColorMap[
-                                        unscannedItem.shipmentCondition
-                                      ]
-                                    : 'text-gray-900'
-                                "
+                        <Select
+                          v-model="device.bulkUnscannedCondition"
+                          @update:modelValue="updateAllUnscannedDevices(device)"
+                          class="flex-grow"
+                        >
+                          <SelectTrigger
+                            class="h-8 text-sm bg-white font-semibold w-fit"
+                            :class="
+                              device.bulkUnscannedCondition
+                                ? statusColorMap[device.bulkUnscannedCondition]
+                                : 'text-gray-900'
+                            "
+                          >
+                            <SelectValue placeholder="Chọn tình trạng" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="healthy" class="cursor-pointer">
+                              <Badge
+                                :class="statusColorMap['healthy']"
+                                variant="outline"
                               >
-                                <SelectValue placeholder="Chọn tình trạng" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem
-                                  value="healthy"
-                                  class="cursor-pointer"
-                                >
-                                  <Badge
-                                    :class="statusColorMap['healthy']"
-                                    variant="outline"
-                                  >
-                                    Tốt
-                                  </Badge>
-                                </SelectItem>
-                                <SelectItem
-                                  value="broken"
-                                  class="cursor-pointer"
-                                >
-                                  <Badge
-                                    :class="statusColorMap['broken']"
-                                    variant="outline"
-                                  >
-                                    Hư hỏng
-                                  </Badge>
-                                </SelectItem>
-                                <SelectItem value="lost" class="cursor-pointer">
-                                  <Badge
-                                    :class="statusColorMap['lost']"
-                                    variant="outline"
-                                  >
-                                    Thất lạc
-                                  </Badge>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                                Tốt
+                              </Badge>
+                            </SelectItem>
+                            <SelectItem value="broken" class="cursor-pointer">
+                              <Badge
+                                :class="statusColorMap['broken']"
+                                variant="outline"
+                              >
+                                Hư hỏng
+                              </Badge>
+                            </SelectItem>
+                            <SelectItem value="lost" class="cursor-pointer">
+                              <Badge
+                                :class="statusColorMap['lost']"
+                                variant="outline"
+                              >
+                                Thất lạc
+                              </Badge>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>

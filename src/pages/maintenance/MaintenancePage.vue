@@ -912,7 +912,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           </Button>
         </div>
 
-        <div class="h-[calc(100vh-16rem)] overflow-y-auto">
+        <div class="h-[calc(100vh-10rem)] overflow-y-auto">
           <div
             v-if="devices.length === 0"
             class="flex flex-col items-center justify-center py-20 text-center"
@@ -947,7 +947,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 @click="toggleDevice(device)"
               >
                 <div class="grid grid-cols-10 items-center">
-                  <div class="flex items-center col-span-7 gap-3">
+                  <div class="flex items-center col-span-6 gap-3">
                     <img
                       :src="device.image.mainImage"
                       alt="Device image"
@@ -974,7 +974,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                       </p>
                     </div>
                   </div>
-                  <div class="col-span-3 text-center flex items-center">
+                  <div class="col-span-4 text-center flex items-center">
                     <span
                       class="text-base text-gray-900 font-medium w-full text-start"
                     >
@@ -993,8 +993,8 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                   class="grid grid-cols-10 px-4 py-2 text-sm font-medium text-gray-500 border-b border-gray-200"
                 >
                   <div class="col-span-1"></div>
-                  <div class="col-span-6">THIẾT BỊ GHI NHẬN</div>
-                  <div class="col-span-3">TÌNH TRẠNG</div>
+                  <div class="col-span-5">THIẾT BỊ GHI NHẬN</div>
+                  <div class="col-span-4">TÌNH TRẠNG</div>
                 </div>
 
                 <div
@@ -1012,14 +1012,14 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                       <TrashIcon class="h-4 w-4" />
                     </Button>
                   </div>
-                  <div class="col-span-6 text-sm font-medium text-gray-900">
+                  <div class="col-span-5 text-sm font-medium text-gray-900">
                     {{ device.code }}/{{ item.id }}
                   </div>
-                  <div class="col-span-3 flex items-center justify-start gap-2">
+                  <div class="col-span-4 flex items-center justify-start gap-2">
                     <Badge
                       :class="statusColorMap[item.status]"
                       variant="outline"
-                      class="h-8 text-sm font-semibold w-fit"
+                      class="h-8 text-sm font-semibold w-fit whitespace-nowrap"
                     >
                       {{ statusMap[item.status] }}
                     </Badge>

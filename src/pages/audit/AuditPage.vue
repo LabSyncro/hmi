@@ -259,6 +259,7 @@ const handleDeviceScan = async (input: string) => {
               unscannedDeviceIds: unscannedDeviceIds.filter(
                 (id) => id !== deviceId
               ),
+              unscannedCondition: DeviceStatus.LOST,
             });
           } else {
             devices.value[existingDeviceIndex].items.push({
@@ -921,6 +922,20 @@ async function loadAuditDevices(deviceIds: string[]) {
   }
 }
 
+const updateDeviceUnscannedItems = (device: AuditDevice) => {
+  if (!device.unscannedCondition) return;
+
+  const unscannedItems = getUnscannedItems(device);
+  unscannedItems.forEach((item) => {
+    if (device.unscannedCondition) {
+      item.auditCondition = device.unscannedCondition;
+      updateDeviceCondition(item, device.unscannedCondition);
+    }
+  });
+
+  updateAuditCounts();
+};
+
 useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
   userId: { length: 7 },
   device: {
@@ -1067,7 +1082,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                       <Badge
                         :class="statusColorMap[item.status]"
                         variant="outline"
-                        class="h-8 text-sm font-semibold w-fit"
+                        class="h-8 text-sm font-semibold w-fit whitespace-nowrap"
                       >
                         {{ statusMap[item.status] }}
                       </Badge>
@@ -1151,92 +1166,57 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                     <span class="col-span-3">TÌNH TRẠNG</span>
                   </div>
 
-                  <div class="bg-amber-50 px-4 py-3 border-b border-amber-100">
+                  <div class="bg-white px-4 py-3 border-b border-gray-100">
                     <div class="grid grid-cols-10 items-center">
-                      <div
-                        class="h-6 w-6 rounded-full bg-amber-100 flex items-center justify-center"
-                      >
-                        <span class="text-amber-600 text-xs font-bold">!</span>
-                      </div>
-                      <span
-                        class="text-sm font-medium text-gray-900 col-span-6"
-                      >
-                        Chưa ghi nhận:
-                        <span class="font-bold text-amber-600"
-                          >{{ getUnscannedCount(device) }}
-                          {{ device.unit }}</span
-                        >
-                      </span>
-                      <div class="text-sm text-amber-600 col-span-3">
-                        Cần được xác định tình trạng
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="divide-y divide-gray-100">
-                    <div
-                      v-for="unscannedItem in getUnscannedItems(device)"
-                      :key="unscannedItem.id"
-                      class="grid grid-cols-10 items-center px-4 py-3"
-                    >
-                      <div class="col-span-1 flex justify-start"></div>
-                      <div class="col-span-6 text-sm font-medium text-gray-900">
-                        {{ unscannedItem.displayName }}
+                      <span class="col-span-1"></span>
+                      <div class="col-span-6">
+                        <span class="text-sm font-medium text-gray-900">
+                          {{ getUnscannedCount(device) }} {{ device.unit }}
+                        </span>
                       </div>
                       <div class="col-span-3">
-                        <div class="flex items-center justify-start gap-2">
-                          <div class="w-32">
-                            <Select
-                              v-model="unscannedItem.auditCondition"
-                              @update:modelValue="
-                                updateDeviceCondition(
-                                  unscannedItem,
-                                  unscannedItem.auditCondition
-                                )
-                              "
-                              class="flex-grow"
+                        <Select
+                          v-model="device.unscannedCondition"
+                          @update:modelValue="
+                            updateDeviceUnscannedItems(device)
+                          "
+                          class="flex-grow"
+                        >
+                          <SelectTrigger
+                            class="h-8 text-sm bg-white font-semibold w-fit"
+                            :class="
+                              device.unscannedCondition
+                                ? statusColorMap[device.unscannedCondition]
+                                : 'text-gray-900'
+                            "
+                          >
+                            <SelectValue placeholder="Chọn tình trạng" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem
+                              :value="DeviceStatus.LOST"
+                              class="cursor-pointer"
                             >
-                              <SelectTrigger
-                                class="h-8 text-sm bg-white font-semibold w-fit"
-                                :class="
-                                  unscannedItem.auditCondition
-                                    ? statusColorMap[
-                                        unscannedItem.auditCondition
-                                      ]
-                                    : 'text-gray-900'
-                                "
+                              <Badge
+                                :class="statusColorMap[DeviceStatus.LOST]"
+                                variant="outline"
                               >
-                                <SelectValue placeholder="Chọn tình trạng" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem
-                                  :value="DeviceStatus.LOST"
-                                  class="cursor-pointer"
-                                >
-                                  <Badge
-                                    :class="statusColorMap[DeviceStatus.LOST]"
-                                    variant="outline"
-                                  >
-                                    {{ statusMap[DeviceStatus.LOST] }}
-                                  </Badge>
-                                </SelectItem>
-                                <SelectItem
-                                  :value="DeviceStatus.DISCARDED"
-                                  class="cursor-pointer"
-                                >
-                                  <Badge
-                                    :class="
-                                      statusColorMap[DeviceStatus.DISCARDED]
-                                    "
-                                    variant="outline"
-                                  >
-                                    {{ statusMap[DeviceStatus.DISCARDED] }}
-                                  </Badge>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                                {{ statusMap[DeviceStatus.LOST] }}
+                              </Badge>
+                            </SelectItem>
+                            <SelectItem
+                              :value="DeviceStatus.DISCARDED"
+                              class="cursor-pointer"
+                            >
+                              <Badge
+                                :class="statusColorMap[DeviceStatus.DISCARDED]"
+                                variant="outline"
+                              >
+                                {{ statusMap[DeviceStatus.DISCARDED] }}
+                              </Badge>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>

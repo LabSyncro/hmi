@@ -736,10 +736,14 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
             >
               <div
                 class="p-4 hover:bg-gray-50 cursor-pointer"
+                :class="{
+                  'cursor-pointer': device.items.length > 0,
+                  'opacity-50': device.items.length === 0,
+                }"
                 @click="toggleDevice(device)"
               >
-                <div class="grid grid-cols-10 items-center">
-                  <div class="flex items-center col-span-6 gap-3">
+                <div class="grid grid-cols-12 items-center">
+                  <div class="col-span-9 flex items-center gap-3">
                     <img
                       :src="device.image.mainImage"
                       alt="Device image"
@@ -766,60 +770,55 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                       </p>
                     </div>
                   </div>
-                  <div class="col-span-4 text-center flex items-center">
+                  <div class="col-span-3 flex items-center">
                     <span class="text-base text-gray-900 font-medium w-full">
                       SL: {{ device.quantity }} {{ device.unit }}
                     </span>
                     <ChevronDownIcon
-                      class="h-5 w-5 text-gray-400 transition-transform"
+                      class="h-5 w-5 text-gray-400 transition-transform justify-self-end"
                       :class="{ 'rotate-180': device.expanded }"
                     />
                   </div>
                 </div>
               </div>
 
-              <div v-if="device.expanded" class="bg-gray-50">
-                <div class="p-4">
-                  <div class="grid grid-cols-10 items-center mb-2">
-                    <div class="col-span-1"></div>
-                    <h4 class="text-sm font-medium text-gray-500 col-span-5">
-                      THIẾT BỊ GHI NHẬN
-                    </h4>
-                    <h4
-                      class="text-sm font-medium text-gray-500 col-span-4 text-center"
+              <div
+                v-if="device.expanded && device.items.length > 0"
+                class="bg-gray-50"
+              >
+                <div
+                  class="grid grid-cols-12 px-4 py-2 text-sm font-medium text-gray-500 border-b border-gray-200"
+                >
+                  <div class="col-span-1"></div>
+                  <div class="col-span-8">THIẾT BỊ GHI NHẬN</div>
+                  <div class="col-span-3">TÌNH TRẠNG</div>
+                </div>
+                <div
+                  v-for="item in device.items"
+                  :key="item.id"
+                  class="grid grid-cols-12 items-center px-4 py-3 border-b border-gray-100 last:border-b-0"
+                >
+                  <div class="col-span-1 flex justify-start">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      @click.stop="removeDeviceItem(device, item.id)"
+                      class="text-red-500 hover:text-red-600 hover:bg-red-100 rounded-full"
                     >
-                      TÌNH TRẠNG
-                    </h4>
+                      <TrashIcon class="h-4 w-4" />
+                    </Button>
                   </div>
-                  <div class="space-y-3">
-                    <div
-                      v-for="item in device.items"
-                      :key="item.id"
-                      class="flex items-center justify-between grid grid-cols-10"
+                  <div class="col-span-8 text-sm font-medium text-gray-900">
+                    {{ device.code }}/{{ item.id }}
+                  </div>
+                  <div class="col-span-3">
+                    <Badge
+                      :class="statusColorMap[item.status]"
+                      class="text-sm font-semibold"
+                      variant="outline"
                     >
-                      <div class="text-left">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          @click.stop="removeDeviceItem(device, item.id)"
-                          class="text-red-500 hover:text-red-600 hover:bg-red-100 rounded-full"
-                        >
-                          <TrashIcon class="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div class="text-sm font-medium text-gray-900 col-span-5">
-                        {{ device.code }}/{{ item.id }}
-                      </div>
-                      <div class="col-span-4 text-center">
-                        <Badge
-                          :class="statusColorMap[item.status]"
-                          class="text-base font-semibold text-center"
-                          variant="outline"
-                        >
-                          {{ statusMap[item.status] }}
-                        </Badge>
-                      </div>
-                    </div>
+                      {{ statusMap[item.status] }}
+                    </Badge>
                   </div>
                 </div>
               </div>
@@ -945,7 +944,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                               DeviceStatus.HEALTHY
                           ]
                         "
-                        class="h-8 text-sm font-semibold w-fit"
+                        class="h-8 text-sm font-semibold w-fit whitespace-nowrap"
                         variant="outline"
                       >
                         {{
@@ -961,7 +960,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                         class="flex-grow"
                       >
                         <SelectTrigger
-                          class="h-8 text-sm bg-white font-semibold w-fit"
+                          class="h-8 text-sm bg-white font-semibold w-fit whitespace-nowrap"
                           :class="
                             (item as QualityDeviceItem).returnCondition
                               ? qualityColorMap[
@@ -1101,9 +1100,9 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               <div class="rounded-full bg-purple-50 p-2">
                 <CalendarIcon class="h-4 w-4 text-purple-600" />
               </div>
-              <div class="grid grid-cols-2 w-full items-center">
+              <div class="grid grid-cols-3 w-full items-center">
                 <p class="text-sm text-gray-500">Ngày hẹn trả</p>
-                <div class="text-right">
+                <div class="text-right col-span-2">
                   <template v-if="hasBorrowableLabOnlyDevice">
                     <TooltipProvider>
                       <Tooltip>
