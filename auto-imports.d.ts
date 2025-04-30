@@ -117,6 +117,7 @@ declare global {
   const resolveComponent: typeof import('vue')['resolveComponent']
   const resolveRef: typeof import('@vueuse/core')['resolveRef']
   const resolveUnref: typeof import('@vueuse/core')['resolveUnref']
+  const searchService: typeof import('@/lib/db')['searchService']
   const setActivePinia: typeof import('pinia')['setActivePinia']
   const setMapStoreSuffix: typeof import('pinia')['setMapStoreSuffix']
   const shallowReactive: typeof import('vue')['shallowReactive']
@@ -365,7 +366,7 @@ declare global {
   export type { RouteLocationRaw } from 'vue-router'
   import('vue-router')
   // @ts-ignore
-  export type { Device, DeviceDetail, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit, MaintenanceDevice, MaintenanceDeviceItem, MaintenanceSession, ShipmentDevice, ShipmentDeviceItem } from '@/types'
+  export type { Device, DeviceDetail, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit, MaintenanceDevice, MaintenanceDeviceItem, MaintenanceSession, ShipmentDevice, ShipmentDeviceItem, Accessory } from '@/types'
   import('@/types')
 }
 
@@ -483,6 +484,7 @@ declare module 'vue' {
     readonly resolveComponent: UnwrapRef<typeof import('vue')['resolveComponent']>
     readonly resolveRef: UnwrapRef<typeof import('@vueuse/core')['resolveRef']>
     readonly resolveUnref: UnwrapRef<typeof import('@vueuse/core')['resolveUnref']>
+    readonly searchService: UnwrapRef<typeof import('@/lib/db')['searchService']>
     readonly setActivePinia: UnwrapRef<typeof import('pinia')['setActivePinia']>
     readonly setMapStoreSuffix: UnwrapRef<typeof import('pinia')['setMapStoreSuffix']>
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>

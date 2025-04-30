@@ -23,7 +23,7 @@ export type DeviceDetail = {
     image: string | null;
   } | null;
   borrowedAt?: Date | null;
-  expectedReturnAt?: string | null;
+  expectedReturnedAt?: string | null;
   borrowedLab?: string | null;
   expectedReturnLab?: string | null;
   receiptId?: string | null;
@@ -74,6 +74,7 @@ export const qualityColorMap: Partial<Record<DeviceStatus, string>> = {
 export type UserInfo = {
   id: string;
   name: string;
+  email?: string;
   avatar: string;
   roles: { name: string; key: string }[];
 };
@@ -94,7 +95,7 @@ export type MaintenanceDeviceItem = BaseDeviceItem & {
 export type QualityDeviceItem = BaseDeviceItem & {
   returnCondition?: DeviceStatus;
   prevQuality: DeviceStatus;
-  expectedReturnAt?: string | null;
+  expectedReturnedAt?: string | null;
 };
 
 export type TransportDeviceItem = BaseDeviceItem & {
@@ -160,4 +161,15 @@ export type ShipmentDeviceItem = BaseDeviceItem & {
 
 export type ShipmentDevice = Omit<Device, "items"> & {
   items: ShipmentDeviceItem[];
+};
+
+export type Accessory = {
+  id: string;
+  fullId: string;
+  status: DeviceStatus;
+  image: any;
+  name: string;
+  brand: string | null;
+  unit: string | null;
+  quantity: number;
 };

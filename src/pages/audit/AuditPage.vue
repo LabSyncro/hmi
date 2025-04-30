@@ -186,7 +186,7 @@ const handleDeviceScan = async (input: string) => {
         return;
       }
 
-      const inventoryData = await deviceService.getDeviceInventoryByKindId(
+      const inventoryData = await deviceService.getDeviceInventoryInAudit(
         deviceKindId!,
         storedUserInfo.value?.lab.id || ""
       );
@@ -849,7 +849,7 @@ async function loadAuditDevices(deviceIds: string[]) {
           continue;
         }
 
-        const inventoryData = await deviceService.getDeviceInventoryByKindId(
+        const inventoryData = await deviceService.getDeviceInventoryInAudit(
           kindId,
           selectedAudit.value?.labId || ""
         );

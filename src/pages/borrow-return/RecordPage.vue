@@ -52,13 +52,13 @@ const borrowDetails = ref<{
 
 const returnDetails = ref<{
   location: string;
-  expectedReturnAt: string;
+  expectedReturnedAt: string;
   actualReturnDate: string;
   returnProgress: string;
   notes: string;
 }>({
   location: "",
-  expectedReturnAt: df.format(new Date()),
+  expectedReturnedAt: df.format(new Date()),
   actualReturnDate: df.format(new Date()),
   returnProgress: "",
   notes: "",
@@ -105,8 +105,8 @@ const overallReturnStatus = computed(() => {
   const isAnyDeviceLate = devices.value.some((device) =>
     device.items.some((item) => {
       const qualityItem = item as QualityDeviceItem;
-      if (!qualityItem.expectedReturnAt) return false;
-      return calculateReturnProgress(qualityItem.expectedReturnAt).includes(
+      if (!qualityItem.expectedReturnedAt) return false;
+      return calculateReturnProgress(qualityItem.expectedReturnedAt).includes(
         "Trễ"
       );
     })
@@ -379,7 +379,7 @@ const handleDeviceScan = async (input: string) => {
             id: deviceId,
             status: deviceDetails.status!,
             prevQuality: DeviceStatus.HEALTHY,
-            expectedReturnAt: deviceDetails.expectedReturnAt,
+            expectedReturnedAt: deviceDetails.expectedReturnedAt,
           });
           existingDevice.quantity = existingDevice.items.length;
         } else {
@@ -395,7 +395,7 @@ const handleDeviceScan = async (input: string) => {
                 id: deviceId,
                 status: deviceDetails.status!,
                 prevQuality: DeviceStatus.HEALTHY,
-                expectedReturnAt: deviceDetails.expectedReturnAt,
+                expectedReturnedAt: deviceDetails.expectedReturnedAt,
               },
             ],
             isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
@@ -409,14 +409,14 @@ const handleDeviceScan = async (input: string) => {
       } else if (mode.value === "return") {
         const qualityValue = deviceDetails.prevQuality || DeviceStatus.HEALTHY;
         const returnDate =
-          deviceDetails.expectedReturnAt || df.format(new Date());
+          deviceDetails.expectedReturnedAt || df.format(new Date());
 
         const newItem = {
           id: deviceId,
           status: deviceDetails.status!,
           returnCondition: DeviceStatus.HEALTHY,
           prevQuality: qualityValue,
-          expectedReturnAt: returnDate,
+          expectedReturnedAt: returnDate,
         };
 
         const existingDevice = devices.value.find(
@@ -925,9 +925,9 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                   <div
                     class="col-span-3 text-sm"
                     :class="
-                      item.expectedReturnAt
+                      item.expectedReturnedAt
                         ? calculateReturnProgress(
-                            item.expectedReturnAt
+                            item.expectedReturnedAt
                           ).includes('Trễ')
                           ? 'text-red-600'
                           : 'text-gray-600'
@@ -935,15 +935,15 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                     "
                   >
                     {{
-                      item.expectedReturnAt
-                        ? calculateReturnProgress(item.expectedReturnAt)
+                      item.expectedReturnedAt
+                        ? calculateReturnProgress(item.expectedReturnedAt)
                         : "Chưa có ngày hẹn"
                     }}
                   </div>
                   <div class="col-span-2 text-sm text-gray-600">
                     {{
-                      item.expectedReturnAt
-                        ? df.format(new Date(item.expectedReturnAt))
+                      item.expectedReturnedAt
+                        ? df.format(new Date(item.expectedReturnedAt))
                         : "---"
                     }}
                   </div>

@@ -11,46 +11,21 @@ import {
   WrenchIcon,
 } from "lucide-vue-next";
 
-const deviceService = {
-  getDeviceInventoryByKindId: async (_kindId: string, _labId: string) => {
-    console.log("Mock getDeviceInventoryByKindId", _kindId, _labId);
-    return [];
-  },
-  getDeviceReceiptById: async (_id: string, _labId: string | string[]) => {
-    console.log("Mock getDeviceReceiptById", _id);
-    return {
-      fullId: "device-123",
-      status: DeviceStatus.HEALTHY,
-      image: null,
-      unit: "EA",
-      deviceName: "Mock Device",
-      allowedBorrowRoles: ["admin", "user"],
-      allowedViewRoles: ["admin", "user"],
-      brand: "Mock Brand",
-      manufacturer: "Mock Manufacturer",
-      description: "This is a mock device",
-      isBorrowableLabOnly: false,
-      categoryName: "Electronics",
-      labRoom: "A101",
-      labBranch: "Main",
-      kind: "laptop",
-    };
-  },
-};
-
 const mode = ref<"idle" | "device" | "user">("idle");
 
 const showMore = ref(false);
 const showAccessories = ref(false);
-const route = useRoute();
 const deviceDetail = ref<DeviceDetail | null>(null);
+const currentDeviceId = ref<string>("");
 const loading = ref(true);
 const error = ref<string | null>(null);
 const retrying = ref(false);
 const inventory = ref<Array<any>>([]);
 const loadingInventory = ref(true);
+const accessories = ref<Accessory[]>([]);
+const loadingAccessories = ref(false);
 
-const activeTab = ref("inventory");
+const activeTab = ref("borrowed");
 const borrowedDevices = ref<Array<any>>([]);
 const maintenanceDevices = ref<Array<any>>([]);
 const transportDevices = ref<Array<any>>([]);
@@ -235,34 +210,13 @@ async function loadDeviceDetailsById(id: string, kindId: string) {
   error.value = null;
   try {
     const labId = storedUserInfo.value?.lab?.id || "";
-    deviceDetail.value = await deviceService.getDeviceReceiptById(id, [labId]);
+    currentDeviceId.value = id;
+    deviceDetail.value = await deviceService.getDeviceReceiptById(id, labId);
     if (!deviceDetail.value) {
       error.value = "Device not found";
     } else {
       await loadInventoryData(kindId || deviceDetail.value.kind);
-    }
-  } catch (e) {
-    error.value =
-      e instanceof Error ? e.message : "Failed to load device details";
-  } finally {
-    loading.value = false;
-    retrying.value = false;
-  }
-}
-
-async function loadDeviceDetails() {
-  loading.value = true;
-  error.value = null;
-  try {
-    const id = route.params.id as string;
-    const labId = storedUserInfo.value?.lab?.id || "";
-    deviceDetail.value = await deviceService.getDeviceReceiptById(id, [labId]);
-    if (!deviceDetail.value) {
-      error.value = "Device not found";
-    } else {
-      const kindId =
-        (route.query.deviceKindId as string) || deviceDetail.value.kind;
-      await loadInventoryData(kindId);
+      await loadAccessoriesData(kindId || deviceDetail.value.kind, labId);
     }
   } catch (e) {
     error.value =
@@ -277,285 +231,92 @@ async function loadInventoryData(kindId: string) {
   loadingInventory.value = true;
   try {
     if (deviceDetail.value) {
-      const inventoryData = await deviceService.getDeviceInventoryByKindId(
-        kindId,
-        storedUserInfo.value?.lab?.id || ""
-      );
+      const inventorySummary =
+        await deviceService.getDeviceInventoryByKind(kindId);
+      inventory.value = inventorySummary;
 
-      inventory.value = [
-        {
-          id: "inv-001",
-          fullId: "LAP-001",
-          deviceName: "Dell XPS 13",
-          status: "HEALTHY",
-          location: "Phòng 601 H6",
-        },
-        {
-          id: "inv-002",
-          fullId: "LAP-002",
-          deviceName: "HP Elitebook",
-          status: "HEALTHY",
-          location: "Phòng 601 H6",
-        },
-        {
-          id: "inv-003",
-          fullId: "LAP-003",
-          deviceName: "Macbook Pro",
-          status: "BROKEN",
-          location: "Phòng 601 H6",
-        },
-        {
-          id: "inv-004",
-          fullId: "LAP-004",
-          deviceName: "Lenovo ThinkPad",
-          status: "HEALTHY",
-          location: "Phòng 602 H6",
-        },
-        {
-          id: "inv-005",
-          fullId: "LAP-005",
-          deviceName: "Asus ZenBook",
-          status: "HEALTHY",
-          location: "Phòng 602 H6",
-        },
-        {
-          id: "inv-006",
-          fullId: "LAP-006",
-          deviceName: "Microsoft Surface",
-          status: "BROKEN",
-          location: "Phòng 701 H6",
-        },
-        {
-          id: "inv-007",
-          fullId: "LAP-007",
-          deviceName: "Acer Predator",
-          status: "HEALTHY",
-          location: "Phòng 701 H6",
-        },
-        {
-          id: "inv-008",
-          fullId: "LAP-008",
-          deviceName: "Dell Inspiron",
-          status: "HEALTHY",
-          location: "Phòng 701 H6",
-        },
-        {
-          id: "inv-009",
-          fullId: "LAP-009",
-          deviceName: "HP Pavilion",
-          status: "BROKEN",
-          location: "Phòng 701 H6",
-        },
-      ];
-
-      if (inventoryData && inventory.value.length === 0) {
-        if (Array.isArray(inventoryData)) {
-          inventory.value = inventoryData;
-        } else if (typeof inventoryData === "object") {
-          const devices = (inventoryData as any).devices;
-          if (Array.isArray(devices)) {
-            inventory.value = devices;
-          } else {
-            inventory.value = [inventoryData];
-          }
-        } else {
-          inventory.value = [];
-        }
+      if (currentDeviceId.value) {
+        await loadBorrowedDevices(currentDeviceId.value);
+        await loadMaintenanceDevices(currentDeviceId.value);
+        await loadTransportDevices(currentDeviceId.value);
+        await loadAuditDevices(currentDeviceId.value);
       }
-
-      await loadBorrowedDevices();
-      await loadMaintenanceDevices();
-      await loadTransportDevices();
-      await loadAuditDevices();
     }
   } catch (error) {
-    console.error("Error loading inventory data", error);
+    throw error;
   } finally {
     loadingInventory.value = false;
   }
 }
 
-async function loadBorrowedDevices() {
+async function loadBorrowedDevices(deviceId: string) {
   loadingBorrowedItems.value = true;
   try {
-    // This would be replaced with a real API call
-    // For now, simulating with a timeout and mock data
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    // In a real implementation, you would fetch borrowed devices from a service
-    // Example: const data = await deviceService.getBorrowedDevices(deviceDetail.value?.kind, storedUserInfo.value?.lab?.id || "");
-    borrowedDevices.value = [
-      {
-        id: "1",
-        fullId: "Thiết bị 001",
-        status: "ON_TIME",
-        borrower: { name: "Nguyễn Văn A" },
-        borrowDate: "2025-04-22T10:00:00Z",
-        expectedReturnAt: "2025-05-06T10:00:00Z",
-      },
-      {
-        id: "2",
-        fullId: "Thiết bị 002",
-        status: "NEAR_DUE",
-        borrower: { name: "Trần Thị B" },
-        borrowDate: "2025-04-15T10:00:00Z",
-        expectedReturnAt: "2025-05-01T10:00:00Z",
-      },
-      {
-        id: "3",
-        fullId: "Thiết bị 003",
-        status: "OVERDUE",
-        borrower: { name: "Lê Văn C" },
-        borrowDate: "2025-03-15T10:00:00Z",
-        expectedReturnAt: "2025-04-15T10:00:00Z",
-      },
-    ];
+    const borrowHistory = await deviceService.getDeviceBorrowHistory(deviceId);
+    borrowedDevices.value = borrowHistory;
   } catch (error) {
-    console.error("Error loading borrowed devices", error);
+    borrowedDevices.value = [];
+    throw error;
   } finally {
     loadingBorrowedItems.value = false;
   }
 }
 
-async function loadMaintenanceDevices() {
+async function loadMaintenanceDevices(deviceId: string) {
   loadingMaintenanceItems.value = true;
   try {
-    // This would be replaced with a real API call
-    // For now, simulating with a timeout and mock data
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    // In a real implementation, you would fetch maintenance devices from a service
-    // Example: const data = await deviceService.getMaintenanceDevices(deviceDetail.value?.kind, storedUserInfo.value?.lab?.id || "");
-    maintenanceDevices.value = [
-      {
-        id: "1",
-        fullId: "Thiết bị 004",
-        maintenanceReason: "Sửa chữa môđun hiển thị",
-        technician: { name: "Kỹ thuật viên Minh" },
-        maintenanceStartDate: "2025-04-20T10:00:00Z",
-        expectedCompletionDate: "2025-05-05T10:00:00Z",
-      },
-      {
-        id: "2",
-        fullId: "Thiết bị 005",
-        maintenanceReason: "Bảo dưỡng định kỳ",
-        technician: { name: "Kỹ thuật viên Hưng" },
-        maintenanceStartDate: "2025-04-25T10:00:00Z",
-        expectedCompletionDate: "2025-04-30T10:00:00Z",
-      },
-    ];
+    const maintenanceHistory =
+      await deviceService.getDeviceMaintenanceHistory(deviceId);
+    maintenanceDevices.value = maintenanceHistory;
   } catch (error) {
-    console.error("Error loading maintenance devices", error);
+    maintenanceDevices.value = [];
+    throw error;
   } finally {
     loadingMaintenanceItems.value = false;
   }
 }
 
-async function loadTransportDevices() {
+async function loadTransportDevices(deviceId: string) {
   loadingTransportItems.value = true;
   try {
-    // This would be replaced with a real API call
-    // For now, simulating with a timeout and mock data
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    // In a real implementation, you would fetch transport devices from a service
-    // Example: const data = await deviceService.getTransportDevices(deviceDetail.value?.kind, storedUserInfo.value?.lab?.id || "");
-    transportDevices.value = [
-      {
-        id: "1",
-        fullId: "Thiết bị 006",
-        sourceLocation: "Kho trung tâm",
-        destinationLocation: "Phòng TN 601 H6",
-        transportDate: "2025-04-28T10:00:00Z",
-        status: "Đang vận chuyển",
-      },
-      {
-        id: "2",
-        fullId: "Thiết bị 007",
-        sourceLocation: "Phòng TN 605 H6",
-        destinationLocation: "Phòng TN 812 H6",
-        transportDate: "2025-04-27T10:00:00Z",
-        status: "Đang vận chuyển",
-      },
-    ];
+    const transportHistory =
+      await deviceService.getDeviceTransportHistory(deviceId);
+    transportDevices.value = transportHistory;
   } catch (error) {
-    console.error("Error loading transport devices", error);
+    transportDevices.value = [];
+    throw error;
   } finally {
     loadingTransportItems.value = false;
   }
 }
 
-async function loadAuditDevices() {
+async function loadAuditDevices(deviceId: string) {
   loadingAuditItems.value = true;
   try {
-    // This would be replaced with a real API call
-    // For now, simulating with a timeout and mock data
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    // In a real implementation, you would fetch audit devices from a service
-    // Example: const data = await deviceService.getAuditDevices(deviceDetail.value?.kind, storedUserInfo.value?.lab?.id || "");
-    auditDevices.value = [
-      {
-        id: "1",
-        fullId: "Thiết bị 008",
-        auditor: { name: "Người kiểm đếm Hóa" },
-        auditDate: "2025-04-25T10:00:00Z",
-        auditResult: "Hoàn thành",
-        notes: "Thiết bị hoạt động tốt",
-      },
-      {
-        id: "2",
-        fullId: "Thiết bị 009",
-        auditor: { name: "Người kiểm đếm Tuấn" },
-        auditDate: "2025-04-26T10:00:00Z",
-        auditResult: "Đang kiểm đếm",
-        notes: "",
-      },
-    ];
+    const auditHistory = await deviceService.getDeviceAuditHistory(deviceId);
+    auditDevices.value = auditHistory;
   } catch (error) {
-    console.error("Error loading audit devices", error);
+    auditDevices.value = [];
+    throw error;
   } finally {
     loadingAuditItems.value = false;
   }
 }
-
-const groupByLocation = (devices: any[]) => {
-  const grouped: Record<string, any[]> = {};
-
-  devices.forEach((device) => {
-    if (!grouped[device.location]) {
-      grouped[device.location] = [];
-    }
-    grouped[device.location].push(device);
-  });
-
-  return grouped;
-};
-
-const countDevicesByStatus = (devices: any[], status: string) => {
-  return devices.filter((device) => device.status === status).length;
-};
-
-const getBorrowedCountForLocation = (
-  _locationName: string,
-  _isGoodCondition: boolean
-) => {
-  return 10;
-};
-
-const getBorrowedStatusClass = (item: any) => {
-  return {
-    "bg-green-500": item.status === "ON_TIME",
-    "bg-yellow-500": item.status === "NEAR_DUE",
-    "bg-red-500": item.status === "OVERDUE",
-  };
-};
 
 const getBorrowedProgressClass = (item: any) => {
   return {
     "bg-green-50 text-green-800": item.status === "ON_TIME",
     "bg-yellow-50 text-yellow-800": item.status === "NEAR_DUE",
     "bg-red-50 text-red-800": item.status === "OVERDUE",
+    "bg-blue-50 text-blue-800": item.hasBeenReturned,
   };
 };
 
-const calculateReturnProgress = (date: string) => {
+const calculateReturnProgress = (date: string, hasBeenReturned: boolean) => {
+  if (hasBeenReturned) {
+    return "Đã trả";
+  }
+
   if (!date) return "N/A";
 
   const dueDate = new Date(date);
@@ -570,6 +331,33 @@ const calculateReturnProgress = (date: string) => {
   return "Quá hạn " + Math.abs(daysLeft) + " ngày";
 };
 
+const getAuditStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    assessing: "Đang kiểm đếm",
+    cancelled: "Đã hủy",
+    completed: "Hoàn thành",
+  };
+  return statusMap[status] || status || "Đang kiểm đếm";
+};
+
+const getMaintenanceStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    maintaining: "Đang bảo trì",
+    cancelled: "Đã hủy",
+    completed: "Hoàn thành",
+  };
+  return statusMap[status] || status || "Đang bảo trì";
+};
+
+const getTransportStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    shipping: "Đang vận chuyển",
+    cancelled: "Đã hủy",
+    completed: "Hoàn thành",
+  };
+  return statusMap[status] || status || "Đang vận chuyển";
+};
+
 const formatDate = (dateString: string) => {
   if (!dateString) return "N/A";
 
@@ -581,19 +369,39 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const getMaintenanceStatusClass = () => {
-  return "bg-amber-500";
-};
-
 const resetToIdle = () => {
   mode.value = "idle";
   activeTab.value = "inventory";
   deviceDetail.value = null;
 };
 
+async function loadAccessoriesData(kindId: string, labId: string) {
+  if (!kindId) return;
+
+  loadingAccessories.value = true;
+  accessories.value = [];
+
+  try {
+    const accessoriesData = await searchService.getAccessoriesForDeviceKind(
+      kindId,
+      labId
+    );
+    accessories.value = accessoriesData;
+    if (accessories.value.length > 0) {
+      showAccessories.value = true;
+    }
+  } catch (err) {
+    throw err;
+  } finally {
+    loadingAccessories.value = false;
+  }
+}
+
 function retryLoading() {
   retrying.value = true;
-  loadDeviceDetailsById(route.params.id as string, "");
+  if (currentDeviceId.value) {
+    loadDeviceDetailsById(currentDeviceId.value, "");
+  }
 }
 
 onMounted(() => {
@@ -605,22 +413,7 @@ onMounted(() => {
     };
     storedUserInfo.value = ui;
   }
-
-  if (route.params.id) {
-    loadDeviceDetails();
-    mode.value = "device";
-  }
 });
-
-watch(
-  () => [route.params.id, route.query.deviceKindId],
-  () => {
-    if (route.params.id) {
-      loadDeviceDetails();
-      mode.value = "device";
-    }
-  }
-);
 </script>
 
 <template>
@@ -687,22 +480,6 @@ watch(
               <div class="border-b border-gray-200">
                 <TabsList class="bg-transparent p-0 w-full flex">
                   <TabsTrigger
-                    value="inventory"
-                    class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
-                  >
-                    <div class="flex items-center justify-center gap-1 w-full">
-                      <div class="rounded-full bg-blue-50 p-1">
-                        <PackageIcon class="h-4 w-4 text-blue-600" />
-                      </div>
-                      <span class="whitespace-nowrap">TỒN KHO</span>
-                      <span
-                        class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
-                      >
-                        {{ inventory.length || 0 }}
-                      </span>
-                    </div>
-                  </TabsTrigger>
-                  <TabsTrigger
                     value="borrowed"
                     class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
@@ -710,11 +487,27 @@ watch(
                       <div class="rounded-full bg-violet-50 p-1">
                         <UserIcon class="h-4 w-4 text-violet-600" />
                       </div>
-                      <span class="whitespace-nowrap">ĐANG MƯỢN</span>
+                      <span class="whitespace-nowrap">MƯỢN TRẢ</span>
                       <span
                         class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
                       >
                         {{ borrowedDevices.length || 0 }}
+                      </span>
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="audit"
+                    class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                  >
+                    <div class="flex items-center justify-center gap-1 w-full">
+                      <div class="rounded-full bg-rose-50 p-1">
+                        <ClipboardCheckIcon class="h-4 w-4 text-rose-600" />
+                      </div>
+                      <span class="whitespace-nowrap">KIỂM ĐẾM</span>
+                      <span
+                        class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                      >
+                        {{ auditDevices.length || 0 }}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -751,124 +544,23 @@ watch(
                     </div>
                   </TabsTrigger>
                   <TabsTrigger
-                    value="audit"
+                    value="inventory"
                     class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
                     <div class="flex items-center justify-center gap-1 w-full">
-                      <div class="rounded-full bg-rose-50 p-1">
-                        <ClipboardCheckIcon class="h-4 w-4 text-rose-600" />
+                      <div class="rounded-full bg-blue-50 p-1">
+                        <PackageIcon class="h-4 w-4 text-blue-600" />
                       </div>
-                      <span class="whitespace-nowrap">KIỂM ĐẾM</span>
+                      <span class="whitespace-nowrap">TỒN KHO</span>
                       <span
                         class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
                       >
-                        {{ auditDevices.length || 0 }}
+                        {{ inventory.length || 0 }}
                       </span>
                     </div>
                   </TabsTrigger>
                 </TabsList>
               </div>
-
-              <TabsContent
-                value="inventory"
-                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
-              >
-                <div v-if="loadingInventory">
-                  <div class="flex justify-center items-center p-8">
-                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
-                  </div>
-                </div>
-                <div v-else-if="inventory && inventory.length">
-                  <div class="mb-3">
-                    <div class="text-sm text-gray-500">
-                      Số lượng còn lại: {{ inventory.length }} thiết bị
-                    </div>
-                  </div>
-
-                  <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border">
-                      <thead>
-                        <tr>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                            rowspan="2"
-                          >
-                            PHÒNG THÍ NGHIỆM
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-2 text-center text-sm font-semibold text-blue-900 border"
-                            colspan="2"
-                          >
-                            TẠI PHÒNG
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-2 text-center text-sm font-semibold text-blue-900 border"
-                            colspan="2"
-                          >
-                            ĐANG MƯỢN
-                          </th>
-                        </tr>
-                        <tr>
-                          <th
-                            class="bg-blue-50 px-4 py-2 text-center text-sm font-semibold text-blue-900 border"
-                          >
-                            Tốt
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-2 text-center text-sm font-semibold text-blue-900 border"
-                          >
-                            Hư
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-2 text-center text-sm font-semibold text-blue-900 border"
-                          >
-                            Tốt
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-2 text-center text-sm font-semibold text-blue-900 border"
-                          >
-                            Hư
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-gray-200 bg-white">
-                        <tr
-                          v-for="(group, location) in groupByLocation(
-                            inventory
-                          )"
-                          :key="location"
-                          class="hover:bg-gray-50"
-                        >
-                          <td class="px-4 py-3 text-sm border">
-                            {{ location }}
-                          </td>
-                          <td class="px-4 py-3 text-sm text-center border">
-                            {{ countDevicesByStatus(group, "HEALTHY") }}
-                          </td>
-                          <td class="px-4 py-3 text-sm text-center border">
-                            {{ countDevicesByStatus(group, "BROKEN") }}
-                          </td>
-                          <td class="px-4 py-3 text-sm text-center border">
-                            {{ getBorrowedCountForLocation(location, true) }}
-                          </td>
-                          <td class="px-4 py-3 text-sm text-center border">
-                            {{ getBorrowedCountForLocation(location, false) }}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                <div v-else class="flex flex-col items-center py-6">
-                  <div class="rounded-full bg-gray-100 p-3 mb-3">
-                    <PackageIcon class="size-6 text-gray-400" />
-                  </div>
-                  <p class="text-sm text-gray-500">
-                    Không có thiết bị nào trong kho
-                  </p>
-                </div>
-              </TabsContent>
-
               <TabsContent
                 value="borrowed"
                 class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
@@ -879,40 +571,34 @@ watch(
                   </div>
                 </div>
                 <div v-else-if="borrowedDevices && borrowedDevices.length">
-                  <div class="mb-3">
-                    <div class="text-sm text-gray-500">
-                      Số lượng đang mượn: {{ borrowedDevices.length }} thiết bị
-                    </div>
-                  </div>
-
                   <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 border">
                       <thead>
-                        <tr>
+                        <tr class="whitespace-nowrap">
                           <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            THIẾT BỊ
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
                           >
                             NGƯỜI MƯỢN
                           </th>
                           <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
                           >
                             NGÀY MƯỢN
                           </th>
                           <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
                           >
                             HẠN TRẢ
                           </th>
                           <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
                           >
                             TRẠNG THÁI
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            GHI CHÚ
                           </th>
                         </tr>
                       </thead>
@@ -920,25 +606,35 @@ watch(
                         <tr
                           v-for="item in borrowedDevices"
                           :key="item.id"
-                          class="hover:bg-gray-50"
+                          class="whitespace-nowrap hover:bg-gray-50"
                         >
                           <td class="px-4 py-3 text-sm border">
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-2">
                               <div
-                                class="size-3 rounded-full mr-2"
-                                :class="getBorrowedStatusClass(item)"
-                              ></div>
-                              <span>{{ item.fullId }}</span>
+                                class="relative flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full overflow-hidden"
+                              >
+                                <img
+                                  :src="item.borrower?.avatar || 'User Avatar'"
+                                  :alt="item.borrower?.name || 'User'"
+                                  class="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div>
+                                <span class="font-medium">{{
+                                  item.borrower?.name || "N/A"
+                                }}</span>
+                                <div class="text-xs text-gray-500">
+                                  {{ item.borrower?.id || "" }} |
+                                  {{ item.borrower?.email || "" }}
+                                </div>
+                              </div>
                             </div>
-                          </td>
-                          <td class="px-4 py-3 text-sm border">
-                            {{ item.borrower?.name || "N/A" }}
                           </td>
                           <td class="px-4 py-3 text-sm border">
                             {{ formatDate(item.borrowDate) }}
                           </td>
                           <td class="px-4 py-3 text-sm border">
-                            {{ formatDate(item.expectedReturnAt) }}
+                            {{ formatDate(item.expectedReturnedAt) }}
                           </td>
                           <td class="px-4 py-3 text-sm border">
                             <span
@@ -946,9 +642,15 @@ watch(
                               :class="getBorrowedProgressClass(item)"
                             >
                               {{
-                                calculateReturnProgress(item.expectedReturnAt)
+                                calculateReturnProgress(
+                                  item.expectedReturnedAt,
+                                  item.hasBeenReturned
+                                )
                               }}
                             </span>
+                          </td>
+                          <td class="px-4 py-3 text-sm border">
+                            {{ item.returnedNote || "—" }}
                           </td>
                         </tr>
                       </tbody>
@@ -964,192 +666,6 @@ watch(
                   </p>
                 </div>
               </TabsContent>
-
-              <TabsContent
-                value="maintenance"
-                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
-              >
-                <div v-if="loadingMaintenanceItems">
-                  <div class="flex justify-center items-center p-8">
-                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
-                  </div>
-                </div>
-                <div
-                  v-else-if="maintenanceDevices && maintenanceDevices.length"
-                >
-                  <div class="mb-3">
-                    <div class="text-sm text-gray-500">
-                      Số lượng đang bảo trì:
-                      {{ maintenanceDevices.length }} thiết bị
-                    </div>
-                  </div>
-
-                  <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border">
-                      <thead>
-                        <tr>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            THIẾT BỊ
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            LÝ DO
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            KỸ THUẬT VIÊN
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            NGÀY BẮT ĐẦU
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            DỰ KIẾN HOÀN THÀNH
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-gray-200 bg-white">
-                        <tr
-                          v-for="item in maintenanceDevices"
-                          :key="item.id"
-                          class="hover:bg-gray-50"
-                        >
-                          <td class="px-4 py-3 text-sm border">
-                            <div class="flex items-center">
-                              <div
-                                class="size-3 rounded-full mr-2"
-                                :class="getMaintenanceStatusClass()"
-                              ></div>
-                              <span>{{ item.fullId }}</span>
-                            </div>
-                          </td>
-                          <td class="px-4 py-3 text-sm border">
-                            {{ item.maintenanceReason || "Đang bảo trì" }}
-                          </td>
-                          <td class="px-4 py-3 text-sm border">
-                            {{ item.technician?.name || "N/A" }}
-                          </td>
-                          <td class="px-4 py-3 text-sm border">
-                            {{ formatDate(item.maintenanceStartDate) }}
-                          </td>
-                          <td class="px-4 py-3 text-sm border">
-                            {{ formatDate(item.expectedCompletionDate) }}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                <div v-else class="flex flex-col items-center py-6">
-                  <div class="rounded-full bg-gray-100 p-3 mb-3">
-                    <WrenchIcon class="size-6 text-gray-400" />
-                  </div>
-                  <p class="text-sm text-gray-500">
-                    Không có thiết bị nào đang bảo trì
-                  </p>
-                </div>
-              </TabsContent>
-
-              <TabsContent
-                value="transport"
-                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
-              >
-                <div v-if="loadingTransportItems">
-                  <div class="flex justify-center items-center p-8">
-                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
-                  </div>
-                </div>
-                <div v-else-if="transportDevices && transportDevices.length">
-                  <div class="mb-3">
-                    <div class="text-sm text-gray-500">
-                      Số lượng đang vận chuyển:
-                      {{ transportDevices.length }} thiết bị
-                    </div>
-                  </div>
-
-                  <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border">
-                      <thead>
-                        <tr>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            THIẾT BỊ
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            TỪ ĐỊA ĐIỂM
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            ĐẾN ĐỊA ĐIỂM
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            NGÀY VẬN CHUYỂN
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            TRẠNG THÁI
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-gray-200 bg-white">
-                        <tr
-                          v-for="item in transportDevices"
-                          :key="item.id"
-                          class="hover:bg-gray-50"
-                        >
-                          <td class="px-4 py-3 text-sm border">
-                            <div class="flex items-center">
-                              <div
-                                class="size-3 rounded-full mr-2 bg-emerald-500"
-                              ></div>
-                              <span>{{ item.fullId }}</span>
-                            </div>
-                          </td>
-                          <td class="px-4 py-3 text-sm border">
-                            {{ item.sourceLocation || "N/A" }}
-                          </td>
-                          <td class="px-4 py-3 text-sm border">
-                            {{ item.destinationLocation || "N/A" }}
-                          </td>
-                          <td class="px-4 py-3 text-sm border">
-                            {{ formatDate(item.transportDate) }}
-                          </td>
-                          <td class="px-4 py-3 text-sm border">
-                            <span
-                              class="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-800"
-                            >
-                              {{ item.status || "Đang vận chuyển" }}
-                            </span>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                <div v-else class="flex flex-col items-center py-6">
-                  <div class="rounded-full bg-gray-100 p-3 mb-3">
-                    <TruckIcon class="size-6 text-gray-400" />
-                  </div>
-                  <p class="text-sm text-gray-500">
-                    Không có thiết bị nào đang vận chuyển
-                  </p>
-                </div>
-              </TabsContent>
-
               <TabsContent
                 value="audit"
                 class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
@@ -1160,38 +676,27 @@ watch(
                   </div>
                 </div>
                 <div v-else-if="auditDevices && auditDevices.length">
-                  <div class="mb-3">
-                    <div class="text-sm text-gray-500">
-                      Số lượng đang kiểm đếm: {{ auditDevices.length }} thiết bị
-                    </div>
-                  </div>
-
                   <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 border">
                       <thead>
-                        <tr>
+                        <tr class="whitespace-nowrap">
                           <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
                           >
-                            THIẾT BỊ
+                            NGƯỜI KIỂM ĐẾM
                           </th>
                           <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
                           >
-                            NGƯỜI KIỂM ĐẾm
+                            NGÀY KIỂM ĐẾM
                           </th>
                           <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
-                          >
-                            NGÀY KIỂM ĐẾm
-                          </th>
-                          <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
                           >
                             KẾT QUẢ
                           </th>
                           <th
-                            class="bg-blue-50 px-4 py-3 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
                           >
                             GHI CHÚ
                           </th>
@@ -1201,27 +706,46 @@ watch(
                         <tr
                           v-for="item in auditDevices"
                           :key="item.id"
-                          class="hover:bg-gray-50"
+                          class="whitespace-nowrap hover:bg-gray-50"
                         >
                           <td class="px-4 py-3 text-sm border">
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-2">
                               <div
-                                class="size-3 rounded-full mr-2 bg-rose-500"
-                              ></div>
-                              <span>{{ item.fullId }}</span>
+                                class="relative flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full overflow-hidden"
+                              >
+                                <img
+                                  :src="item.auditor?.avatar || 'User Avatar'"
+                                  :alt="item.auditor?.name || 'Auditor'"
+                                  class="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div>
+                                <span class="font-medium">{{
+                                  item.auditor?.name || "N/A"
+                                }}</span>
+                                <div class="text-xs text-gray-500">
+                                  {{ item.auditor?.id || "" }} |
+                                  {{ item.auditor?.email || "" }}
+                                </div>
+                              </div>
                             </div>
-                          </td>
-                          <td class="px-4 py-3 text-sm border">
-                            {{ item.auditor?.name || "N/A" }}
                           </td>
                           <td class="px-4 py-3 text-sm border">
                             {{ formatDate(item.auditDate) }}
                           </td>
                           <td class="px-4 py-3 text-sm border">
                             <span
-                              class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-800"
+                              class="text-xs px-2 py-1 rounded-full"
+                              :class="{
+                                'bg-yellow-50 text-yellow-800':
+                                  item.auditResult === 'assessing',
+                                'bg-red-50 text-red-800':
+                                  item.auditResult === 'cancelled',
+                                'bg-green-50 text-green-800':
+                                  item.auditResult === 'completed',
+                              }"
                             >
-                              {{ item.auditResult || "Đang kiểm đếm" }}
+                              {{ getAuditStatusText(item.auditResult) }}
                             </span>
                           </td>
                           <td class="px-4 py-3 text-sm border">
@@ -1238,6 +762,384 @@ watch(
                   </div>
                   <p class="text-sm text-gray-500">
                     Không có thiết bị nào đang kiểm đếm
+                  </p>
+                </div>
+              </TabsContent>
+              <TabsContent
+                value="maintenance"
+                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
+              >
+                <div v-if="loadingMaintenanceItems">
+                  <div class="flex justify-center items-center p-8">
+                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  </div>
+                </div>
+                <div
+                  v-else-if="maintenanceDevices && maintenanceDevices.length"
+                >
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 border">
+                      <thead>
+                        <tr class="whitespace-nowrap">
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            KỸ THUẬT VIÊN
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            NGÀY BẮT ĐẦU
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            DỰ KIẾN HOÀN THÀNH
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            TRẠNG THÁI
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            LÝ DO
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-gray-200 bg-white">
+                        <tr
+                          v-for="item in maintenanceDevices"
+                          :key="item.id"
+                          class="whitespace-nowrap hover:bg-gray-50"
+                        >
+                          <td class="px-4 py-3 text-sm border">
+                            <div class="flex items-center gap-2">
+                              <div
+                                class="relative flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full overflow-hidden"
+                              >
+                                <img
+                                  :src="
+                                    item.technician?.avatar || 'User Avatar'
+                                  "
+                                  :alt="item.technician?.name || 'Technician'"
+                                  class="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div>
+                                <span class="font-medium">{{
+                                  item.technician?.name || "N/A"
+                                }}</span>
+                                <div class="text-xs text-gray-500">
+                                  {{ item.technician?.id || "" }} |
+                                  {{ item.technician?.email || "" }}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="px-4 py-3 text-sm border">
+                            {{ formatDate(item.maintenanceStartDate) }}
+                          </td>
+                          <td class="px-4 py-3 text-sm border">
+                            {{ formatDate(item.expectedCompletionDate) }}
+                          </td>
+                          <td class="px-4 py-3 text-sm border">
+                            <span
+                              class="text-xs px-2 py-1 rounded-full"
+                              :class="{
+                                'bg-yellow-50 text-yellow-800':
+                                  item.status === 'maintaining',
+                                'bg-red-50 text-red-800':
+                                  item.status === 'cancelled',
+                                'bg-green-50 text-green-800':
+                                  item.status === 'completed',
+                              }"
+                            >
+                              {{ getMaintenanceStatusText(item.status) }}
+                            </span>
+                          </td>
+                          <td class="px-4 py-3 text-sm border">
+                            {{ item.maintenanceReason || "Bảo trì định kỳ" }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div v-else class="flex flex-col items-center py-6">
+                  <div class="rounded-full bg-gray-100 p-3 mb-3">
+                    <WrenchIcon class="size-6 text-gray-400" />
+                  </div>
+                  <p class="text-sm text-gray-500">
+                    Không có thiết bị nào đang bảo trì
+                  </p>
+                </div>
+              </TabsContent>
+              <TabsContent
+                value="transport"
+                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
+              >
+                <div v-if="loadingTransportItems">
+                  <div class="flex justify-center items-center p-8">
+                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  </div>
+                </div>
+                <div v-else-if="transportDevices && transportDevices.length">
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 border">
+                      <thead>
+                        <tr class="whitespace-nowrap">
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            TỪ ĐỊA ĐIỂM
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            ĐẾN ĐỊA ĐIỂM
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            NGƯỜI XÁC NHẬN VẬN CHUYỂN
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            NGƯỜI XÁC NHẬN NHẬN VỀ
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            NGÀY VẬN CHUYỂN
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                          >
+                            TRẠNG THÁI
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-gray-200 bg-white">
+                        <tr
+                          v-for="item in transportDevices"
+                          :key="item.id"
+                          class="whitespace-nowrap hover:bg-gray-50"
+                        >
+                          <td class="px-4 py-3 text-sm border">
+                            {{ item.sourceLocation || "N/A" }}
+                          </td>
+                          <td class="px-4 py-3 text-sm border">
+                            {{ item.destinationLocation || "N/A" }}
+                          </td>
+                          <td class="px-4 py-3 text-sm border">
+                            <div
+                              class="flex items-center gap-2"
+                              v-if="item.sender"
+                            >
+                              <div
+                                class="relative flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full overflow-hidden"
+                              >
+                                <img
+                                  :src="item.sender?.avatar || 'User Avatar'"
+                                  :alt="item.sender?.name || 'Sender'"
+                                  class="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div>
+                                <span class="font-medium">{{
+                                  item.sender?.name || "N/A"
+                                }}</span>
+                                <div class="text-xs text-gray-500">
+                                  {{ item.sender?.id || "" }} |
+                                  {{ item.sender?.email || "" }}
+                                </div>
+                              </div>
+                            </div>
+                            <span v-else>—</span>
+                          </td>
+                          <td class="px-4 py-3 text-sm border">
+                            <div
+                              class="flex items-center gap-2"
+                              v-if="item.receiver"
+                            >
+                              <div
+                                class="relative flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full overflow-hidden"
+                              >
+                                <img
+                                  :src="item.receiver?.avatar || 'User Avatar'"
+                                  :alt="item.receiver?.name || 'Receiver'"
+                                  class="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div>
+                                <span class="font-medium">{{
+                                  item.receiver?.name || "N/A"
+                                }}</span>
+                                <div class="text-xs text-gray-500">
+                                  {{ item.receiver?.id || "" }} |
+                                  {{ item.receiver?.email || "" }}
+                                </div>
+                              </div>
+                            </div>
+                            <span v-else>—</span>
+                          </td>
+                          <td class="px-4 py-3 text-sm border">
+                            {{ formatDate(item.transportDate) }}
+                          </td>
+                          <td class="px-4 py-3 text-sm border">
+                            <span
+                              class="text-xs px-2 py-1 rounded-full"
+                              :class="{
+                                'bg-yellow-50 text-yellow-800':
+                                  item.status === 'shipping',
+                                'bg-red-50 text-red-800':
+                                  item.status === 'cancelled',
+                                'bg-green-50 text-green-800':
+                                  item.status === 'completed',
+                              }"
+                            >
+                              {{ getTransportStatusText(item.status) }}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div v-else class="flex flex-col items-center py-6">
+                  <div class="rounded-full bg-gray-100 p-3 mb-3">
+                    <TruckIcon class="size-6 text-gray-400" />
+                  </div>
+                  <p class="text-sm text-gray-500">
+                    Không có thiết bị nào đang vận chuyển
+                  </p>
+                </div>
+              </TabsContent>
+              <TabsContent
+                value="inventory"
+                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
+              >
+                <div v-if="loadingInventory">
+                  <div class="flex justify-center items-center p-8">
+                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  </div>
+                </div>
+                <div v-else-if="inventory && inventory.length">
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 border">
+                      <thead>
+                        <tr>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            rowspan="1"
+                          >
+                            PHÒNG THÍ NGHIỆM
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                          >
+                            Tốt
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                          >
+                            Hư
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                          >
+                            Loại bỏ
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                          >
+                            Đã mất
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-gray-200 bg-white">
+                        <tr
+                          v-for="item in inventory"
+                          :key="item.location"
+                          class="hover:bg-gray-50"
+                        >
+                          <td class="px-4 py-3 text-sm border">
+                            {{ item.location }}
+                          </td>
+                          <td class="px-4 py-3 text-sm text-center border">
+                            {{ item.healthy }}
+                          </td>
+                          <td class="px-4 py-3 text-sm text-center border">
+                            {{ item.broken }}
+                          </td>
+                          <td class="px-4 py-3 text-sm text-center border">
+                            {{ item.discarded }}
+                          </td>
+                          <td class="px-4 py-3 text-sm text-center border">
+                            {{ item.lost }}
+                          </td>
+                        </tr>
+                        <tr class="bg-gray-50 font-medium">
+                          <td class="px-4 py-3 text-sm border font-semibold">
+                            TỔNG CỘNG
+                          </td>
+                          <td
+                            class="px-4 py-3 text-sm text-center border font-semibold"
+                          >
+                            {{
+                              inventory.reduce(
+                                (sum, item) =>
+                                  sum + (parseInt(item.healthy) || 0),
+                                0
+                              )
+                            }}
+                          </td>
+                          <td
+                            class="px-4 py-3 text-sm text-center border font-semibold"
+                          >
+                            {{
+                              inventory.reduce(
+                                (sum, item) =>
+                                  sum + (parseInt(item.broken) || 0),
+                                0
+                              )
+                            }}
+                          </td>
+                          <td
+                            class="px-4 py-3 text-sm text-center border font-semibold"
+                          >
+                            {{
+                              inventory.reduce(
+                                (sum, item) =>
+                                  sum + (parseInt(item.discarded) || 0),
+                                0
+                              )
+                            }}
+                          </td>
+                          <td
+                            class="px-4 py-3 text-sm text-center border font-semibold"
+                          >
+                            {{
+                              inventory.reduce(
+                                (sum, item) => sum + (parseInt(item.lost) || 0),
+                                0
+                              )
+                            }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div v-else class="flex flex-col items-center py-6">
+                  <div class="rounded-full bg-gray-100 p-3 mb-3">
+                    <PackageIcon class="size-6 text-gray-400" />
+                  </div>
+                  <p class="text-sm text-gray-500">
+                    Không có thiết bị nào trong kho
                   </p>
                 </div>
               </TabsContent>
@@ -1259,18 +1161,18 @@ watch(
                   class="flex-shrink-0 mr-4 w-20 h-20 bg-gray-100 rounded border"
                 >
                   <img
-                    :src="deviceDetail.image?.mainImage || '/device-image.svg'"
-                    :alt="deviceDetail.deviceName || 'Device Image'"
+                    :src="deviceDetail.image?.mainImage"
+                    :alt="deviceDetail.deviceName"
                     class="w-full h-full object-cover"
                   />
                 </div>
 
                 <div class="flex-grow">
                   <div class="text-sm text-gray-500 mb-1">
-                    Mã thiết bị: {{ deviceDetail.fullId || "device-123" }}
+                    Mã thiết bị: {{ deviceDetail.fullId }}
                   </div>
                   <h1 class="text-xl font-medium text-gray-900">
-                    {{ deviceDetail.deviceName || "Mock Device" }}
+                    {{ deviceDetail.deviceName }}
                   </h1>
                 </div>
               </div>
@@ -1296,7 +1198,7 @@ watch(
                           deviceDetail.labRoom.split("-")[0] +
                           ", " +
                           deviceDetail.labBranch
-                        : "A101, Main"
+                        : "N/A"
                     }}
                   </div>
                 </div>
@@ -1375,7 +1277,50 @@ watch(
                   <ChevronUpIcon v-else class="h-5 w-5 text-blue-500" />
                 </div>
                 <div v-if="showAccessories" class="p-4 border-t">
-                  <p class="text-sm text-gray-500">Không có dụng cụ đi kèm</p>
+                  <div
+                    v-if="loadingAccessories"
+                    class="flex justify-center items-center py-4"
+                  >
+                    <LoaderIcon class="animate-spin h-6 w-6 text-gray-400" />
+                  </div>
+                  <div
+                    v-else-if="accessories.length === 0"
+                    class="text-sm text-gray-500"
+                  >
+                    Không có dụng cụ đi kèm
+                  </div>
+                  <div v-else class="space-y-4">
+                    <div
+                      v-for="accessory in accessories"
+                      :key="accessory.id"
+                      class="flex items-center space-x-3 border-b border-gray-100 pb-3"
+                    >
+                      <div
+                        class="flex-shrink-0 w-12 h-12 bg-gray-100 border rounded flex items-center justify-center overflow-hidden"
+                      >
+                        <img
+                          v-if="accessory.image"
+                          :src="
+                            accessory.image?.mainImage || '/placeholder.svg'
+                          "
+                          :alt="accessory.name"
+                          class="w-full h-full object-contain"
+                        />
+                        <PackageIcon v-else class="h-6 w-6 text-gray-400" />
+                      </div>
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900">
+                          {{ accessory.name }}
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          {{ accessory.brand || "Không có thương hiệu" }}
+                        </div>
+                      </div>
+                      <div class="text-sm font-medium text-gray-900">
+                        x {{ accessory.quantity }} {{ accessory.unit || "EA" }}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1392,7 +1337,7 @@ watch(
         <div class="md:col-span-1">
           <div class="flex items-center mb-4">
             <img
-              :src="userInfo.avatar || '/user-image.svg'"
+              :src="userInfo.avatar || 'User Avatar'"
               :alt="userInfo.name || 'Unknown User'"
               class="h-16 w-16 rounded-full bg-gray-100 object-cover"
             />
@@ -1424,7 +1369,7 @@ watch(
               <div class="col-span-2">
                 <div class="text-sm font-medium text-gray-500">Email</div>
                 <div class="mt-1 text-sm text-gray-900">
-                  {{ userInfo.id }}@stu.edu.vn
+                  {{ userInfo.email }}
                 </div>
               </div>
               <div class="col-span-2">
