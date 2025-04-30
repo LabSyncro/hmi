@@ -2,7 +2,6 @@ import BorrowForm from "@/components/app/device/BorrowForm.vue";
 import BorrowInvoice from "@/components/app/device/BorrowInvoice.vue";
 import ConfirmBorrowForm from "@/components/app/device/ConfirmBorrowForm.vue";
 import ConfirmReturnForm from "@/components/app/device/ConfirmReturnForm.vue";
-import DeviceDetail from "@/components/app/device/DeviceDetail.vue";
 import ReturnForm from "@/components/app/device/ReturnForm.vue";
 import ReturnInvoice from "@/components/app/device/ReturnInvoice.vue";
 import AuthLayout from "@/layouts/AuthLayout.vue";
@@ -10,6 +9,7 @@ import AuditPage from "@/pages/audit/AuditPage.vue";
 import LoginPage from "@/pages/auth/LoginPage.vue";
 import BorrowReturn from "@/pages/borrow-return/index.vue";
 import RecordPage from "@/pages/borrow-return/RecordPage.vue";
+import DetailInfoSearch from "@/pages/detail/DetailInfoSearch.vue";
 import MaintenancePage from "@/pages/maintenance/MaintenancePage.vue";
 import TransportPage from "@/pages/transport/TransportPage.vue";
 import { createRouter, createWebHistory } from "vue-router";
@@ -54,9 +54,9 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: "/device/:id",
-      name: "device-detail",
-      component: DeviceDetail,
+      path: "/search",
+      name: "search",
+      component: DetailInfoSearch,
       meta: { requiresAuth: true },
     },
     {

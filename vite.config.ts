@@ -47,6 +47,7 @@ export default defineConfig({
             "maintenanceService",
             "shipmentService",
             "labService",
+            "searchService",
           ],
         },
         {
@@ -63,7 +64,7 @@ export default defineConfig({
           imports: ["cn"],
         },
         {
-          from: "@/types/status",
+          from: "@/types",
           imports: [
             "statusMap",
             "statusColorMap",
@@ -72,9 +73,10 @@ export default defineConfig({
           ],
         },
         {
-          from: "@/types/status",
+          from: "@/types",
           imports: [
             "Device",
+            "DeviceItem",
             "QualityDeviceItem",
             "UserInfo",
             "AuditDevice",
@@ -85,6 +87,9 @@ export default defineConfig({
             "MaintenanceSession",
             "ShipmentDevice",
             "ShipmentDeviceItem",
+            "Accessory",
+            "UserBorrowHistoryItem",
+            "UserActivityItem",
           ],
           type: true,
         },

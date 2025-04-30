@@ -37,6 +37,7 @@ export const qualityColorMap: Partial<Record<DeviceStatus, string>> = {
 export type UserInfo = {
   id: string;
   name: string;
+  email?: string;
   avatar: string;
   roles: { name: string; key: string }[];
 };
@@ -57,7 +58,7 @@ export type MaintenanceDeviceItem = BaseDeviceItem & {
 export type QualityDeviceItem = BaseDeviceItem & {
   returnCondition?: DeviceStatus;
   prevQuality: DeviceStatus;
-  expectedReturnAt?: string | null;
+  expectedReturnedAt?: string | null;
 };
 
 export type TransportDeviceItem = BaseDeviceItem & {
@@ -73,6 +74,20 @@ export type Device = {
   expanded: boolean;
   isBorrowableLabOnly: boolean;
   items: BaseDeviceItem[];
+};
+
+export type DeviceItem = BaseDeviceItem & {
+  kind: string;
+  categoryName: string;
+  brand: string | null;
+  manufacturer: string | null;
+  description: string | null;
+  labRoom: string | null;
+  labBranch: string | null;
+  image: any;
+  deviceName: string;
+  allowedBorrowRoles: string[];
+  allowedViewRoles: string[];
 };
 
 export type AuditDevice = Omit<Device, "items"> & {
@@ -124,3 +139,44 @@ export type ShipmentDeviceItem = BaseDeviceItem & {
 export type ShipmentDevice = Omit<Device, "items"> & {
   items: ShipmentDeviceItem[];
 };
+
+export type Accessory = {
+  id: string;
+  fullId: string;
+  status: DeviceStatus;
+  image: any;
+  name: string;
+  brand: string | null;
+  unit: string | null;
+  quantity: number;
+};
+
+export type UserBorrowHistoryItem = {
+  receiptId: string;
+  deviceId: string;
+  deviceKindId: string;
+  deviceName: string;
+  deviceImage: { mainImage: string | null };
+  deviceBorrowableLabOnly: boolean;
+  labId: string;
+  labRoom: string;
+  labBranch: string;
+  borrowDate: string;
+  expectedReturnedAt: string;
+  status: "ON_TIME" | "NEAR_DUE" | "OVERDUE";
+};
+
+export interface UserActivityItem {
+  id: string;
+  type: "AUDIT" | "MAINTENANCE" | "TRANSPORT" | "RETURNED";
+  deviceId: string;
+  deviceKindId: string;
+  deviceName: string;
+  deviceImage: { mainImage: string | null };
+  location: string;
+  date: string;
+  status: string;
+  note?: string;
+  prevQuality?: string | null;
+  afterQuality?: string | null;
+}
