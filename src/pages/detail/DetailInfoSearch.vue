@@ -57,12 +57,6 @@ const userActivities = ref<UserActivityItem[]>([]);
 const loadingUserActivities = ref(false);
 const userActiveTab = ref("borrowed");
 
-const pageTitle = computed(() => {
-  if (mode.value === "device") return "THÔNG TIN THIẾT BỊ";
-  if (mode.value === "user") return "THÔNG TIN NGƯỜI DÙNG";
-  return "TRA CỨU NHANH";
-});
-
 type GroupedDevice = {
   kindId: string;
   deviceName: string;
@@ -623,13 +617,7 @@ const getActivityStatusText = (status: string) => {
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-center">{{ pageTitle }}</h1>
-    <p class="text-center text-gray-500 mb-2">
-      Sử dụng máy scan quét mã QR thiết bị/người dùng để tra cứu thông tin
-      nhanh.
-    </p>
-
-    <div v-if="mode === 'idle'" class="text-center">
+    <div v-if="mode === 'idle'" class="text-center py-20">
       <div class="max-w-sm mx-auto bg-white rounded-full shadow p-16">
         <div
           class="rounded-full bg-gray-100 mx-auto w-36 h-36 flex items-center justify-center mb-4"

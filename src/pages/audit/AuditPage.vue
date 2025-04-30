@@ -937,11 +937,6 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-center">GHI NHẬN KIỂM ĐẾM</h1>
-    <p class="text-center text-gray-500 mb-2">
-      Sử dụng máy scan quét mã QR thiết bị/người dùng để ghi nhận kiểm đếm
-    </p>
-
     <div class="grid grid-cols-3 gap-6">
       <div
         class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
@@ -965,7 +960,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           </Button>
         </div>
 
-        <div class="h-[calc(100vh-16rem)] overflow-y-auto">
+        <div class="h-[calc(100vh-10rem)] overflow-y-auto">
           <div
             v-if="devices.length === 0"
             class="flex flex-col items-center justify-center py-20 text-center"

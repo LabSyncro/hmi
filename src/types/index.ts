@@ -134,6 +134,7 @@ export type ShipmentDeviceItem = BaseDeviceItem & {
   prevCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus] | null;
   afterCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus] | null;
   shipmentId?: string | null;
+  scanned?: boolean;
 };
 
 export type ShipmentDevice = Omit<Device, "items"> & {

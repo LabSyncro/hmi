@@ -19,6 +19,7 @@ export const shipmentService = {
     destinationLabId,
     notes,
     devices,
+    checkAtDestination,
   }: {
     technicianId: string;
     sourceLabId: string;
@@ -28,6 +29,7 @@ export const shipmentService = {
       id: string;
       inboundCondition: DeviceStatus;
     }[];
+    checkAtDestination?: boolean;
   }) {
     try {
       const shipmentId = generateUniqueId();
@@ -47,6 +49,7 @@ export const shipmentService = {
           : "";
 
       const notesValue = notes ? `'${notes.replace(/'/g, "''")}'` : "NULL";
+      const checkAtDestinationValue = checkAtDestination ? "true" : "false";
 
       const sql = `
         WITH activity_insert AS (
@@ -64,7 +67,8 @@ export const shipmentService = {
             start_lab_id, 
             arrive_lab_id, 
             status,
-            from_at
+            from_at,
+            check_at_destination
           )
           VALUES (
             '${shipmentId}',
@@ -72,7 +76,8 @@ export const shipmentService = {
             '${sourceLabId}'::uuid,
             '${destinationLabId}'::uuid,
             '${ShipmentStatus.SHIPPING}'::shipment_status,
-            (SELECT id FROM activity_insert)
+            (SELECT id FROM activity_insert),
+            ${checkAtDestinationValue}
           )
           RETURNING id
         )
@@ -191,6 +196,123 @@ export const shipmentService = {
       }
 
       return { id: result[0].id };
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getShipmentById(id: string) {
+    try {
+      const sql = `
+        SELECT 
+          s.id,
+          s.sender_id,
+          s.receiver_id,
+          s.start_lab_id,
+          s.arrive_lab_id,
+          s.status,
+          s.check_at_destination,
+          sl.room as source_room,
+          sl.branch as source_branch,
+          dl.room as destination_room,
+          dl.branch as destination_branch,
+          sender.name as sender_name,
+          receiver.name as receiver_name,
+          a_from.created_at as from_date,
+          a_to.created_at as to_date,
+          a_from.note as from_note,
+          a_to.note as to_note
+        FROM 
+          shipments s
+        LEFT JOIN 
+          labs sl ON s.start_lab_id = sl.id
+        LEFT JOIN 
+          labs dl ON s.arrive_lab_id = dl.id
+        LEFT JOIN 
+          users sender ON s.sender_id = sender.id
+        LEFT JOIN 
+          users receiver ON s.receiver_id = receiver.id
+        LEFT JOIN 
+          activities a_from ON s.from_at = a_from.id
+        LEFT JOIN 
+          activities a_to ON s.to_at = a_to.id
+        WHERE 
+          s.id = '${id}'
+      `;
+
+      const result = await db.queryRaw<{
+        id: string;
+        sender_id: string;
+        receiver_id: string | null;
+        start_lab_id: string;
+        arrive_lab_id: string;
+        status: ShipmentStatus;
+        check_at_destination: boolean;
+        source_room: string;
+        source_branch: string;
+        destination_room: string;
+        destination_branch: string;
+        sender_name: string;
+        receiver_name: string | null;
+        from_date: string;
+        to_date: string | null;
+        from_note: string | null;
+        to_note: string | null;
+      }>({ sql });
+
+      if (!result || result.length === 0) {
+        return null;
+      }
+
+      return result[0];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getShipmentDevices(shipmentId: string) {
+    try {
+      const sql = `
+        SELECT 
+          sd.shipment_id,
+          sd.device_id,
+          sd.prev_status,
+          sd.after_status,
+          d.id as device_id,
+          d.status,
+          d.kind_id,
+          dk.name as device_name,
+          dk.unit,
+          dk.is_borrowable_lab_only as is_borrowable_lab_only,
+          di.main_image
+        FROM 
+          shipments_devices sd
+        JOIN 
+          devices d ON sd.device_id = d.id
+        JOIN 
+          device_kinds dk ON d.kind_id = dk.id
+        LEFT JOIN 
+          device_images di ON d.kind_id = di.device_kind_id
+        WHERE 
+          sd.shipment_id = '${shipmentId}'
+      `;
+
+      const result = await db.queryRaw<
+        {
+          shipment_id: string;
+          device_id: string;
+          prev_status: DeviceStatus | null;
+          after_status: DeviceStatus | null;
+          status: DeviceStatus;
+          kind_id: string;
+          device_name: string;
+          unit: string;
+          is_borrowable_lab_only: boolean;
+          main_image: string | null;
+        }[]
+      >({ sql });
+
+      return result || [];
     } catch (error) {
       throw error;
     }

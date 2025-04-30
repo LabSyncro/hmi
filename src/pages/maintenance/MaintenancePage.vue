@@ -92,7 +92,6 @@ const MAINTENANCE_MESSAGES = {
 } as const;
 
 const PAGE_TITLES = {
-  MAIN: "GHI NHẬN SỬA CHỮA",
   LEFT_COLUMN: "DANH SÁCH GHI NHẬN",
   RIGHT_COLUMN: "NGƯỜI SỬA CHỮA",
   NO_RECORDS: "CHƯA GHI NHẬN",
@@ -105,7 +104,6 @@ const PROCESSING_MESSAGES = {
   SCAN_USER: "Quét QR định danh người dùng",
 } as const;
 
-const pageTitle = computed(() => PAGE_TITLES.MAIN);
 const leftColumnTitle = computed(() => PAGE_TITLES.LEFT_COLUMN);
 const rightColumnTitle = computed(() => PAGE_TITLES.RIGHT_COLUMN);
 
@@ -891,11 +889,6 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-center">{{ pageTitle }}</h1>
-    <p class="text-center text-gray-500 mb-2">
-      Sử dụng máy scan quét mã QR thiết bị/người dùng để ghi nhận sửa chữa
-    </p>
-
     <div class="grid grid-cols-3 gap-6">
       <div
         class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
