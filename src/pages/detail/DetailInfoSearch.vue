@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import {
+  CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   ClipboardCheckIcon,
+  ClockIcon,
   LoaderIcon,
   PackageIcon,
   SearchIcon,
@@ -15,9 +17,10 @@ const mode = ref<"idle" | "device" | "user">("idle");
 
 const showMore = ref(false);
 const showAccessories = ref(false);
-const deviceDetail = ref<DeviceDetail | null>(null);
+const showUserDetails = ref(false);
+const deviceDetail = ref<DeviceItem | null>(null);
 const currentDeviceId = ref<string>("");
-const loading = ref(true);
+const loading = ref(false);
 const error = ref<string | null>(null);
 const retrying = ref(false);
 const inventory = ref<Array<any>>([]);
@@ -45,11 +48,57 @@ const isLoadingDeviceScan = ref(false);
 const isLoadingUser = ref(false);
 const isConfirming = ref(false);
 
+const showUserInfo = ref(false);
+const userBorrowedDevices = ref<UserBorrowHistoryItem[]>([]);
+const loadingUserBorrowedItems = ref(false);
+const groupedBorrowedDevices = ref<GroupedDevice[]>([]);
+
+const userActivities = ref<UserActivityItem[]>([]);
+const loadingUserActivities = ref(false);
+const userActiveTab = ref("borrowed");
+
 const pageTitle = computed(() => {
   if (mode.value === "device") return "THÔNG TIN THIẾT BỊ";
   if (mode.value === "user") return "THÔNG TIN NGƯỜI DÙNG";
   return "TRA CỨU NHANH";
 });
+
+type GroupedDevice = {
+  kindId: string;
+  deviceName: string;
+  image: { mainImage: string | null };
+  labBranch: string;
+  labRoom: string;
+  quantity: number;
+  expanded: boolean;
+  deviceBorrowableLabOnly: boolean;
+  items: UserBorrowHistoryItem[];
+};
+
+function groupUserBorrowedDevices() {
+  const groups: Record<string, GroupedDevice> = {};
+
+  userBorrowedDevices.value.forEach((item: UserBorrowHistoryItem) => {
+    const kindId = item.deviceKindId;
+    if (!groups[kindId]) {
+      groups[kindId] = {
+        kindId: kindId,
+        deviceName: item.deviceName,
+        image: item.deviceImage,
+        labBranch: item.labBranch,
+        labRoom: item.labRoom,
+        deviceBorrowableLabOnly: item.deviceBorrowableLabOnly,
+        quantity: 0,
+        expanded: false,
+        items: [],
+      };
+    }
+    groups[kindId].items.push(item);
+    groups[kindId].quantity = groups[kindId].items.length;
+  });
+
+  groupedBorrowedDevices.value = Object.values(groups);
+}
 
 async function handleUserCodeChange(userId: string) {
   const isValidUserCode = /^\d{7}$/.test(userId);
@@ -83,9 +132,42 @@ async function handleUserCodeChange(userId: string) {
       name: userMeta.name,
       avatar: userMeta.avatar,
       roles: userMeta.roles,
+      email: userMeta.email,
     };
 
     mode.value = "user";
+    showUserInfo.value = true;
+
+    loadingUserBorrowedItems.value = true;
+    try {
+      userBorrowedDevices.value =
+        await userService.getBorrowedHistoryByUser(userId);
+      groupUserBorrowedDevices();
+    } catch (historyError) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải lịch sử mượn",
+        variant: "destructive",
+      });
+      userBorrowedDevices.value = [];
+      groupedBorrowedDevices.value = [];
+    } finally {
+      loadingUserBorrowedItems.value = false;
+    }
+
+    loadingUserActivities.value = true;
+    try {
+      userActivities.value = await userService.getUserActivitiesHistory(userId);
+    } catch (activitiesError) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải hoạt động người dùng",
+        variant: "destructive",
+      });
+      userActivities.value = [];
+    } finally {
+      loadingUserActivities.value = false;
+    }
 
     toast({
       title: "Thành công",
@@ -151,9 +233,45 @@ async function handleOneTimeQRScan(input: string) {
         name: user.name,
         avatar: user.avatar,
         roles: user.roles,
+        email: user.email,
       };
 
       mode.value = "user";
+      showUserInfo.value = true;
+
+      loadingUserBorrowedItems.value = true;
+      try {
+        userBorrowedDevices.value = await userService.getBorrowedHistoryByUser(
+          user.id
+        );
+        groupUserBorrowedDevices();
+      } catch (historyError) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải lịch sử mượn",
+          variant: "destructive",
+        });
+        userBorrowedDevices.value = [];
+        groupedBorrowedDevices.value = [];
+      } finally {
+        loadingUserBorrowedItems.value = false;
+      }
+
+      loadingUserActivities.value = true;
+      try {
+        userActivities.value = await userService.getUserActivitiesHistory(
+          user.id
+        );
+      } catch (activitiesError) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải hoạt động người dùng",
+          variant: "destructive",
+        });
+        userActivities.value = [];
+      } finally {
+        loadingUserActivities.value = false;
+      }
 
       toast({
         title: "Thành công",
@@ -209,14 +327,15 @@ async function loadDeviceDetailsById(id: string, kindId: string) {
   loading.value = true;
   error.value = null;
   try {
-    const labId = storedUserInfo.value?.lab?.id || "";
+    const labId = storedUserInfo.value?.lab?.id;
     currentDeviceId.value = id;
-    deviceDetail.value = await deviceService.getDeviceReceiptById(id, labId);
+    deviceDetail.value = await deviceService.getDeviceById(id, labId);
     if (!deviceDetail.value) {
       error.value = "Device not found";
     } else {
-      await loadInventoryData(kindId || deviceDetail.value.kind);
-      await loadAccessoriesData(kindId || deviceDetail.value.kind, labId);
+      const effectiveKindId = kindId || deviceDetail.value.kind;
+      await loadInventoryData(effectiveKindId);
+      await loadAccessoriesData(effectiveKindId, labId);
     }
   } catch (e) {
     error.value =
@@ -369,13 +488,7 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const resetToIdle = () => {
-  mode.value = "idle";
-  activeTab.value = "inventory";
-  deviceDetail.value = null;
-};
-
-async function loadAccessoriesData(kindId: string, labId: string) {
+async function loadAccessoriesData(kindId: string, labId?: string) {
   if (!kindId) return;
 
   loadingAccessories.value = true;
@@ -414,6 +527,98 @@ onMounted(() => {
     storedUserInfo.value = ui;
   }
 });
+
+const getUserBorrowStatusClass = (status: string) => {
+  return {
+    "bg-green-50 text-green-800": status === "ON_TIME",
+    "bg-yellow-50 text-yellow-800": status === "NEAR_DUE",
+    "bg-red-50 text-red-800": status === "OVERDUE",
+  };
+};
+
+const getUserBorrowStatusText = (
+  status: string,
+  expectedReturnDate: string
+) => {
+  if (!expectedReturnDate) return "N/A";
+
+  const dueDate = new Date(expectedReturnDate);
+  const today = new Date();
+  const daysLeft = Math.ceil(
+    (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  switch (status) {
+    case "ON_TIME":
+      return `Còn ${daysLeft} ngày`;
+    case "NEAR_DUE":
+      return `Sắp hết hạn (${daysLeft} ngày)`;
+    case "OVERDUE":
+      return `Quá hạn ${Math.abs(daysLeft)} ngày`;
+    default:
+      return "Không rõ";
+  }
+};
+
+function toggleDeviceGroup(group: GroupedDevice) {
+  group.expanded = !group.expanded;
+}
+
+const getActivityTypeClass = (type: string) => {
+  return {
+    "bg-green-50 text-green-800": type === "AUDIT",
+    "bg-amber-50 text-amber-800": type === "MAINTENANCE",
+    "bg-blue-50 text-blue-800": type === "TRANSPORT",
+    "bg-purple-50 text-purple-800": type === "RETURNED",
+  };
+};
+
+const getActivityTypeText = (type: string) => {
+  switch (type) {
+    case "AUDIT":
+      return "Kiểm đếm";
+    case "MAINTENANCE":
+      return "Bảo trì";
+    case "TRANSPORT":
+      return "Vận chuyển";
+    case "RETURNED":
+      return "Mượn trả";
+    default:
+      return type;
+  }
+};
+
+const getActivityStatusClass = (status: string) => {
+  return {
+    "bg-blue-50 text-blue-800": [
+      "assessing",
+      "maintaining",
+      "shipping",
+      "returned",
+    ].includes(status),
+    "bg-red-50 text-red-800": status === "cancelled",
+    "bg-green-50 text-green-800": status === "completed",
+  };
+};
+
+const getActivityStatusText = (status: string) => {
+  switch (status) {
+    case "returned":
+      return "Đã trả";
+    case "assessing":
+      return "Đang kiểm đếm";
+    case "maintaining":
+      return "Đang bảo trì";
+    case "shipping":
+      return "Đang vận chuyển";
+    case "cancelled":
+      return "Đã hủy";
+    case "completed":
+      return "Hoàn thành";
+    default:
+      return status;
+  }
+};
 </script>
 
 <template>
@@ -1169,7 +1374,7 @@ onMounted(() => {
 
                 <div class="flex-grow">
                   <div class="text-sm text-gray-500 mb-1">
-                    Mã thiết bị: {{ deviceDetail.fullId }}
+                    Mã thiết bị: {{ deviceDetail.id }}
                   </div>
                   <h1 class="text-xl font-medium text-gray-900">
                     {{ deviceDetail.deviceName }}
@@ -1329,68 +1534,455 @@ onMounted(() => {
       </div>
     </div>
 
-    <div
-      v-if="mode === 'user' && userInfo"
-      class="bg-white rounded-lg shadow p-6"
-    >
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="md:col-span-1">
-          <div class="flex items-center mb-4">
-            <img
-              :src="userInfo.avatar || 'User Avatar'"
-              :alt="userInfo.name || 'Unknown User'"
-              class="h-16 w-16 rounded-full bg-gray-100 object-cover"
-            />
-          </div>
+    <div v-if="mode === 'user' && userInfo">
+      <div class="grid grid-cols-3 gap-6">
+        <div
+          class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
+        >
+          <Tabs v-model="userActiveTab" class="w-full">
+            <div class="border-b border-gray-200">
+              <TabsList class="bg-transparent p-0 w-full flex">
+                <TabsTrigger
+                  value="borrowed"
+                  class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                >
+                  <div class="flex items-center justify-center gap-1 w-full">
+                    <div class="rounded-full bg-violet-50 p-1">
+                      <PackageIcon class="h-4 w-4 text-violet-600" />
+                    </div>
+                    <span class="whitespace-nowrap">THIẾT BỊ ĐANG MƯỢN</span>
+                    <span
+                      class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                    >
+                      {{ groupedBorrowedDevices.length || 0 }}
+                    </span>
+                  </div>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="activities"
+                  class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                >
+                  <div class="flex items-center justify-center gap-1 w-full">
+                    <div class="rounded-full bg-emerald-50 p-1">
+                      <ClipboardCheckIcon class="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <span class="whitespace-nowrap">CÁC HOẠT ĐỘNG KHÁC</span>
+                    <span
+                      class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                    >
+                      {{ userActivities.length || 0 }}
+                    </span>
+                  </div>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <div class="h-[calc(100vh-16rem)] overflow-y-auto">
+              <TabsContent value="borrowed" class="p-4 mt-0">
+                <div
+                  v-if="loadingUserBorrowedItems"
+                  class="flex justify-center items-center p-8"
+                >
+                  <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                </div>
+                <div
+                  v-else-if="groupedBorrowedDevices.length > 0"
+                  class="divide-y divide-gray-200"
+                >
+                  <div
+                    v-for="group in groupedBorrowedDevices"
+                    :key="group.kindId"
+                    class="divide-y divide-gray-100"
+                  >
+                    <div
+                      class="p-4 hover:bg-gray-50 cursor-pointer"
+                      @click="toggleDeviceGroup(group)"
+                    >
+                      <div class="grid grid-cols-12 items-center">
+                        <div class="col-span-10 flex items-center gap-3">
+                          <img
+                            :src="group.image?.mainImage || '/placeholder.svg'"
+                            alt="Device image"
+                            class="h-12 w-12 rounded-full object-cover"
+                          />
+                          <div>
+                            <div class="flex items-center gap-2 mb-0.5">
+                              <h3 class="font-medium text-gray-900 text-sm">
+                                Mã loại:
+                                <span class="font-bold text-base">{{
+                                  group.kindId
+                                }}</span>
+                              </h3>
+                              <Badge
+                                v-if="group.deviceBorrowableLabOnly"
+                                variant="outline"
+                                class="text-blue-600 border-blue-200 bg-blue-50 text-xs"
+                              >
+                                Không mượn về
+                              </Badge>
+                            </div>
+                            <p class="text-base text-gray-900 font-medium">
+                              {{ group.deviceName }}
+                            </p>
+                          </div>
+                        </div>
+                        <div class="col-span-2 flex items-center">
+                          <span
+                            class="text-base text-gray-900 font-medium w-full"
+                          >
+                            SL: {{ group.quantity }}
+                          </span>
+                          <ChevronDownIcon
+                            class="h-5 w-5 text-gray-400 transition-transform justify-self-end"
+                            :class="{ 'rotate-180': group.expanded }"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div v-if="group.expanded" class="bg-gray-50">
+                      <div
+                        class="grid grid-cols-12 px-4 py-2 text-sm font-medium text-gray-500 border-b border-gray-200"
+                      >
+                        <div class="col-span-5">THIẾT BỊ GHI NHẬN</div>
+                        <div class="col-span-5">TIẾN ĐỘ TRẢ</div>
+                        <div class="col-span-2">HẸN TRẢ</div>
+                      </div>
+                      <div
+                        v-for="item in group.items"
+                        :key="item.receiptId"
+                        class="grid grid-cols-12 items-center px-4 py-3 border-b border-gray-100 last:border-b-0"
+                      >
+                        <div
+                          class="col-span-5 text-sm font-medium text-gray-900"
+                        >
+                          {{ group.kindId }}/{{ item.deviceId }}
+                        </div>
+                        <div
+                          class="col-span-5 text-sm"
+                          :class="
+                            item.status === 'OVERDUE'
+                              ? 'text-red-600'
+                              : 'text-gray-600'
+                          "
+                        >
+                          <span
+                            :class="getUserBorrowStatusClass(item.status)"
+                            class="px-2 py-0.5 rounded-full text-xs font-medium"
+                          >
+                            {{
+                              getUserBorrowStatusText(
+                                item.status,
+                                item.expectedReturnedAt
+                              )
+                            }}
+                          </span>
+                        </div>
+                        <div class="col-span-2 text-sm text-gray-600">
+                          {{ formatDate(item.expectedReturnedAt) || "---" }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  v-else
+                  class="flex flex-col items-center justify-center py-20 text-center"
+                >
+                  <div class="rounded-full bg-gray-100 p-3 mb-3">
+                    <PackageIcon class="h-6 w-6 text-gray-400" />
+                  </div>
+                  <p class="text-sm text-gray-500">
+                    Người dùng này chưa mượn thiết bị nào.
+                  </p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="activities" class="p-4 mt-0">
+                <div
+                  v-if="loadingUserActivities"
+                  class="flex justify-center items-center p-8"
+                >
+                  <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                </div>
+                <div
+                  v-else-if="userActivities.length > 0"
+                  class="space-y-4 relative before:absolute before:inset-0 before:left-9 before:ml-0.5 before:border-l-2 before:border-gray-200"
+                >
+                  <div
+                    v-for="activity in userActivities"
+                    :key="activity.id"
+                    class="relative pl-10"
+                  >
+                    <div
+                      class="absolute left-0 top-4 flex h-7 w-7 items-center justify-center rounded-full bg-white border border-gray-200 shadow"
+                    >
+                      <div
+                        class="rounded-full p-1.5"
+                        :class="{
+                          'bg-green-50': activity.type === 'AUDIT',
+                          'bg-amber-50': activity.type === 'MAINTENANCE',
+                          'bg-blue-50': activity.type === 'TRANSPORT',
+                          'bg-purple-50': activity.type === 'RETURNED',
+                        }"
+                      >
+                        <ClipboardCheckIcon
+                          v-if="activity.type === 'AUDIT'"
+                          class="h-3 w-3 text-green-600"
+                        />
+                        <WrenchIcon
+                          v-else-if="activity.type === 'MAINTENANCE'"
+                          class="h-3 w-3 text-amber-600"
+                        />
+                        <TruckIcon
+                          v-else-if="activity.type === 'TRANSPORT'"
+                          class="h-3 w-3 text-blue-600"
+                        />
+                        <CheckCircleIcon
+                          v-else-if="activity.type === 'RETURNED'"
+                          class="h-3 w-3 text-purple-600"
+                        />
+                      </div>
+                    </div>
+
+                    <div
+                      class="bg-white p-3 border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors"
+                    >
+                      <div class="grid grid-cols-12 gap-3">
+                        <div class="col-span-7 flex gap-3">
+                          <img
+                            :src="
+                              activity.deviceImage?.mainImage || 'Device Image'
+                            "
+                            alt="Device image"
+                            class="h-16 w-16 rounded-md object-cover border border-gray-200 flex-shrink-0"
+                          />
+                          <div class="flex-grow">
+                            <div
+                              class="text-sm font-medium text-gray-900 mb-0.5"
+                            >
+                              {{ activity.deviceName }}
+                            </div>
+                            <div class="text-xs text-gray-500 mb-1">
+                              <span class="font-medium">Mã thiết bị:</span>
+                              {{ activity.deviceKindId }}/{{
+                                activity.deviceId
+                              }}
+                            </div>
+                            <div class="text-xs text-gray-600">
+                              <span class="font-medium">Địa điểm:</span>
+                              {{ activity.location }}
+                            </div>
+                            <div
+                              v-if="activity.note"
+                              class="mt-1 text-xs text-gray-600 italic"
+                            >
+                              <span class="font-medium">Ghi chú:</span>
+                              {{ activity.note }}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="col-span-5 flex flex-col justify-between">
+                          <div class="flex flex-wrap gap-1.5 mb-2">
+                            <span
+                              class="text-xs font-medium px-2 py-0.5 rounded-full"
+                              :class="getActivityTypeClass(activity.type)"
+                            >
+                              {{ getActivityTypeText(activity.type) }}
+                            </span>
+                            <span
+                              class="text-xs font-medium px-2 py-0.5 rounded-full"
+                              :class="getActivityStatusClass(activity.status)"
+                            >
+                              {{ getActivityStatusText(activity.status) }}
+                            </span>
+                          </div>
+
+                          <div
+                            class="flex items-center text-xs text-gray-500 mt-auto"
+                          >
+                            <ClockIcon class="mr-1 h-3 w-3" />
+                            <time :datetime="activity.date">
+                              {{ formatDate(activity.date) }}
+                            </time>
+                          </div>
+
+                          <div class="mt-2 text-xs">
+                            <div
+                              v-if="activity.type === 'AUDIT'"
+                              class="text-gray-600"
+                            >
+                              <span class="font-medium">Kiểm đếm:</span> Kiểm
+                              thường niên
+                            </div>
+                            <div
+                              v-if="activity.type === 'MAINTENANCE'"
+                              class="text-gray-600"
+                            >
+                              <span class="font-medium">Bảo trì:</span>
+                              {{
+                                activity.status === "completed"
+                                  ? "Hoàn thành"
+                                  : "Đang thực hiện"
+                              }}
+                            </div>
+                            <div
+                              v-if="activity.type === 'TRANSPORT'"
+                              class="text-gray-600"
+                            >
+                              <span class="font-medium">Vận chuyển:</span>
+                              {{
+                                activity.status === "completed"
+                                  ? "Đã nhận"
+                                  : "Đang giao"
+                              }}
+                            </div>
+                            <div
+                              v-if="activity.type === 'RETURNED'"
+                              class="text-gray-600"
+                            >
+                              <span class="font-medium">Trạng thái:</span>
+                              {{
+                                activity.prevQuality === activity.afterQuality
+                                  ? "Trả đúng chất lượng"
+                                  : "Chất lượng đã thay đổi"
+                              }}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  v-else
+                  class="flex flex-col items-center justify-center py-20 text-center"
+                >
+                  <div class="rounded-full bg-gray-100 p-3 mb-3">
+                    <ClipboardCheckIcon class="h-6 w-6 text-gray-400" />
+                  </div>
+                  <p class="text-sm text-gray-500">
+                    Không có hoạt động nào được ghi nhận.
+                  </p>
+                </div>
+              </TabsContent>
+            </div>
+          </Tabs>
         </div>
-        <div class="md:col-span-2">
-          <div class="space-y-4">
-            <div class="col-span-2">
-              <div class="text-sm text-gray-500">MÃ SỐ: {{ userInfo.id }}</div>
-              <div class="text-2xl font-bold">{{ userInfo.name }}</div>
-            </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <div class="col-span-2">
-                <div class="text-sm font-medium text-gray-500">Vai trò</div>
-                <div class="mt-1 text-sm text-gray-900">
-                  {{ userInfo.roles?.[0] || "Sinh viên" }}
-                </div>
-              </div>
-              <div class="col-span-2">
-                <div class="text-sm font-medium text-gray-500">Trạng thái</div>
-                <div class="mt-1 text-sm text-green-600 font-medium">
-                  Hoạt động
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div class="col-span-2">
-                <div class="text-sm font-medium text-gray-500">Email</div>
-                <div class="mt-1 text-sm text-gray-900">
-                  {{ userInfo.email }}
-                </div>
-              </div>
-              <div class="col-span-2">
-                <div class="text-sm font-medium text-gray-500">
-                  Số điện thoại
-                </div>
-                <div class="text-sm text-gray-900">
-                  {{ "(Chưa cập nhật)" }}
-                </div>
-              </div>
-            </div>
+        <div
+          class="bg-white h-[calc(100vh-12rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
+        >
+          <div class="border-b border-gray-200 p-4">
+            <h2 class="text-xl font-semibold text-gray-700">
+              THÔNG TIN NGƯỜI DÙNG
+            </h2>
           </div>
 
-          <div class="mt-6">
-            <button
-              type="button"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              @click="resetToIdle"
-            >
-              Trở về
-            </button>
+          <div>
+            <div class="space-y-4 bg-gray-50 rounded-lg p-2">
+              <div class="rounded-lg px-4 py-1">
+                <div class="flex items-center">
+                  <img
+                    :src="userInfo.avatar || undefined"
+                    alt="User avatar"
+                    class="h-12 w-12 rounded-full object-cover"
+                  />
+                  <div class="ml-3">
+                    <h4 class="text-sm font-medium text-gray-500">
+                      Mã số:
+                      <span class="text-gray-500 font-semibold">{{
+                        userInfo.id
+                      }}</span>
+                      <span class="text-sm text-gray-500 italic font-semibold">
+                        ({{
+                          userInfo.roles?.map((r) => r.name).join(", ") ||
+                          "Không có vai trò"
+                        }})
+                      </span>
+                    </h4>
+                    <p class="text-base font-semibold text-gray-900">
+                      {{ userInfo.name }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4 p-4 border-t border-gray-200">
+              <div class="grid grid-cols-[100px_1fr]">
+                <div class="text-sm text-gray-500">Tài khoản</div>
+                <div class="text-sm text-green-600">Hoạt động</div>
+              </div>
+
+              <div class="grid grid-cols-[100px_1fr]">
+                <div class="text-sm text-gray-500">Tình trạng</div>
+                <div class="text-sm text-red-600">
+                  Cấm hoạt động (đến 20/04/2025)
+                </div>
+              </div>
+
+              <div class="border rounded-md">
+                <div
+                  class="p-4 flex justify-between items-center cursor-pointer"
+                  @click="showUserDetails = !showUserDetails"
+                >
+                  <h3 class="text-base text-blue-600 font-medium">Chi tiết</h3>
+                  <ChevronDownIcon
+                    v-if="!showUserDetails"
+                    class="h-5 w-5 text-blue-500"
+                  />
+                  <ChevronUpIcon v-else class="h-5 w-5 text-blue-500" />
+                </div>
+
+                <div v-if="showUserDetails" class="p-4 border-t">
+                  <div class="space-y-3">
+                    <div class="flex">
+                      <div class="w-32 text-sm text-gray-500">Nguyên nhân</div>
+                      <div class="flex-1 text-sm text-gray-900">
+                        Làm mất thiết bị
+                      </div>
+                    </div>
+
+                    <div class="flex">
+                      <div class="w-32 text-sm text-gray-500">Môn đang học</div>
+                      <div class="flex-1 text-sm text-gray-900">
+                        Hệ thống số<br />
+                        Điện - Điện tử<br />
+                        Thiết kế vi mạch
+                      </div>
+                    </div>
+
+                    <div class="flex">
+                      <div class="w-32 text-sm text-gray-500">Môn đã học</div>
+                      <div class="flex-1 text-sm text-gray-900">
+                        Hệ thống số
+                      </div>
+                    </div>
+
+                    <div class="flex">
+                      <div class="w-32 text-sm text-gray-500">
+                        Phòng có phép
+                      </div>
+                      <div class="flex-1 text-sm text-gray-900">
+                        605 H6, Dĩ An<br />
+                        601 H6, Dĩ An
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 px-4 pb-4">
+              <button
+                type="button"
+                class="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cho phép mượn
+              </button>
+            </div>
           </div>
         </div>
       </div>

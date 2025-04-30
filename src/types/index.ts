@@ -1,42 +1,5 @@
 import { AssessmentStatus, DeviceStatus, MaintenanceStatus } from "@/lib/db";
 
-export type DeviceDetail = {
-  fullId: string;
-  status: DeviceStatus | null;
-  prevQuality?: DeviceStatus | null;
-  image: any;
-  unit: string;
-  deviceName: string;
-  allowedBorrowRoles: string[];
-  allowedViewRoles: string[];
-  brand: string | null;
-  manufacturer: string | null;
-  description: string | null;
-  isBorrowableLabOnly: boolean;
-  categoryName: string;
-  labRoom: string | null;
-  labBranch: string | null;
-  kind: string;
-  borrower?: {
-    id: string;
-    name: string;
-    image: string | null;
-  } | null;
-  borrowedAt?: Date | null;
-  expectedReturnedAt?: string | null;
-  borrowedLab?: string | null;
-  expectedReturnLab?: string | null;
-  receiptId?: string | null;
-  prevCondition?: DeviceStatus | null;
-  afterCondition?: DeviceStatus | null;
-  shipmentId?: string | null;
-  shipmentStatus?: string | null;
-  sourceLocation?: string | null;
-  destinationLocation?: string | null;
-  senderName?: string | null;
-  receiverName?: string | null;
-};
-
 export const statusMap: Record<DeviceStatus, string> = {
   healthy: "Tốt",
   broken: "Hư hỏng",
@@ -113,6 +76,20 @@ export type Device = {
   items: BaseDeviceItem[];
 };
 
+export type DeviceItem = BaseDeviceItem & {
+  kind: string;
+  categoryName: string;
+  brand: string | null;
+  manufacturer: string | null;
+  description: string | null;
+  labRoom: string | null;
+  labBranch: string | null;
+  image: any;
+  deviceName: string;
+  allowedBorrowRoles: string[];
+  allowedViewRoles: string[];
+};
+
 export type AuditDevice = Omit<Device, "items"> & {
   items: AuditDeviceItem[];
   expectedQuantity?: number;
@@ -173,3 +150,33 @@ export type Accessory = {
   unit: string | null;
   quantity: number;
 };
+
+export type UserBorrowHistoryItem = {
+  receiptId: string;
+  deviceId: string;
+  deviceKindId: string;
+  deviceName: string;
+  deviceImage: { mainImage: string | null };
+  deviceBorrowableLabOnly: boolean;
+  labId: string;
+  labRoom: string;
+  labBranch: string;
+  borrowDate: string;
+  expectedReturnedAt: string;
+  status: "ON_TIME" | "NEAR_DUE" | "OVERDUE";
+};
+
+export interface UserActivityItem {
+  id: string;
+  type: "AUDIT" | "MAINTENANCE" | "TRANSPORT" | "RETURNED";
+  deviceId: string;
+  deviceKindId: string;
+  deviceName: string;
+  deviceImage: { mainImage: string | null };
+  location: string;
+  date: string;
+  status: string;
+  note?: string;
+  prevQuality?: string | null;
+  afterQuality?: string | null;
+}

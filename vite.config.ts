@@ -76,7 +76,7 @@ export default defineConfig({
           from: "@/types",
           imports: [
             "Device",
-            "DeviceDetail",
+            "DeviceItem",
             "QualityDeviceItem",
             "UserInfo",
             "AuditDevice",
@@ -88,6 +88,8 @@ export default defineConfig({
             "ShipmentDevice",
             "ShipmentDeviceItem",
             "Accessory",
+            "UserBorrowHistoryItem",
+            "UserActivityItem",
           ],
           type: true,
         },

@@ -366,7 +366,7 @@ declare global {
   export type { RouteLocationRaw } from 'vue-router'
   import('vue-router')
   // @ts-ignore
-  export type { Device, DeviceDetail, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit, MaintenanceDevice, MaintenanceDeviceItem, MaintenanceSession, ShipmentDevice, ShipmentDeviceItem, Accessory } from '@/types'
+  export type { Device, DeviceItem, QualityDeviceItem, UserInfo, AuditDevice, AuditDeviceItem, IncompleteAudit, MaintenanceDevice, MaintenanceDeviceItem, MaintenanceSession, ShipmentDevice, ShipmentDeviceItem, Accessory, UserBorrowHistoryItem, UserActivityItem } from '@/types'
   import('@/types')
 }
 

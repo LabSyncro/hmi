@@ -1,90 +1,33 @@
 import { DeviceStatus } from "@/types/db/generated";
 import { db } from "./client";
 
-type DeviceInventory = {
-  availableQuantity: number;
-  unscannedDeviceIds: string[];
-};
-
-type InventorySummary = {
-  location: string;
-  healthy: number;
-  broken: number;
-  discarded: number;
-  lost: number;
-};
-
-type BorrowHistory = {
-  id: string;
+type DeviceReceiptDetail = {
   fullId: string;
-  status: string;
-  borrower: {
+  status: DeviceStatus | null;
+  prevQuality?: DeviceStatus | null;
+  image: any;
+  unit: string;
+  deviceName: string;
+  allowedBorrowRoles: string[];
+  allowedViewRoles: string[];
+  brand: string | null;
+  manufacturer: string | null;
+  description: string | null;
+  isBorrowableLabOnly: boolean;
+  categoryName: string;
+  labRoom: string | null;
+  labBranch: string | null;
+  kind: string;
+  borrower?: {
     id: string;
     name: string;
-    email: string;
-    avatar?: string;
-  };
-  borrowDate: string;
-  expectedReturnedAt: string;
-  hasBeenReturned: boolean;
-  returnedAt?: string;
-  returnedNote?: string;
-  borrowedLab: string;
-  expectedReturnLab: string;
-};
-
-type MaintenanceHistory = {
-  id: string;
-  fullId: string;
-  maintenanceReason: string;
-  status: string;
-  technician: {
-    id: string;
-    name: string;
-    email: string;
-    avatar?: string;
-  };
-  maintenanceStartDate: string;
-  expectedCompletionDate?: string;
-  finishedAt?: string;
-  notes?: string;
-};
-
-type TransportHistory = {
-  id: string;
-  fullId: string;
-  sourceLocation: string;
-  destinationLocation: string;
-  transportDate: string;
-  status: string;
-  sender?: {
-    id: string;
-    name: string;
-    email?: string;
-    avatar?: string;
-  };
-  receiver?: {
-    id: string;
-    name: string;
-    email?: string;
-    avatar?: string;
-  };
-};
-
-type AuditHistory = {
-  id: string;
-  fullId: string;
-  auditor: {
-    id: string;
-    name: string;
-    email: string;
-    avatar?: string;
-  };
-  auditDate: string;
-  auditResult: string;
-  notes?: string;
-  prevStatus?: DeviceStatus;
-  afterStatus?: DeviceStatus;
+    image: string | null;
+  } | null;
+  borrowedAt?: Date | null;
+  expectedReturnedAt?: string | null;
+  borrowedLab?: string | null;
+  expectedReturnLab?: string | null;
+  receiptId?: string | null;
 };
 
 type DeviceAuditDetail = {
@@ -125,8 +68,132 @@ type DeviceMaintenanceDetail = {
   createdAt: Date;
 };
 
+type DeviceShipmentDetail = {
+  status: DeviceStatus | null;
+  prevCondition?: DeviceStatus | null;
+  afterCondition?: DeviceStatus | null;
+  shipmentId?: string | null;
+  sourceLocation?: string | null;
+  destinationLocation?: string | null;
+  senderName?: string | null;
+  receiverName?: string | null;
+  image: any;
+  unit: string;
+  deviceName: string;
+  isBorrowableLabOnly: boolean;
+};
+
+type DeviceInventory = {
+  availableQuantity: number;
+  unscannedDeviceIds: string[];
+};
+
+type InventorySummary = {
+  location: string;
+  healthy: number;
+  broken: number;
+  discarded: number;
+  lost: number;
+};
+
+type BorrowHistory = {
+  id: string;
+  fullId: string;
+  status: string;
+  borrower: {
+    id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  };
+  borrowDate: string;
+  expectedReturnedAt: string;
+  hasBeenReturned: boolean;
+  returnedAt?: string;
+  returnedNote?: string;
+  borrowedLab: string;
+  expectedReturnLab: string;
+};
+
+type AuditHistory = {
+  id: string;
+  fullId: string;
+  auditor: {
+    id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  };
+  auditDate: string;
+  auditResult: string;
+  notes?: string;
+  prevStatus?: DeviceStatus;
+  afterStatus?: DeviceStatus;
+};
+
+type MaintenanceHistory = {
+  id: string;
+  fullId: string;
+  maintenanceReason: string;
+  status: string;
+  technician: {
+    id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+  };
+  maintenanceStartDate: string;
+  expectedCompletionDate?: string;
+  finishedAt?: string;
+  notes?: string;
+};
+
+type TransportHistory = {
+  id: string;
+  fullId: string;
+  sourceLocation: string;
+  destinationLocation: string;
+  transportDate: string;
+  status: string;
+  sender?: {
+    id: string;
+    name: string;
+    email?: string;
+    avatar?: string;
+  };
+  receiver?: {
+    id: string;
+    name: string;
+    email?: string;
+    avatar?: string;
+  };
+};
+
+export type DeviceDetail = {
+  id: string;
+  fullId: string;
+  status: DeviceStatus;
+  image: { mainImage: string | null };
+  unit: string;
+  deviceName: string;
+  allowedBorrowRoles: string[];
+  allowedViewRoles: string[];
+  brand: string | null;
+  manufacturer: string | null;
+  description: string | null;
+  isBorrowableLabOnly: boolean;
+  categoryName: string;
+  labId: string | null;
+  labRoom: string | null;
+  labBranch: string | null;
+  kind: string;
+};
+
 export const deviceService = {
-  async getDeviceReceiptById(id: string, labId: string): Promise<DeviceDetail> {
+  async getDeviceReceiptById(
+    id: string,
+    labId: string
+  ): Promise<DeviceReceiptDetail> {
     if (!id || !labId) {
       throw new Error("Missing device ID or lab ID");
     }
@@ -191,11 +258,11 @@ export const deviceService = {
         throw new Error("Device does not belong to this lab");
       }
 
-      const deviceDetail: DeviceDetail = {
+      const deviceReceiptDetail: DeviceReceiptDetail = {
         fullId: row.fullId as string,
         status: row.status as DeviceStatus | null,
         prevQuality: row.prevQuality as DeviceStatus | null,
-        image: row.image as string,
+        image: row.image,
         unit: row.unit as string,
         deviceName: row.deviceName as string,
         allowedBorrowRoles: row.allowedBorrowRoles as string[],
@@ -222,7 +289,7 @@ export const deviceService = {
         expectedReturnLab: row.expectedReturnLab as string | null,
       };
 
-      return deviceDetail;
+      return deviceReceiptDetail;
     } catch (error) {
       throw error;
     }
@@ -311,6 +378,263 @@ export const deviceService = {
       };
 
       return deviceAuditDetail;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getDeviceMaintenanceById(
+    deviceId: string,
+    labId?: string
+  ): Promise<DeviceMaintenanceDetail> {
+    if (!deviceId) {
+      throw new Error("Missing device ID");
+    }
+
+    try {
+      const sql = `
+        SELECT 
+          d.id,
+          CASE 
+            WHEN d.status = 'maintaining' THEN COALESCE(md.prev_status, d.status)
+            ELSE d.status
+          END as status,
+          d.status as current_status,
+          md.after_status as outcome,
+          d.kind,
+          d.lab_id,
+          dk.image,
+          dk.unit,
+          dk.name AS device_name,
+          dk.is_borrowable_lab_only,
+          l.room,
+          l.branch,
+          m.id as maintenance_id,
+          m.maintainer_id as technician_id,
+          u.name as technician_name,
+          a.note as notes,
+          a.created_at
+        FROM 
+          devices d
+          LEFT JOIN device_kinds dk ON d.kind = dk.id
+          LEFT JOIN labs l ON d.lab_id = l.id
+          LEFT JOIN maintenances_devices md ON d.id = md.device_id
+          LEFT JOIN maintenances m ON md.maintaining_id = m.id
+          LEFT JOIN users u ON m.maintainer_id = u.id
+          LEFT JOIN activities a ON m.id = a.id
+        WHERE 
+          d.id = $1
+          AND d.deleted_at IS NULL
+        ORDER BY 
+          a.created_at DESC
+        LIMIT 1
+      `;
+
+      const results = await db.queryRaw<Record<string, unknown>>({
+        sql,
+        params: [deviceId],
+      });
+
+      if (results.length === 0) {
+        throw new Error("Device not found");
+      }
+
+      const row = results[0];
+
+      if (labId && row.labId !== labId) {
+        throw new Error("Device does not belong to this lab");
+      }
+
+      return {
+        id: row.id as string,
+        maintenanceId: row.maintenanceId as string,
+        technician: {
+          id: row.technicianId as string,
+          name: row.technicianName as string,
+        },
+        status: row.status as DeviceStatus,
+        currentStatus: row.currentStatus as DeviceStatus,
+        outcome: row.outcome as DeviceStatus,
+        kind: row.kind as string,
+        deviceName: row.deviceName as string,
+        image: row.image as any,
+        unit: row.unit as string,
+        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
+        location: row.room && row.branch ? `${row.room}, ${row.branch}` : "",
+        notes: (row.notes as string) || undefined,
+        createdAt: row.createdAt
+          ? new Date(row.createdAt as string)
+          : new Date(),
+      };
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getDeviceShipmentById(
+    deviceId: string,
+    labId?: string
+  ): Promise<DeviceShipmentDetail> {
+    if (!deviceId) {
+      throw new Error("Missing device ID");
+    }
+
+    try {
+      const sql = `
+        SELECT 
+          d.id,
+          d.full_id,
+          d.status,
+          d.kind,
+          d.lab_id,
+          dk.image,
+          dk.unit,
+          dk.name AS device_name,
+          dk.allowed_borrow_roles,
+          dk.allowed_view_roles,
+          dk.brand,
+          dk.manufacturer,
+          dk.description,
+          dk.is_borrowable_lab_only,
+          c.name AS category_name,
+          l.room,
+          l.branch,
+          sd.prev_status as prev_condition,
+          sd.after_status as after_condition,
+          s.id as shipment_id,
+          s.status as shipment_status,
+          s_start.room || ', ' || s_start.branch AS source_location,
+          s_arrive.room || ', ' || s_arrive.branch AS destination_location,
+          sender.name AS sender_name,
+          receiver.name AS receiver_name
+        FROM 
+          devices d
+          LEFT JOIN device_kinds dk ON d.kind = dk.id
+          LEFT JOIN labs l ON d.lab_id = l.id
+          LEFT JOIN categories c ON dk.category_id = c.id
+          LEFT JOIN shipments_devices sd ON d.id = sd.device_id
+          LEFT JOIN shipments s ON sd.shipment_id = s.id
+          LEFT JOIN labs s_start ON s.start_lab_id = s_start.id
+          LEFT JOIN labs s_arrive ON s.arrive_lab_id = s_arrive.id
+          LEFT JOIN users sender ON s.sender_id = sender.id
+          LEFT JOIN users receiver ON s.receiver_id = receiver.id
+        WHERE 
+          d.id = $1
+          AND d.deleted_at IS NULL
+        ORDER BY
+          s.from_at DESC
+        LIMIT 1
+      `;
+
+      const results = await db.queryRaw<Record<string, unknown>>({
+        sql,
+        params: [deviceId],
+      });
+
+      if (results.length === 0) {
+        throw new Error("Device not found");
+      }
+
+      const row = results[0];
+
+      if (labId && row.labId !== labId) {
+        throw new Error("Device does not belong to this lab");
+      }
+
+      const deviceShipmentDetail: DeviceShipmentDetail = {
+        status: row.status as DeviceStatus | null,
+        prevCondition: row.prevCondition as DeviceStatus | null,
+        afterCondition: row.afterCondition as DeviceStatus | null,
+        shipmentId: row.shipmentId as string | null,
+        sourceLocation: row.sourceLocation as string | null,
+        destinationLocation: row.destinationLocation as string | null,
+        senderName: row.senderName as string | null,
+        receiverName: row.receiverName as string | null,
+        image: row.image as any,
+        unit: row.unit as string,
+        deviceName: row.deviceName as string,
+        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
+      };
+
+      return deviceShipmentDetail;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getDeviceById(id: string, labId?: string): Promise<DeviceDetail> {
+    if (!id) {
+      throw new Error("Missing device ID");
+    }
+
+    try {
+      const sql = `
+        SELECT 
+          d.id,
+          d.full_id,
+          d.status,
+          d.kind,
+          d.lab_id,
+          dk.image,
+          dk.unit,
+          dk.name AS device_name,
+          dk.allowed_borrow_roles,
+          dk.allowed_view_roles,
+          dk.brand,
+          dk.manufacturer,
+          dk.description,
+          dk.is_borrowable_lab_only,
+          c.name AS category_name,
+          l.room,
+          l.branch
+        FROM 
+          devices d
+          LEFT JOIN device_kinds dk ON d.kind = dk.id
+          LEFT JOIN labs l ON d.lab_id = l.id
+          LEFT JOIN categories c ON dk.category_id = c.id
+        WHERE 
+          d.id = $1
+          AND d.deleted_at IS NULL
+      `;
+
+      const results = await db.queryRaw<Record<string, unknown>>({
+        sql,
+        params: [id],
+      });
+
+      if (results.length === 0) {
+        throw new Error("Device not found");
+      }
+
+      const row = results[0];
+
+      if (labId && row.labId !== labId) {
+        throw new Error("Device does not belong to this lab");
+      }
+
+      const deviceDetail: DeviceDetail = {
+        id: row.id as string,
+        fullId: row.fullId as string,
+        status: row.status as DeviceStatus,
+        image: {
+          mainImage: row.image ? (row.image as any).mainImage : "",
+        },
+        unit: row.unit as string,
+        deviceName: row.deviceName as string,
+        allowedBorrowRoles: row.allowedBorrowRoles as string[],
+        allowedViewRoles: row.allowedViewRoles as string[],
+        brand: row.brand as string | null,
+        manufacturer: row.manufacturer as string | null,
+        description: row.description as string | null,
+        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
+        categoryName: row.categoryName as string,
+        labId: row.labId as string | null,
+        labRoom: row.room as string | null,
+        labBranch: row.branch as string | null,
+        kind: row.kind as string,
+      };
+
+      return deviceDetail;
     } catch (error) {
       throw error;
     }
@@ -698,196 +1022,6 @@ export const deviceService = {
         prevStatus: row.prevStatus as DeviceStatus | undefined,
         afterStatus: row.afterStatus as DeviceStatus | undefined,
       }));
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getDeviceMaintenanceById(
-    deviceId: string,
-    labId?: string
-  ): Promise<DeviceMaintenanceDetail> {
-    if (!deviceId) {
-      throw new Error("Missing device ID");
-    }
-
-    try {
-      const sql = `
-        SELECT 
-          d.id,
-          CASE 
-            WHEN d.status = 'maintaining' THEN COALESCE(md.prev_status, d.status)
-            ELSE d.status
-          END as status,
-          d.status as current_status,
-          md.after_status as outcome,
-          d.kind,
-          d.lab_id,
-          dk.image,
-          dk.unit,
-          dk.name AS device_name,
-          dk.is_borrowable_lab_only,
-          l.room,
-          l.branch,
-          m.id as maintenance_id,
-          m.maintainer_id as technician_id,
-          u.name as technician_name,
-          a.note as notes,
-          a.created_at
-        FROM 
-          devices d
-          LEFT JOIN device_kinds dk ON d.kind = dk.id
-          LEFT JOIN labs l ON d.lab_id = l.id
-          LEFT JOIN maintenances_devices md ON d.id = md.device_id
-          LEFT JOIN maintenances m ON md.maintaining_id = m.id
-          LEFT JOIN users u ON m.maintainer_id = u.id
-          LEFT JOIN activities a ON m.id = a.id
-        WHERE 
-          d.id = $1
-          AND d.deleted_at IS NULL
-        ORDER BY 
-          a.created_at DESC
-        LIMIT 1
-      `;
-
-      const results = await db.queryRaw<Record<string, unknown>>({
-        sql,
-        params: [deviceId],
-      });
-
-      if (results.length === 0) {
-        throw new Error("Device not found");
-      }
-
-      const row = results[0];
-
-      if (labId && row.labId !== labId) {
-        throw new Error("Device does not belong to this lab");
-      }
-
-      return {
-        id: row.id as string,
-        maintenanceId: row.maintenanceId as string,
-        technician: {
-          id: row.technicianId as string,
-          name: row.technicianName as string,
-        },
-        status: row.status as DeviceStatus,
-        currentStatus: row.currentStatus as DeviceStatus,
-        outcome: row.outcome as DeviceStatus,
-        kind: row.kind as string,
-        deviceName: row.deviceName as string,
-        image: row.image as any,
-        unit: row.unit as string,
-        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
-        location: row.room && row.branch ? `${row.room}, ${row.branch}` : "",
-        notes: (row.notes as string) || undefined,
-        createdAt: row.createdAt
-          ? new Date(row.createdAt as string)
-          : new Date(),
-      };
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getDeviceShipmentById(
-    deviceId: string,
-    labId?: string
-  ): Promise<DeviceDetail> {
-    if (!deviceId) {
-      throw new Error("Missing device ID");
-    }
-
-    try {
-      const sql = `
-        SELECT 
-          d.id,
-          d.full_id,
-          d.status,
-          d.kind,
-          d.lab_id,
-          dk.image,
-          dk.unit,
-          dk.name AS device_name,
-          dk.allowed_borrow_roles,
-          dk.allowed_view_roles,
-          dk.brand,
-          dk.manufacturer,
-          dk.description,
-          dk.is_borrowable_lab_only,
-          c.name AS category_name,
-          l.room,
-          l.branch,
-          sd.prev_status as prev_condition,
-          sd.after_status as after_condition,
-          s.id as shipment_id,
-          s.status as shipment_status,
-          s_start.room || ', ' || s_start.branch AS source_location,
-          s_arrive.room || ', ' || s_arrive.branch AS destination_location,
-          sender.name AS sender_name,
-          receiver.name AS receiver_name
-        FROM 
-          devices d
-          LEFT JOIN device_kinds dk ON d.kind = dk.id
-          LEFT JOIN labs l ON d.lab_id = l.id
-          LEFT JOIN categories c ON dk.category_id = c.id
-          LEFT JOIN shipments_devices sd ON d.id = sd.device_id
-          LEFT JOIN shipments s ON sd.shipment_id = s.id
-          LEFT JOIN labs s_start ON s.start_lab_id = s_start.id
-          LEFT JOIN labs s_arrive ON s.arrive_lab_id = s_arrive.id
-          LEFT JOIN users sender ON s.sender_id = sender.id
-          LEFT JOIN users receiver ON s.receiver_id = receiver.id
-        WHERE 
-          d.id = $1
-          AND d.deleted_at IS NULL
-        ORDER BY
-          s.from_at DESC
-        LIMIT 1
-      `;
-
-      const results = await db.queryRaw<Record<string, unknown>>({
-        sql,
-        params: [deviceId],
-      });
-
-      if (results.length === 0) {
-        throw new Error("Device not found");
-      }
-
-      const row = results[0];
-
-      if (labId && row.labId !== labId) {
-        throw new Error("Device does not belong to this lab");
-      }
-
-      const deviceDetail: DeviceDetail = {
-        fullId: row.fullId as string,
-        status: row.status as DeviceStatus | null,
-        prevCondition: row.prevCondition as DeviceStatus | null,
-        afterCondition: row.afterCondition as DeviceStatus | null,
-        shipmentId: row.shipmentId as string | null,
-        shipmentStatus: row.shipmentStatus as string | null,
-        sourceLocation: row.sourceLocation as string | null,
-        destinationLocation: row.destinationLocation as string | null,
-        senderName: row.senderName as string | null,
-        receiverName: row.receiverName as string | null,
-        image: row.image as any,
-        unit: row.unit as string,
-        deviceName: row.deviceName as string,
-        allowedBorrowRoles: row.allowedBorrowRoles as string[],
-        allowedViewRoles: row.allowedViewRoles as string[],
-        brand: row.brand as string | null,
-        manufacturer: row.manufacturer as string | null,
-        description: row.description as string | null,
-        isBorrowableLabOnly: row.isBorrowableLabOnly as boolean,
-        categoryName: row.categoryName as string,
-        labRoom: row.room as string | null,
-        labBranch: row.branch as string | null,
-        kind: row.kind as string,
-      };
-
-      return deviceDetail;
     } catch (error) {
       throw error;
     }
