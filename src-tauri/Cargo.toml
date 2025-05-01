@@ -34,6 +34,7 @@ config = "0.15.9"
 dotenvy = "0.15.7"
 futures = "0.3.31"
 criterion = { version = "0.5.1", features = ["async_tokio", "html_reports"] }
+rand = "0.9.1"
 
 [[bench]]
 name = "borrow_return_bench"
@@ -61,4 +62,8 @@ harness = false
 
 [[bench]]
 name = "user_bench"
+harness = false
+
+[[bench]]
+name = "borrow_return_stress_test"
 harness = false

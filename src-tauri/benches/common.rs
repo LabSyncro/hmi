@@ -296,6 +296,7 @@ pub async fn populate_test_data(db: &Database) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn cleanup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::Error>> {
     let client = db.get_client().await?;
 
