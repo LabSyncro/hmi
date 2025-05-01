@@ -25,6 +25,7 @@ const labs = ref<{ id: string; name: string; room: string; branch: string }[]>(
   []
 );
 const selectedDestinationLab = ref<string | null>(null);
+const checkAtDestination = ref(false);
 
 const pendingDevices = ref<
   {
@@ -34,6 +35,7 @@ const pendingDevices = ref<
     prevCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus] | null;
     afterCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus] | null;
     shipmentId?: string | null;
+    scanned?: boolean;
   }[]
 >([]);
 
@@ -60,12 +62,6 @@ const shipmentDetails = ref({
 
 const totalDevices = computed(() => {
   return devices.value.reduce((total, device) => total + device.quantity, 0);
-});
-
-const pageTitle = computed(() => {
-  if (mode.value === "idle") return "QUẢN LÝ VẬN CHUYỂN";
-  if (mode.value === "inbound") return "GHI NHẬN CHUYỂN ĐI";
-  return "GHI NHẬN NHẬN VỀ";
 });
 
 const leftColumnTitle = computed(() => {
@@ -248,6 +244,7 @@ const handleDeviceScan = async (input: string) => {
         prevCondition: deviceDetails.prevCondition || null,
         afterCondition: deviceDetails.afterCondition || null,
         shipmentId: deviceDetails.shipmentId || null,
+        scanned: true,
       });
 
       addDeviceToList(deviceId, deviceDetails, deviceKindId as string);
@@ -280,6 +277,113 @@ const handleDeviceForActiveMode = async (
 ) => {
   addDeviceToList(deviceId, deviceDetails, deviceKindId);
 
+  if (mode.value === "outbound" && deviceDetails.shipmentId) {
+    try {
+      const shipment = await shipmentService.getShipmentById(
+        deviceDetails.shipmentId
+      );
+
+      if (shipment && shipment.check_at_destination) {
+        try {
+          const shipmentDevicesResponse =
+            await shipmentService.getShipmentDevices(deviceDetails.shipmentId);
+
+          type ShipmentDeviceInfo = {
+            shipment_id: string;
+            device_id: string;
+            prev_status:
+              | (typeof DeviceStatus)[keyof typeof DeviceStatus]
+              | null;
+            after_status:
+              | (typeof DeviceStatus)[keyof typeof DeviceStatus]
+              | null;
+            status: (typeof DeviceStatus)[keyof typeof DeviceStatus];
+            kind_id: string;
+            device_name: string;
+            unit: string;
+            is_borrowable_lab_only: boolean;
+            main_image: string | null;
+          };
+
+          const shipmentDevices = shipmentDevicesResponse as any[];
+
+          if (shipmentDevices.length === 0) {
+            return;
+          }
+
+          const devicesByKind: Record<string, ShipmentDeviceInfo[]> = {};
+
+          for (const device of shipmentDevices) {
+            if (!device.kind_id) {
+              continue;
+            }
+
+            const kindId = device.kind_id;
+            if (!devicesByKind[kindId]) {
+              devicesByKind[kindId] = [];
+            }
+            devicesByKind[kindId].push(device as ShipmentDeviceInfo);
+          }
+
+          for (const [kindId, devicesOfKind] of Object.entries(devicesByKind)) {
+            const scannedDeviceIds = devices.value
+              .filter((d) => d.code === kindId)
+              .flatMap((d) => d.items)
+              .map((item) => item.id);
+
+            const unscannedDevices = devicesOfKind.filter(
+              (d) => !scannedDeviceIds.includes(d.device_id)
+            );
+
+            unscannedDevices.forEach((unscannedDevice) => {
+              if (
+                !devices.value.some((d) =>
+                  d.items.some((item) => item.id === unscannedDevice.device_id)
+                )
+              ) {
+                const deviceInfo = {
+                  id: unscannedDevice.device_id,
+                  status: unscannedDevice.status,
+                  shipmentId: deviceDetails.shipmentId,
+                  deviceName: unscannedDevice.device_name,
+                  image: { mainImage: unscannedDevice.main_image },
+                  unit: unscannedDevice.unit,
+                  isBorrowableLabOnly: unscannedDevice.is_borrowable_lab_only,
+                  prevCondition: unscannedDevice.prev_status,
+                };
+
+                addUnscannedDevice(
+                  unscannedDevice.device_id,
+                  deviceInfo,
+                  kindId
+                );
+              }
+            });
+          }
+        } catch (deviceError) {
+          toast({
+            title: "Lỗi",
+            description:
+              "Không thể tải dữ liệu của tất cả thiết bị trong lô hàng",
+            variant: "destructive",
+          });
+        }
+      } else if (shipment) {
+        toast({
+          title: "Lỗi",
+          description: "Lô hàng không được đặt cờ kiểm tra tại đích",
+          variant: "destructive",
+        });
+      }
+    } catch (shipmentError) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải dữ liệu lô hàng",
+        variant: "destructive",
+      });
+    }
+  }
+
   toast({
     title: "Thành công",
     description: "Đã thêm thiết bị vào danh sách vận chuyển",
@@ -287,7 +391,7 @@ const handleDeviceForActiveMode = async (
   });
 };
 
-const addDeviceToList = (
+const addUnscannedDevice = (
   deviceId: string,
   deviceDetails: any,
   deviceKindId: string
@@ -299,6 +403,7 @@ const addDeviceToList = (
     prevCondition: deviceDetails.prevCondition || null,
     afterCondition: deviceDetails.afterCondition || null,
     shipmentId: deviceDetails.shipmentId || null,
+    scanned: false,
   };
 
   const existingDevice = devices.value.find((d) => d.code === deviceKindId);
@@ -315,6 +420,41 @@ const addDeviceToList = (
       expanded: true,
       isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
       items: [newItem],
+      bulkUnscannedCondition: DeviceStatus.HEALTHY,
+    });
+  }
+};
+
+const addDeviceToList = (
+  deviceId: string,
+  deviceDetails: any,
+  deviceKindId: string
+) => {
+  const newItem: ShipmentDeviceItem = {
+    id: deviceId,
+    status: deviceDetails.status || DeviceStatus.HEALTHY,
+    shipmentCondition: DeviceStatus.HEALTHY,
+    prevCondition: deviceDetails.prevCondition || null,
+    afterCondition: deviceDetails.afterCondition || null,
+    shipmentId: deviceDetails.shipmentId || null,
+    scanned: true,
+  };
+
+  const existingDevice = devices.value.find((d) => d.code === deviceKindId);
+  if (existingDevice) {
+    existingDevice.items.push(newItem);
+    existingDevice.quantity = existingDevice.items.length;
+  } else {
+    devices.value.push({
+      code: deviceKindId,
+      name: deviceDetails.deviceName,
+      image: deviceDetails.image,
+      quantity: 1,
+      unit: deviceDetails.unit,
+      expanded: true,
+      isBorrowableLabOnly: deviceDetails.isBorrowableLabOnly,
+      items: [newItem],
+      bulkUnscannedCondition: DeviceStatus.HEALTHY,
     });
   }
 };
@@ -467,7 +607,6 @@ const completeShipment = async () => {
     }
 
     if (mode.value === "inbound") {
-      console.log(deviceItems);
       const response = await shipmentService.confirmInboundShipment({
         technicianId: userInfo.value.id,
         sourceLabId: storedUserInfo.value?.lab.id || "",
@@ -477,6 +616,7 @@ const completeShipment = async () => {
           id: d.id,
           inboundCondition: d.condition,
         })),
+        checkAtDestination: checkAtDestination.value,
       });
       shipmentId.value = response?.id || "";
       successMessage.value = "Ghi nhận chuyển đi thành công!";
@@ -585,6 +725,28 @@ const getStatusText = (item: ShipmentDeviceItem) => {
   return statusMap[item.status];
 };
 
+const getUnscannedCount = (device: ShipmentDevice) => {
+  return device.items.filter((item) => !item.scanned).length;
+};
+
+const getUnscannedItems = (device: ShipmentDevice) => {
+  return device.items.filter((item) => !item.scanned);
+};
+
+const updateAllUnscannedDevices = (device: ShipmentDevice) => {
+  if (!device.bulkUnscannedCondition) return;
+
+  const unscannedItems = getUnscannedItems(device);
+  unscannedItems.forEach((item) => {
+    if (device.bulkUnscannedCondition) {
+      item.shipmentCondition = device.bulkUnscannedCondition;
+      updateShipmentCondition(item, device.bulkUnscannedCondition);
+    }
+  });
+
+  updateDeviceCount();
+};
+
 useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
   userId: { length: 7 },
   device: {
@@ -601,11 +763,6 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-center">{{ pageTitle }}</h1>
-    <p class="text-center text-gray-500 mb-2">
-      Sử dụng máy scan quét mã QR thiết bị/người dùng để ghi nhận vận chuyển
-    </p>
-
     <div class="grid grid-cols-3 gap-6">
       <div
         class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
@@ -617,7 +774,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           </h2>
         </div>
 
-        <div class="h-[calc(100vh-16rem)] overflow-y-auto">
+        <div class="h-[calc(100vh-10rem)] overflow-y-auto">
           <div
             v-if="devices.length === 0"
             class="flex flex-col items-center justify-center py-20 text-center"
@@ -722,7 +879,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                     <Badge
                       :class="getStatusClass(item)"
                       variant="outline"
-                      class="h-8 text-sm font-semibold w-fit"
+                      class="h-8 text-sm font-semibold w-fit whitespace-nowrap"
                     >
                       {{ getStatusText(item) }}
                     </Badge>
@@ -764,6 +921,73 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                           </SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-if="mode === 'outbound' && getUnscannedCount(device) > 0"
+                >
+                  <div
+                    class="grid grid-cols-10 items-center px-4 py-2 text-sm font-medium text-gray-500 border-y border-gray-200 mt-1"
+                  >
+                    <span class="col-span-1"></span>
+                    <span class="col-span-6">THIẾT BỊ CHƯA GHI NHẬN</span>
+                    <span class="col-span-3">TÌNH TRẠNG</span>
+                  </div>
+
+                  <div class="bg-white px-4 py-3 border-b border-gray-100">
+                    <div class="grid grid-cols-10 items-center">
+                      <span class="col-span-1"></span>
+                      <div class="col-span-6">
+                        <span class="text-sm font-medium text-gray-900">
+                          {{ getUnscannedCount(device) }} {{ device.unit }}
+                        </span>
+                      </div>
+                      <div class="col-span-3">
+                        <Select
+                          v-model="device.bulkUnscannedCondition"
+                          @update:modelValue="updateAllUnscannedDevices(device)"
+                          class="flex-grow"
+                        >
+                          <SelectTrigger
+                            class="h-8 text-sm bg-white font-semibold w-fit"
+                            :class="
+                              device.bulkUnscannedCondition
+                                ? statusColorMap[device.bulkUnscannedCondition]
+                                : 'text-gray-900'
+                            "
+                          >
+                            <SelectValue placeholder="Chọn tình trạng" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="healthy" class="cursor-pointer">
+                              <Badge
+                                :class="statusColorMap['healthy']"
+                                variant="outline"
+                              >
+                                Tốt
+                              </Badge>
+                            </SelectItem>
+                            <SelectItem value="broken" class="cursor-pointer">
+                              <Badge
+                                :class="statusColorMap['broken']"
+                                variant="outline"
+                              >
+                                Hư hỏng
+                              </Badge>
+                            </SelectItem>
+                            <SelectItem value="lost" class="cursor-pointer">
+                              <Badge
+                                :class="statusColorMap['lost']"
+                                variant="outline"
+                              >
+                                Thất lạc
+                              </Badge>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -839,6 +1063,19 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
             "
             class="p-4 border-t border-gray-200"
           >
+            <div
+              v-if="mode === 'inbound'"
+              class="flex items-center justify-between mb-3 py-1"
+            >
+              <div class="flex items-center gap-1">
+                <span class="text-sm font-medium">Kiểm tại nơi nhận</span>
+              </div>
+              <Switch
+                v-model="checkAtDestination"
+                class="data-[state=checked]:bg-teal-500"
+              />
+            </div>
+
             <div class="flex items-center gap-3">
               <div class="rounded-full bg-blue-50 p-2">
                 <BoxIcon class="h-4 w-4 text-blue-600" />

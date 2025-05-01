@@ -1,9 +1,10 @@
 // This file is auto-generated. Do not edit manually.
 
-export enum MaintenanceStatus {
-  MAINTAINING = 'maintaining',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
+export enum UserRole {
+  SYSADMIN = 'sysadmin',
+  LAB_ADMIN = 'lab_admin',
+  TEACHER = 'teacher',
+  STUDENT = 'student',
 }
 
 export enum RequestStatus {
@@ -13,6 +14,14 @@ export enum RequestStatus {
   CANCELLED = 'cancelled',
 }
 
+export enum ActivityType {
+  BORROW = 'borrow',
+  RETURN = 'return',
+  MAINTENANCE = 'maintenance',
+  SHIPMENT = 'shipment',
+  ASSESSMENT = 'assessment',
+}
+
 export enum ReservationStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
@@ -20,18 +29,10 @@ export enum ReservationStatus {
   CANCELLED = 'cancelled',
 }
 
-export enum AssessmentStatus {
-  ASSESSING = 'assessing',
+export enum ShipmentStatus {
+  SHIPPING = 'shipping',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
-}
-
-export enum ActivityType {
-  BORROW = 'borrow',
-  RETURN = 'return',
-  MAINTENANCE = 'maintenance',
-  SHIPMENT = 'shipment',
-  ASSESSMENT = 'assessment',
 }
 
 export enum DeviceStatus {
@@ -45,54 +46,16 @@ export enum DeviceStatus {
   LOST = 'lost',
 }
 
-export enum ShipmentStatus {
-  SHIPPING = 'shipping',
+export enum MaintenanceStatus {
+  MAINTAINING = 'maintaining',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
 }
 
-export enum UserRole {
-  SYSADMIN = 'sysadmin',
-  LAB_ADMIN = 'lab_admin',
-  TEACHER = 'teacher',
-  STUDENT = 'student',
-}
-
-export interface MfaChallenges {
-  id: string
-  factorId: string
-  createdAt: Date
-  verifiedAt: Date | null
-  ipAddress: string
-  otpCode: string | null
-}
-
-export interface SamlRelayStates {
-  id: string
-  ssoProviderId: string
-  requestId: string
-  forEmail: string | null
-  redirectTo: string | null
-  createdAt: Date | null
-  updatedAt: Date | null
-  flowStateId: string | null
-}
-
-export interface MaskingRule {
-  attrelid: string | null
-  attnum: number | null
-  relnamespace: string | null
-  relname: string | null
-  attname: string | null
-  formatType: string | null
-  colDescription: string | null
-  keyIdColumn: string | null
-  keyId: string | null
-  associatedColumns: string | null
-  nonceColumn: string | null
-  viewName: string | null
-  priority: number | null
-  securityInvoker: boolean | null
+export enum AssessmentStatus {
+  ASSESSING = 'assessing',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
 }
 
 export interface HmiCodes {
@@ -114,35 +77,9 @@ export interface InventoryAssessmentsDevices {
   deviceId: string | null
 }
 
-export interface DeviceKinds {
-  createdAt: Date
-  categoryId: number | null
-  name: string | null
-  meta: any
-  image: any | null
-  brand: string | null
-  manufacturer: string | null
-  description: string | null
-  datasheet: string | null
-  unit: string | null
-  price: string | null
-  deletedAt: Date | null
-  id: string
-  allowedBorrowRoles: string[] | null
-  allowedViewRoles: string[] | null
-  isBorrowableLabOnly: boolean
-}
-
-export interface S3MultipartUploads {
-  id: string
-  inProgressSize: number
-  uploadSignature: string
-  bucketId: string
-  key: string
+export interface Migrations {
   version: string
-  ownerId: string | null
-  createdAt: Date
-  userMetadata: any | null
+  insertedAt: Date
 }
 
 export interface PgStatStatements {
@@ -191,257 +128,30 @@ export interface PgStatStatements {
   jitEmissionTime: number | null
 }
 
-export interface AuditLogEntries {
-  instanceId: string | null
-  id: string
-  payload: any | null
-  createdAt: Date | null
-  ipAddress: string
-}
-
-export interface SsoDomains {
-  id: string
-  ssoProviderId: string
-  domain: string
-  createdAt: Date | null
-  updatedAt: Date | null
-}
-
-export interface ValidKey {
-  id: string | null
-  name: string | null
-  status: string | null
-  keyType: string | null
-  keyId: number | null
-  keyContext: unknown | null
-  created: Date | null
-  expires: Date | null
-  associatedData: string | null
-}
-
-export interface UserRoles {
+export interface Actions {
+  id: number
   createdAt: Date
-  userId: string
+  name: string
+}
+
+export interface Labs {
+  id: string
+  createdAt: Date
+  name: string | null
+  faculty: string | null
+  room: string | null
+  branch: string | null
+  timetable: any
+  adminId: string | null
+  deletedAt: Date | null
+}
+
+export interface Permissions {
+  createdAt: Date
   roleId: number
-}
-
-export interface HttpRequestQueue {
-  id: number
-  method: string
-  url: string
-  headers: any
-  body: unknown | null
-  timeoutMilliseconds: number
-}
-
-export interface SamlProviders {
-  id: string
-  ssoProviderId: string
-  entityId: string
-  metadataXml: string
-  metadataUrl: string | null
-  attributeMapping: any | null
-  createdAt: Date | null
-  updatedAt: Date | null
-  nameIdFormat: string | null
-}
-
-export interface HttpResponse {
-  id: number | null
-  statusCode: number | null
-  contentType: string | null
-  headers: any | null
-  content: string | null
-  timedOut: boolean | null
-  errorMsg: string | null
-  created: Date
-}
-
-export interface DecryptedKey {
-  id: string | null
-  status: string | null
-  created: Date | null
-  expires: Date | null
-  keyType: string | null
-  keyId: number | null
-  keyContext: unknown | null
-  name: string | null
-  associatedData: string | null
-  rawKey: unknown | null
-  decryptedRawKey: unknown | null
-  rawKeyNonce: unknown | null
-  parentKey: string | null
-  comment: string | null
-}
-
-export interface InventoryAssessments {
-  id: string
-  finishedAt: Date | null
-  labId: string
-  accountantId: string | null
-  status: AssessmentStatus
-}
-
-export interface Sessions {
-  id: string
-  userId: string
-  createdAt: Date | null
-  updatedAt: Date | null
-  factorId: string | null
-  aal: string | null
-  notAfter: Date | null
-  refreshedAt: Date | null
-  userAgent: string | null
-  ip: string | null
-  tag: string | null
-}
-
-export interface RoleHistories {
-  createdAt: Date
-  granteeId: string
-  granterId: string
-  permissions: any | null
-  effectiveStart: Date
-  effectiveEnd: Date
-}
-
-export interface Shipments {
-  id: string
-  senderId: string | null
-  receiverId: string | null
-  status: ShipmentStatus
-  startLabId: string
-  arriveLabId: string
-  fromAt: string | null
-  toAt: string | null
-}
-
-export interface Hooks {
-  id: number
-  hookTableId: number
-  hookName: string
-  createdAt: Date
-  requestId: number | null
-}
-
-export interface Tenants {
-  id: string
-  name: string | null
-  externalId: string | null
-  jwtSecret: string | null
-  maxConcurrentUsers: number
-  insertedAt: Date
-  updatedAt: Date
-  maxEventsPerSecond: number
-  postgresCdcDefault: string | null
-  maxBytesPerSecond: number
-  maxChannelsPerClient: number
-  maxJoinsPerSecond: number
-  suspend: boolean | null
-  jwtJwks: any | null
-  notifyPrivateAlpha: boolean | null
-}
-
-export interface DecryptedSecrets {
-  id: string | null
-  name: string | null
-  description: string | null
-  secret: string | null
-  decryptedSecret: string | null
-  keyId: string | null
-  nonce: unknown | null
-  createdAt: Date | null
-  updatedAt: Date | null
-}
-
-export interface OneTimeTokens {
-  id: string
-  userId: string
-  tokenType: string
-  tokenHash: string
-  relatesTo: string
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface Maintenances {
-  id: string
-  status: MaintenanceStatus
-  maintainerId: string | null
-  finishedAt: Date | null
-  labId: string
-}
-
-export interface SchemaMigrations {
-  version: number
-  insertedAt: Date | null
-}
-
-export interface SchemaMigrations_Auth {
-  version: string
-}
-
-export interface RefreshTokens {
-  instanceId: string | null
-  id: number
-  token: string | null
-  userId: string | null
-  revoked: boolean | null
-  createdAt: Date | null
-  updatedAt: Date | null
-  parent: string | null
-  sessionId: string | null
-}
-
-export interface Users {
-  id: string
-  createdAt: Date
-  name: string
-  meta: any
-  email: string | null
-  password: string | null
-  image: string | null
-  tel: string | null
-  deletedAt: Date | null
-  lastActiveAt: Date | null
-}
-
-export interface Migrations {
-  version: string
-  insertedAt: Date
-}
-
-export interface Resources {
-  id: number
-  createdAt: Date
-  name: string
-  type: string | null
-}
-
-export interface Receipts {
-  id: string
-  actorId: string
-  checkerId: string
-  labId: string
-}
-
-export interface Devices {
-  createdAt: Date
-  kind: string
-  labId: string | null
-  deletedAt: Date | null
-  status: DeviceStatus
-  id: string
-  fullId: string
-  printedAt: Date | null
-  accessoryForKindId: string | null
-}
-
-export interface Migrations_Storage {
-  id: number
-  name: string
-  hash: string
-  executedAt: Date | null
+  resourceId: number
+  actionId: number
+  priority: number
 }
 
 export interface MaskColumns {
@@ -452,144 +162,6 @@ export interface MaskColumns {
   associatedColumns: string | null
   nonceColumn: string | null
   formatType: string | null
-}
-
-export interface MaintenancesDevices {
-  id: string
-  prevStatus: DeviceStatus | null
-  afterStatus: DeviceStatus | null
-  maintainingId: string
-  deviceId: string | null
-}
-
-export interface Secrets {
-  id: string
-  name: string | null
-  description: string
-  secret: string
-  keyId: string | null
-  nonce: unknown | null
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface ReceiptsDevices {
-  borrowedReceiptId: string
-  deviceId: string
-  prevQuality: DeviceStatus | null
-  borrowId: string | null
-  returnId: string | null
-  expectedReturnedAt: Date
-  id: string
-  expectedReturnedLabId: string | null
-  afterQuality: DeviceStatus | null
-  returnedReceiptId: string | null
-}
-
-export interface Roles {
-  id: number
-  createdAt: Date
-  key: string
-  name: string | null
-}
-
-export interface Buckets {
-  id: string
-  name: string
-  owner: string | null
-  createdAt: Date | null
-  updatedAt: Date | null
-  public: boolean | null
-  avifAutodetection: boolean | null
-  fileSizeLimit: number | null
-  allowedMimeTypes: string[] | null
-  ownerId: string | null
-}
-
-export interface Actions {
-  id: number
-  createdAt: Date
-  name: string
-}
-
-export interface FlowState {
-  id: string
-  userId: string | null
-  authCode: string
-  codeChallengeMethod: string
-  codeChallenge: string
-  providerType: string
-  providerAccessToken: string | null
-  providerRefreshToken: string | null
-  createdAt: Date | null
-  updatedAt: Date | null
-  authenticationMethod: string
-  authCodeIssuedAt: Date | null
-}
-
-export interface MfaFactors {
-  id: string
-  userId: string
-  friendlyName: string | null
-  factorType: string
-  status: string
-  createdAt: Date
-  updatedAt: Date
-  secret: string | null
-  phone: string | null
-  lastChallengedAt: Date | null
-}
-
-export interface Identities {
-  providerId: string
-  userId: string
-  identityData: any
-  provider: string
-  lastSignInAt: Date | null
-  createdAt: Date | null
-  updatedAt: Date | null
-  email: string | null
-  id: string
-}
-
-export interface SsoProviders {
-  id: string
-  resourceId: string | null
-  createdAt: Date | null
-  updatedAt: Date | null
-}
-
-export interface PgStatStatementsInfo {
-  dealloc: number | null
-  statsReset: Date | null
-}
-
-export interface Messages {
-  id: number
-  topic: string
-  extension: string
-  insertedAt: Date
-  updatedAt: Date
-}
-
-export interface MfaAmrClaims {
-  sessionId: string
-  createdAt: Date
-  updatedAt: Date
-  authenticationMethod: string
-  id: string
-}
-
-export interface SchemaMigrations_Realtime {
-  version: number
-  insertedAt: Date | null
-}
-
-export interface Categories {
-  id: number
-  createdAt: Date
-  name: string
-  quantity: number | null
 }
 
 export interface Objects {
@@ -607,36 +179,240 @@ export interface Objects {
   userMetadata: any | null
 }
 
-export interface Key {
+export interface Buckets {
   id: string
+  name: string
+  owner: string | null
+  createdAt: Date | null
+  updatedAt: Date | null
+  public: boolean | null
+  avifAutodetection: boolean | null
+  fileSizeLimit: number | null
+  allowedMimeTypes: string[] | null
+  ownerId: string | null
+}
+
+export interface Shipments {
+  id: string
+  senderId: string | null
+  receiverId: string | null
+  status: ShipmentStatus
+  startLabId: string
+  arriveLabId: string
+  fromAt: string | null
+  toAt: string | null
+  checkAtDestination: boolean | null
+}
+
+export interface Devices {
+  createdAt: Date
+  kind: string
+  labId: string | null
+  deletedAt: Date | null
+  status: DeviceStatus
+  id: string
+  fullId: string
+  printedAt: Date | null
+  accessoryForKindId: string | null
+}
+
+export interface FlowState {
+  id: string
+  userId: string | null
+  authCode: string
+  codeChallengeMethod: string
+  codeChallenge: string
+  providerType: string
+  providerAccessToken: string | null
+  providerRefreshToken: string | null
+  createdAt: Date | null
+  updatedAt: Date | null
+  authenticationMethod: string
+  authCodeIssuedAt: Date | null
+}
+
+export interface SamlProviders {
+  id: string
+  ssoProviderId: string
+  entityId: string
+  metadataXml: string
+  metadataUrl: string | null
+  attributeMapping: any | null
+  createdAt: Date | null
+  updatedAt: Date | null
+  nameIdFormat: string | null
+}
+
+export interface Receipts {
+  id: string
+  actorId: string
+  checkerId: string
+  labId: string
+}
+
+export interface MfaFactors {
+  id: string
+  userId: string
+  friendlyName: string | null
+  factorType: string
+  status: string
+  createdAt: Date
+  updatedAt: Date
+  secret: string | null
+  phone: string | null
+  lastChallengedAt: Date | null
+}
+
+export interface Sessions {
+  id: string
+  userId: string
+  createdAt: Date | null
+  updatedAt: Date | null
+  factorId: string | null
+  aal: string | null
+  notAfter: Date | null
+  refreshedAt: Date | null
+  userAgent: string | null
+  ip: string | null
+  tag: string | null
+}
+
+export interface Roles {
+  id: number
+  createdAt: Date
+  key: string
+  name: string | null
+}
+
+export interface SchemaMigrations {
+  version: string
+}
+
+export interface Secrets {
+  id: string
+  name: string | null
+  description: string
+  secret: string
+  keyId: string | null
+  nonce: unknown | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface MfaAmrClaims {
+  sessionId: string
+  createdAt: Date
+  updatedAt: Date
+  authenticationMethod: string
+  id: string
+}
+
+export interface MfaChallenges {
+  id: string
+  factorId: string
+  createdAt: Date
+  verifiedAt: Date | null
+  ipAddress: string
+  otpCode: string | null
+}
+
+export interface DeviceKinds {
+  createdAt: Date
+  categoryId: number | null
+  name: string | null
+  meta: any
+  image: any | null
+  brand: string | null
+  manufacturer: string | null
+  description: string | null
+  datasheet: string | null
+  unit: string | null
+  price: string | null
+  deletedAt: Date | null
+  id: string
+  allowedBorrowRoles: string[] | null
+  allowedViewRoles: string[] | null
+  isBorrowableLabOnly: boolean
+}
+
+export interface ValidKey {
+  id: string | null
+  name: string | null
   status: string | null
-  created: Date
-  expires: Date | null
   keyType: string | null
   keyId: number | null
   keyContext: unknown | null
-  name: string | null
+  created: Date | null
+  expires: Date | null
   associatedData: string | null
-  rawKey: unknown | null
-  rawKeyNonce: unknown | null
-  parentKey: string | null
-  comment: string | null
-  userData: string | null
 }
 
-export interface Labs {
-  id: string
+export interface Categories {
+  id: number
   createdAt: Date
-  name: string | null
-  faculty: string | null
-  room: string | null
-  branch: string | null
-  timetable: any
-  adminId: string | null
-  deletedAt: Date | null
+  name: string
+  quantity: number | null
 }
 
-export interface Users_Auth {
+export interface MaskingRule {
+  attrelid: string | null
+  attnum: number | null
+  relnamespace: string | null
+  relname: string | null
+  attname: string | null
+  formatType: string | null
+  colDescription: string | null
+  keyIdColumn: string | null
+  keyId: string | null
+  associatedColumns: string | null
+  nonceColumn: string | null
+  viewName: string | null
+  priority: number | null
+  securityInvoker: boolean | null
+}
+
+export interface HttpRequestQueue {
+  id: number
+  method: string
+  url: string
+  headers: any
+  body: unknown | null
+  timeoutMilliseconds: number
+}
+
+export interface SamlRelayStates {
+  id: string
+  ssoProviderId: string
+  requestId: string
+  forEmail: string | null
+  redirectTo: string | null
+  createdAt: Date | null
+  updatedAt: Date | null
+  flowStateId: string | null
+}
+
+export interface DecryptedSecrets {
+  id: string | null
+  name: string | null
+  description: string | null
+  secret: string | null
+  decryptedSecret: string | null
+  keyId: string | null
+  nonce: unknown | null
+  createdAt: Date | null
+  updatedAt: Date | null
+}
+
+export interface Extensions {
+  id: string
+  type: string | null
+  settings: any | null
+  tenantExternalId: string | null
+  insertedAt: Date
+  updatedAt: Date
+}
+
+export interface Users {
   instanceId: string | null
   id: string
   aud: string | null
@@ -674,43 +450,188 @@ export interface Users_Auth {
   isAnonymous: boolean
 }
 
-export interface Extensions {
+export interface Key {
   id: string
-  type: string | null
-  settings: any | null
-  tenantExternalId: string | null
-  insertedAt: Date
-  updatedAt: Date
+  status: string | null
+  created: Date
+  expires: Date | null
+  keyType: string | null
+  keyId: number | null
+  keyContext: unknown | null
+  name: string | null
+  associatedData: string | null
+  rawKey: unknown | null
+  rawKeyNonce: unknown | null
+  parentKey: string | null
+  comment: string | null
+  userData: string | null
 }
 
-export interface Permissions {
-  createdAt: Date
-  roleId: number
-  resourceId: number
-  actionId: number
-  priority: number
-}
-
-export interface UsedQrTokens {
-  id: number
-  createdAt: Date
-  token: string
-  userId: string
-}
-
-export interface Activities {
-  id: string
-  type: ActivityType
-  createdAt: Date
-  note: string | null
-}
-
-export interface ShipmentsDevices {
+export interface MaintenancesDevices {
   id: string
   prevStatus: DeviceStatus | null
   afterStatus: DeviceStatus | null
-  shipmentId: string
+  maintainingId: string
   deviceId: string | null
+}
+
+export interface RoleHistories {
+  createdAt: Date
+  granteeId: string
+  granterId: string
+  permissions: any | null
+  effectiveStart: Date
+  effectiveEnd: Date
+}
+
+export interface RefreshTokens {
+  instanceId: string | null
+  id: number
+  token: string | null
+  userId: string | null
+  revoked: boolean | null
+  createdAt: Date | null
+  updatedAt: Date | null
+  parent: string | null
+  sessionId: string | null
+}
+
+export interface Hooks {
+  id: number
+  hookTableId: number
+  hookName: string
+  createdAt: Date
+  requestId: number | null
+}
+
+export interface S3MultipartUploads {
+  id: string
+  inProgressSize: number
+  uploadSignature: string
+  bucketId: string
+  key: string
+  version: string
+  ownerId: string | null
+  createdAt: Date
+  userMetadata: any | null
+}
+
+export interface SsoProviders {
+  id: string
+  resourceId: string | null
+  createdAt: Date | null
+  updatedAt: Date | null
+}
+
+export interface ReceiptsDevices {
+  borrowedReceiptId: string
+  deviceId: string
+  prevQuality: DeviceStatus | null
+  borrowId: string | null
+  returnId: string | null
+  expectedReturnedAt: Date
+  id: string
+  expectedReturnedLabId: string | null
+  afterQuality: DeviceStatus | null
+  returnedReceiptId: string | null
+}
+
+export interface Maintenances {
+  id: string
+  status: MaintenanceStatus
+  maintainerId: string | null
+  finishedAt: Date | null
+  labId: string
+}
+
+export interface Migrations_Storage {
+  id: number
+  name: string
+  hash: string
+  executedAt: Date | null
+}
+
+export interface Users_Public {
+  id: string
+  createdAt: Date
+  name: string
+  meta: any
+  email: string | null
+  password: string | null
+  image: string | null
+  tel: string | null
+  deletedAt: Date | null
+  lastActiveAt: Date | null
+}
+
+export interface SsoDomains {
+  id: string
+  ssoProviderId: string
+  domain: string
+  createdAt: Date | null
+  updatedAt: Date | null
+}
+
+export interface InventoryAssessments {
+  id: string
+  finishedAt: Date | null
+  labId: string
+  accountantId: string | null
+  status: AssessmentStatus
+}
+
+export interface Resources {
+  id: number
+  createdAt: Date
+  name: string
+  type: string | null
+}
+
+export interface UserRoles {
+  createdAt: Date
+  userId: string
+  roleId: number
+}
+
+export interface Identities {
+  providerId: string
+  userId: string
+  identityData: any
+  provider: string
+  lastSignInAt: Date | null
+  createdAt: Date | null
+  updatedAt: Date | null
+  email: string | null
+  id: string
+}
+
+export interface OneTimeTokens {
+  id: string
+  userId: string
+  tokenType: string
+  tokenHash: string
+  relatesTo: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface HttpResponse {
+  id: number | null
+  statusCode: number | null
+  contentType: string | null
+  headers: any | null
+  content: string | null
+  timedOut: boolean | null
+  errorMsg: string | null
+  created: Date
+}
+
+export interface Messages {
+  id: number
+  topic: string
+  extension: string
+  insertedAt: Date
+  updatedAt: Date
 }
 
 export interface Subscription {
@@ -721,6 +642,76 @@ export interface Subscription {
   claims: any
   claimsRole: string
   createdAt: Date
+}
+
+export interface Tenants {
+  id: string
+  name: string | null
+  externalId: string | null
+  jwtSecret: string | null
+  maxConcurrentUsers: number
+  insertedAt: Date
+  updatedAt: Date
+  maxEventsPerSecond: number
+  postgresCdcDefault: string | null
+  maxBytesPerSecond: number
+  maxChannelsPerClient: number
+  maxJoinsPerSecond: number
+  suspend: boolean | null
+  jwtJwks: any | null
+  notifyPrivateAlpha: boolean | null
+}
+
+export interface ShipmentsDevices {
+  id: string
+  prevStatus: DeviceStatus | null
+  afterStatus: DeviceStatus | null
+  shipmentId: string
+  deviceId: string | null
+}
+
+export interface UsedQrTokens {
+  id: number
+  createdAt: Date
+  token: string
+  userId: string
+}
+
+export interface PgStatStatementsInfo {
+  dealloc: number | null
+  statsReset: Date | null
+}
+
+export interface Activities {
+  id: string
+  type: ActivityType
+  createdAt: Date
+  note: string | null
+}
+
+export interface Instances {
+  id: string
+  uuid: string | null
+  rawBaseConfig: string | null
+  createdAt: Date | null
+  updatedAt: Date | null
+}
+
+export interface DecryptedKey {
+  id: string | null
+  status: string | null
+  created: Date | null
+  expires: Date | null
+  keyType: string | null
+  keyId: number | null
+  keyContext: unknown | null
+  name: string | null
+  associatedData: string | null
+  rawKey: unknown | null
+  decryptedRawKey: unknown | null
+  rawKeyNonce: unknown | null
+  parentKey: string | null
+  comment: string | null
 }
 
 export interface S3MultipartUploadsParts {
@@ -736,11 +727,21 @@ export interface S3MultipartUploadsParts {
   createdAt: Date
 }
 
-export interface Instances {
+export interface SchemaMigrations_Realtime {
+  version: number
+  insertedAt: Date | null
+}
+
+export interface SchemaMigrations_Realtime {
+  version: number
+  insertedAt: Date | null
+}
+
+export interface AuditLogEntries {
+  instanceId: string | null
   id: string
-  uuid: string | null
-  rawBaseConfig: string | null
+  payload: any | null
   createdAt: Date | null
-  updatedAt: Date | null
+  ipAddress: string
 }
 

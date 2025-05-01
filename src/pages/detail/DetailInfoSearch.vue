@@ -28,7 +28,7 @@ const loadingInventory = ref(true);
 const accessories = ref<Accessory[]>([]);
 const loadingAccessories = ref(false);
 
-const activeTab = ref("borrowed");
+const activeTab = ref("inventory");
 const borrowedDevices = ref<Array<any>>([]);
 const maintenanceDevices = ref<Array<any>>([]);
 const transportDevices = ref<Array<any>>([]);
@@ -56,12 +56,6 @@ const groupedBorrowedDevices = ref<GroupedDevice[]>([]);
 const userActivities = ref<UserActivityItem[]>([]);
 const loadingUserActivities = ref(false);
 const userActiveTab = ref("borrowed");
-
-const pageTitle = computed(() => {
-  if (mode.value === "device") return "THÔNG TIN THIẾT BỊ";
-  if (mode.value === "user") return "THÔNG TIN NGƯỜI DÙNG";
-  return "TRA CỨU NHANH";
-});
 
 type GroupedDevice = {
   kindId: string;
@@ -623,13 +617,7 @@ const getActivityStatusText = (status: string) => {
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-center">{{ pageTitle }}</h1>
-    <p class="text-center text-gray-500 mb-2">
-      Sử dụng máy scan quét mã QR thiết bị/người dùng để tra cứu thông tin
-      nhanh.
-    </p>
-
-    <div v-if="mode === 'idle'" class="text-center">
+    <div v-if="mode === 'idle'" class="text-center py-12">
       <div class="max-w-sm mx-auto bg-white rounded-full shadow p-16">
         <div
           class="rounded-full bg-gray-100 mx-auto w-36 h-36 flex items-center justify-center mb-4"
@@ -684,6 +672,22 @@ const getActivityStatusText = (status: string) => {
             <Tabs v-model="activeTab" class="w-full">
               <div class="border-b border-gray-200">
                 <TabsList class="bg-transparent p-0 w-full flex">
+                  <TabsTrigger
+                    value="inventory"
+                    class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                  >
+                    <div class="flex items-center justify-center gap-1 w-full">
+                      <div class="rounded-full bg-blue-50 p-1">
+                        <PackageIcon class="h-4 w-4 text-blue-600" />
+                      </div>
+                      <span class="whitespace-nowrap">TỒN KHO</span>
+                      <span
+                        class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                      >
+                        {{ inventory.length || 0 }}
+                      </span>
+                    </div>
+                  </TabsTrigger>
                   <TabsTrigger
                     value="borrowed"
                     class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
@@ -748,27 +752,136 @@ const getActivityStatusText = (status: string) => {
                       </span>
                     </div>
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="inventory"
-                    class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
-                  >
-                    <div class="flex items-center justify-center gap-1 w-full">
-                      <div class="rounded-full bg-blue-50 p-1">
-                        <PackageIcon class="h-4 w-4 text-blue-600" />
-                      </div>
-                      <span class="whitespace-nowrap">TỒN KHO</span>
-                      <span
-                        class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
-                      >
-                        {{ inventory.length || 0 }}
-                      </span>
-                    </div>
-                  </TabsTrigger>
                 </TabsList>
               </div>
               <TabsContent
+                value="inventory"
+                class="p-4 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+              >
+                <div v-if="loadingInventory">
+                  <div class="flex justify-center items-center p-8">
+                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  </div>
+                </div>
+                <div v-else-if="inventory && inventory.length">
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 border">
+                      <thead>
+                        <tr>
+                          <th
+                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            rowspan="1"
+                          >
+                            PHÒNG THÍ NGHIỆM
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                          >
+                            Tốt
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                          >
+                            Hư
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                          >
+                            Loại bỏ
+                          </th>
+                          <th
+                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                          >
+                            Đã mất
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-gray-200 bg-white">
+                        <tr
+                          v-for="item in inventory"
+                          :key="item.location"
+                          class="hover:bg-gray-50"
+                        >
+                          <td class="px-4 py-3 text-sm border">
+                            {{ item.location }}
+                          </td>
+                          <td class="px-4 py-3 text-sm text-center border">
+                            {{ item.healthy }}
+                          </td>
+                          <td class="px-4 py-3 text-sm text-center border">
+                            {{ item.broken }}
+                          </td>
+                          <td class="px-4 py-3 text-sm text-center border">
+                            {{ item.discarded }}
+                          </td>
+                          <td class="px-4 py-3 text-sm text-center border">
+                            {{ item.lost }}
+                          </td>
+                        </tr>
+                        <tr class="bg-gray-50 font-medium">
+                          <td class="px-4 py-3 text-sm border font-semibold">
+                            TỔNG CỘNG
+                          </td>
+                          <td
+                            class="px-4 py-3 text-sm text-center border font-semibold"
+                          >
+                            {{
+                              inventory.reduce(
+                                (sum, item) =>
+                                  sum + (parseInt(item.healthy) || 0),
+                                0
+                              )
+                            }}
+                          </td>
+                          <td
+                            class="px-4 py-3 text-sm text-center border font-semibold"
+                          >
+                            {{
+                              inventory.reduce(
+                                (sum, item) =>
+                                  sum + (parseInt(item.broken) || 0),
+                                0
+                              )
+                            }}
+                          </td>
+                          <td
+                            class="px-4 py-3 text-sm text-center border font-semibold"
+                          >
+                            {{
+                              inventory.reduce(
+                                (sum, item) =>
+                                  sum + (parseInt(item.discarded) || 0),
+                                0
+                              )
+                            }}
+                          </td>
+                          <td
+                            class="px-4 py-3 text-sm text-center border font-semibold"
+                          >
+                            {{
+                              inventory.reduce(
+                                (sum, item) => sum + (parseInt(item.lost) || 0),
+                                0
+                              )
+                            }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div v-else class="flex flex-col items-center py-6">
+                  <div class="rounded-full bg-gray-100 p-3 mb-3">
+                    <PackageIcon class="size-6 text-gray-400" />
+                  </div>
+                  <p class="text-sm text-gray-500">
+                    Không có thiết bị nào trong kho
+                  </p>
+                </div>
+              </TabsContent>
+              <TabsContent
                 value="borrowed"
-                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
+                class="p-4 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingBorrowedItems">
                   <div class="flex justify-center items-center p-8">
@@ -873,7 +986,7 @@ const getActivityStatusText = (status: string) => {
               </TabsContent>
               <TabsContent
                 value="audit"
-                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
+                class="p-4 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingAuditItems">
                   <div class="flex justify-center items-center p-8">
@@ -972,7 +1085,7 @@ const getActivityStatusText = (status: string) => {
               </TabsContent>
               <TabsContent
                 value="maintenance"
-                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
+                class="p-4 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingMaintenanceItems">
                   <div class="flex justify-center items-center p-8">
@@ -1083,7 +1196,7 @@ const getActivityStatusText = (status: string) => {
               </TabsContent>
               <TabsContent
                 value="transport"
-                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
+                class="p-4 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingTransportItems">
                   <div class="flex justify-center items-center p-8">
@@ -1223,136 +1336,11 @@ const getActivityStatusText = (status: string) => {
                   </p>
                 </div>
               </TabsContent>
-              <TabsContent
-                value="inventory"
-                class="p-4 h-[calc(100vh-16rem)] overflow-y-auto mt-0"
-              >
-                <div v-if="loadingInventory">
-                  <div class="flex justify-center items-center p-8">
-                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
-                  </div>
-                </div>
-                <div v-else-if="inventory && inventory.length">
-                  <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border">
-                      <thead>
-                        <tr>
-                          <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
-                            rowspan="1"
-                          >
-                            PHÒNG THÍ NGHIỆM
-                          </th>
-                          <th
-                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
-                          >
-                            Tốt
-                          </th>
-                          <th
-                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
-                          >
-                            Hư
-                          </th>
-                          <th
-                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
-                          >
-                            Loại bỏ
-                          </th>
-                          <th
-                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
-                          >
-                            Đã mất
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-gray-200 bg-white">
-                        <tr
-                          v-for="item in inventory"
-                          :key="item.location"
-                          class="hover:bg-gray-50"
-                        >
-                          <td class="px-4 py-3 text-sm border">
-                            {{ item.location }}
-                          </td>
-                          <td class="px-4 py-3 text-sm text-center border">
-                            {{ item.healthy }}
-                          </td>
-                          <td class="px-4 py-3 text-sm text-center border">
-                            {{ item.broken }}
-                          </td>
-                          <td class="px-4 py-3 text-sm text-center border">
-                            {{ item.discarded }}
-                          </td>
-                          <td class="px-4 py-3 text-sm text-center border">
-                            {{ item.lost }}
-                          </td>
-                        </tr>
-                        <tr class="bg-gray-50 font-medium">
-                          <td class="px-4 py-3 text-sm border font-semibold">
-                            TỔNG CỘNG
-                          </td>
-                          <td
-                            class="px-4 py-3 text-sm text-center border font-semibold"
-                          >
-                            {{
-                              inventory.reduce(
-                                (sum, item) =>
-                                  sum + (parseInt(item.healthy) || 0),
-                                0
-                              )
-                            }}
-                          </td>
-                          <td
-                            class="px-4 py-3 text-sm text-center border font-semibold"
-                          >
-                            {{
-                              inventory.reduce(
-                                (sum, item) =>
-                                  sum + (parseInt(item.broken) || 0),
-                                0
-                              )
-                            }}
-                          </td>
-                          <td
-                            class="px-4 py-3 text-sm text-center border font-semibold"
-                          >
-                            {{
-                              inventory.reduce(
-                                (sum, item) =>
-                                  sum + (parseInt(item.discarded) || 0),
-                                0
-                              )
-                            }}
-                          </td>
-                          <td
-                            class="px-4 py-3 text-sm text-center border font-semibold"
-                          >
-                            {{
-                              inventory.reduce(
-                                (sum, item) => sum + (parseInt(item.lost) || 0),
-                                0
-                              )
-                            }}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                <div v-else class="flex flex-col items-center py-6">
-                  <div class="rounded-full bg-gray-100 p-3 mb-3">
-                    <PackageIcon class="size-6 text-gray-400" />
-                  </div>
-                  <p class="text-sm text-gray-500">
-                    Không có thiết bị nào trong kho
-                  </p>
-                </div>
-              </TabsContent>
             </Tabs>
           </div>
 
           <div
-            class="bg-white h-[calc(100vh-12rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
+            class="bg-white h-[calc(100vh-6rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
           >
             <div class="p-4 border-b border-gray-200">
               <h2 class="text-xl font-semibold text-gray-700">
@@ -1442,8 +1430,7 @@ const getActivityStatusText = (status: string) => {
                       <div class="w-32 text-sm text-gray-500">Quyền mượn</div>
                       <div class="flex-1 text-sm text-gray-900">
                         {{
-                          deviceDetail.allowedBorrowRoles?.join(", ") ||
-                          "Sinh viên, Giảng viên"
+                          /*deviceDetail.allowedBorrowRoles?.join(", ") ||*/ "Sinh viên, Giảng viên"
                         }}
                       </div>
                     </div>
@@ -1577,7 +1564,7 @@ const getActivityStatusText = (status: string) => {
               </TabsList>
             </div>
 
-            <div class="h-[calc(100vh-16rem)] overflow-y-auto">
+            <div class="h-[calc(100vh-10rem)] overflow-y-auto">
               <TabsContent value="borrowed" class="p-4 mt-0">
                 <div
                   v-if="loadingUserBorrowedItems"
@@ -1872,7 +1859,7 @@ const getActivityStatusText = (status: string) => {
         </div>
 
         <div
-          class="bg-white h-[calc(100vh-12rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
+          class="bg-white h-[calc(100vh-6rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
         >
           <div class="border-b border-gray-200 p-4">
             <h2 class="text-xl font-semibold text-gray-700">
@@ -1919,7 +1906,7 @@ const getActivityStatusText = (status: string) => {
               <div class="grid grid-cols-[100px_1fr]">
                 <div class="text-sm text-gray-500">Tình trạng</div>
                 <div class="text-sm text-red-600">
-                  Cấm hoạt động (đến 20/04/2025)
+                  Cấm hoạt động (đến 05/05/2025)
                 </div>
               </div>
 
@@ -1975,13 +1962,10 @@ const getActivityStatusText = (status: string) => {
               </div>
             </div>
 
-            <div class="mt-6 px-4 pb-4">
-              <button
-                type="button"
-                class="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
+            <div class="px-4 pb-4">
+              <Button class="w-full bg-blue-600 hover:bg-blue-700">
                 Cho phép mượn
-              </button>
+              </Button>
             </div>
           </div>
         </div>

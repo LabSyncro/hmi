@@ -4,7 +4,7 @@ export const statusMap: Record<DeviceStatus, string> = {
   healthy: "Tốt",
   broken: "Hư hỏng",
   borrowing: "Đang mượn",
-  discarded: "Đã bỏ",
+  discarded: "Loại bỏ",
   assessing: "Đang kiểm đếm",
   maintaining: "Đang bảo trì",
   shipping: "Đang vận chuyển",
@@ -134,10 +134,12 @@ export type ShipmentDeviceItem = BaseDeviceItem & {
   prevCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus] | null;
   afterCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus] | null;
   shipmentId?: string | null;
+  scanned?: boolean;
 };
 
 export type ShipmentDevice = Omit<Device, "items"> & {
   items: ShipmentDeviceItem[];
+  bulkUnscannedCondition?: (typeof DeviceStatus)[keyof typeof DeviceStatus];
 };
 
 export type Accessory = {
