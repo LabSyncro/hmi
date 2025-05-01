@@ -28,8 +28,37 @@ deadpool-postgres = "0.14.1"
 postgres-types = { version = "0.2.9", features = ["derive"] }
 async-trait = "0.1.87"
 thiserror = "2.0.12"
-uuid = { version = "1.15.1", features = ["v4", "serde"] }
+uuid = { version = "1.16.0", features = ["v4", "serde"] }
 chrono = { version = "0.4.40", features = ["serde"] }
 config = "0.15.9"
 dotenvy = "0.15.7"
 futures = "0.3.31"
+criterion = { version = "0.5.1", features = ["async_tokio", "html_reports"] }
+
+[[bench]]
+name = "borrow_return_bench"
+harness = false
+
+[[bench]]
+name = "audit_bench"
+harness = false
+
+[[bench]]
+name = "device_bench"
+harness = false
+
+[[bench]]
+name = "maintenance_bench"
+harness = false
+
+[[bench]]
+name = "shipment_bench"
+harness = false
+
+[[bench]]
+name = "search_bench"
+harness = false
+
+[[bench]]
+name = "user_bench"
+harness = false
