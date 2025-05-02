@@ -1,12 +1,12 @@
-use criterion::{black_box, BenchmarkId, criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use serde_json::json;
 use tokio::runtime::Runtime;
 use uuid::Uuid;
 
-use hmi_lib::commands::db_commands::{InsertParams, QueryParams};
+use hmi_lib::commands::db_commands::QueryParams;
 
 mod common;
-use common::{setup_bench_env, cleanup_test_tables, AppState};
+use common::{cleanup_test_tables, populate_large_test_data, setup_bench_env, AppState};
 
 async fn fetch_devices(
     app_state: &AppState,
@@ -19,14 +19,18 @@ async fn fetch_devices(
     let order_clause = match params.order_by {
         Some(ref order) if !order.is_empty() => {
             let (field, is_asc) = &order[0];
-            format!("ORDER BY {} {}", field, if *is_asc { "ASC" } else { "DESC" })
+            format!(
+                "ORDER BY {} {}",
+                field,
+                if *is_asc { "ASC" } else { "DESC" }
+            )
         }
         _ => "ORDER BY bench_devices.full_id ASC".to_string(),
     };
 
     let sql = format!(
-        "SELECT 
-            d.id::text, 
+        "SELECT
+            d.id::text,
             d.full_id,
             dk.name as kind_name,
             dk.id::text as kind_id,
@@ -34,11 +38,11 @@ async fn fetch_devices(
             l.id::text as lab_id,
             d.status::text,
             COUNT(*) OVER() as total_count
-        FROM 
+        FROM
             bench_devices d
             JOIN bench_device_kinds dk ON d.kind = dk.id
             JOIN bench_labs l ON d.lab_id = l.id
-        WHERE 
+        WHERE
             d.deleted_at IS NULL
         {} LIMIT {} OFFSET {}",
         order_clause, limit, offset
@@ -51,7 +55,7 @@ async fn fetch_devices(
 
     for row in rows {
         _total_count = row.get::<_, i64>("total_count");
-        
+
         results.push(json!({
             "id": row.get::<_, String>(0),
             "fullId": row.get::<_, String>(1),
@@ -89,8 +93,8 @@ async fn fetch_device_details(
     };
 
     let sql = "
-        SELECT 
-            d.id::text, 
+        SELECT
+            d.id::text,
             d.full_id,
             dk.name as kind_name,
             dk.id::text as kind_id,
@@ -102,12 +106,12 @@ async fn fetch_device_details(
             d.status::text,
             c.name as category_name,
             c.id::text as category_id
-        FROM 
+        FROM
             bench_devices d
             JOIN bench_device_kinds dk ON d.kind = dk.id
             JOIN bench_labs l ON d.lab_id = l.id
             LEFT JOIN bench_categories c ON dk.category_id = c.id
-        WHERE 
+        WHERE
             d.id = $1 AND
             d.deleted_at IS NULL";
 
@@ -133,189 +137,943 @@ async fn fetch_device_details(
     }))
 }
 
-async fn create_device(
+async fn get_device_receipt_by_id(
     app_state: &AppState,
-    params: &InsertParams,
+    device_id: &str,
+    lab_id: &str,
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    let mut client = app_state.db.get_client().await?;
-    let transaction = client.transaction().await?;
+    let client = app_state.db.get_client().await?;
 
-    let full_id = params.value.get("fullId").and_then(|v| v.as_str()).unwrap_or("");
-    let kind_id = params.value.get("kindId").and_then(|v| v.as_str()).unwrap_or("");
-    let lab_id = params.value.get("labId").and_then(|v| v.as_str()).unwrap_or("");
-    let status = params.value.get("status").and_then(|v| v.as_str()).unwrap_or("healthy");
-
-    if full_id.is_empty() || kind_id.is_empty() || lab_id.is_empty() {
-        return Ok(json!({ "error": "Missing required fields (fullId, kindId, labId)" }));
+    if device_id.is_empty() || lab_id.is_empty() {
+        return Ok(json!({ "error": "Missing device ID or lab ID" }));
     }
 
-    // Check if full_id already exists
-    let check_query = "SELECT COUNT(*) FROM bench_devices WHERE full_id = $1 AND deleted_at IS NULL";
-    let count: i64 = transaction.query_one(check_query, &[&full_id]).await?.get(0);
-    
-    if count > 0 {
-        return Ok(json!({ "error": "A device with this ID already exists" }));
+    let device_uuid = match Uuid::parse_str(device_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(json!({ "error": "Invalid device ID format" })),
+    };
+
+    let lab_uuid = match Uuid::parse_str(lab_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(json!({ "error": "Invalid lab ID format" })),
+    };
+
+    let sql = "
+        SELECT
+            d.id,
+            d.full_id,
+            d.status,
+            d.kind,
+            d.lab_id,
+            dk.image,
+            dk.unit,
+            dk.name AS device_name,
+            dk.allowed_borrow_roles,
+            dk.allowed_view_roles,
+            dk.brand,
+            dk.manufacturer,
+            dk.description,
+            dk.is_borrowable_lab_only,
+            c.name AS category_name,
+            l.room,
+            l.branch,
+            r.id AS receipt_id,
+            a.created_at AS borrowed_at,
+            rd.expected_returned_at,
+            rd.prev_quality,
+            bl.name AS borrowed_lab,
+            rl.name AS expected_return_lab,
+            actor.id AS borrower_id,
+            actor.name AS borrower_name,
+            actor.image AS borrower_image
+        FROM
+            bench_devices d
+            LEFT JOIN bench_device_kinds dk ON d.kind = dk.id
+            LEFT JOIN bench_labs l ON d.lab_id = l.id
+            LEFT JOIN bench_categories c ON dk.category_id = c.id
+            LEFT JOIN bench_receipts_devices rd ON d.id = rd.device_id AND rd.returned_receipt_id IS NULL
+            LEFT JOIN bench_receipts r ON rd.borrowed_receipt_id = r.id
+            LEFT JOIN bench_users actor ON r.actor_id = actor.id
+            LEFT JOIN bench_labs bl ON r.lab_id = bl.id
+            LEFT JOIN bench_labs rl ON rd.expected_returned_lab_id = rl.id
+            LEFT JOIN bench_activities a ON rd.borrow_id = a.id
+        WHERE
+            d.id = $1
+            AND d.deleted_at IS NULL
+    ";
+
+    let row = match client.query_opt(sql, &[&device_uuid]).await {
+        Ok(Some(row)) => row,
+        Ok(None) => return Ok(json!({ "error": "Device not found" })),
+        Err(err) => return Err(Box::new(err)),
+    };
+
+    let device_lab_id: Uuid = row.get("lab_id");
+    if device_lab_id != lab_uuid {
+        return Ok(json!({ "error": "Device does not belong to this lab" }));
     }
 
-    // Insert the device
-    let query = format!(
-        "INSERT INTO bench_devices (id, full_id, kind, lab_id, status)
-        VALUES (gen_random_uuid(), '{}', '{}'::uuid, '{}'::uuid, '{}'::bench_device_status)
-        RETURNING id::text",
-        full_id, kind_id, lab_id, status
-    );
-
-    let row = transaction.query_one(&query, &[]).await?;
-    let device_id = row.get::<_, String>(0);
-
-    transaction.commit().await?;
+    let borrower_id: Option<Uuid> = row.try_get("borrower_id").ok();
+    let borrowed_at: Option<chrono::DateTime<chrono::Utc>> = row.try_get("borrowed_at").ok();
 
     Ok(json!({
-        "success": true,
-        "id": device_id
+        "fullId": row.get::<_, String>("full_id"),
+        "status": row.get::<_, String>("status"),
+        "prevQuality": row.try_get::<_, String>("prev_quality").ok(),
+        "image": row.get::<_, serde_json::Value>("image"),
+        "unit": row.get::<_, String>("unit"),
+        "deviceName": row.get::<_, String>("device_name"),
+        "allowedBorrowRoles": row.get::<_, Vec<String>>("allowed_borrow_roles"),
+        "allowedViewRoles": row.get::<_, Vec<String>>("allowed_view_roles"),
+        "brand": row.get::<_, Option<String>>("brand"),
+        "manufacturer": row.get::<_, Option<String>>("manufacturer"),
+        "description": row.get::<_, Option<String>>("description"),
+        "isBorrowableLabOnly": row.get::<_, bool>("is_borrowable_lab_only"),
+        "categoryName": row.get::<_, String>("category_name"),
+        "labRoom": row.get::<_, String>("room"),
+        "labBranch": row.get::<_, String>("branch"),
+        "kind": row.get::<_, Uuid>("kind").to_string(),
+        "receiptId": row.try_get::<_, Uuid>("receipt_id").ok().map(|id| id.to_string()),
+        "borrower": borrower_id.map(|id| {
+            json!({
+                "id": id.to_string(),
+                "name": row.get::<_, String>("borrower_name"),
+                "image": row.get::<_, serde_json::Value>("borrower_image")
+            })
+        }),
+        "borrowedAt": borrowed_at.map(|dt| dt.to_rfc3339()),
+        "expectedReturnedAt": row.try_get::<_, chrono::DateTime<chrono::Utc>>("expected_returned_at")
+            .ok()
+            .map(|dt| dt.to_rfc3339()),
+        "borrowedLab": row.try_get::<_, String>("borrowed_lab").ok(),
+        "expectedReturnLab": row.try_get::<_, String>("expected_return_lab").ok()
     }))
 }
 
-async fn update_device(
+async fn get_device_audit_by_id(
     app_state: &AppState,
-    params: &InsertParams,
+    device_id: &str,
+    lab_id: &str,
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    let mut client = app_state.db.get_client().await?;
-    let transaction = client.transaction().await?;
+    let client = app_state.db.get_client().await?;
 
-    let device_id = params.value.get("id").and_then(|v| v.as_str()).unwrap_or("");
-    if device_id.is_empty() {
-        return Ok(json!({ "error": "Device ID is required" }));
+    if device_id.is_empty() || lab_id.is_empty() {
+        return Ok(json!({ "error": "Missing device ID or lab ID" }));
     }
 
-    let full_id = params.value.get("fullId").and_then(|v| v.as_str());
-    let kind_id = params.value.get("kindId").and_then(|v| v.as_str());
-    let lab_id = params.value.get("labId").and_then(|v| v.as_str());
-    let status = params.value.get("status").and_then(|v| v.as_str());
+    let device_uuid = match Uuid::parse_str(device_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(json!({ "error": "Invalid device ID format" })),
+    };
 
-    // Build the SET part of the query
-    let mut updates = Vec::new();
-    
-    if let Some(full_id_val) = full_id {
-        updates.push(format!("full_id = '{}'", full_id_val));
-    }
-    
-    if let Some(kind_val) = kind_id {
-        updates.push(format!("kind = '{}'::uuid", kind_val));
-    }
-    
-    if let Some(lab_val) = lab_id {
-        updates.push(format!("lab_id = '{}'::uuid", lab_val));
-    }
-    
-    if let Some(status_val) = status {
-        updates.push(format!("status = '{}'::bench_device_status", status_val));
+    let lab_uuid = match Uuid::parse_str(lab_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(json!({ "error": "Invalid lab ID format" })),
+    };
+
+    let sql = "
+        WITH active_assessment AS (
+            SELECT
+                ia.id
+            FROM bench_inventory_assessments ia
+            WHERE ia.status = 'assessing'
+                AND ia.finished_at IS NULL
+                AND ia.lab_id = $2
+            LIMIT 1
+        )
+        SELECT
+            d.id,
+            d.full_id,
+            CASE
+                WHEN d.status = 'assessing' THEN COALESCE(iad.prev_status, d.status)
+                ELSE d.status
+            END as status,
+            iad.after_status as audit_condition,
+            d.status as current_status,
+            d.kind,
+            d.lab_id,
+            dk.image,
+            dk.unit,
+            dk.name AS device_name,
+            dk.is_borrowable_lab_only,
+            l.room,
+            l.branch,
+            c.name AS category_name
+        FROM
+            bench_devices d
+            LEFT JOIN bench_device_kinds dk ON d.kind = dk.id
+            LEFT JOIN bench_labs l ON d.lab_id = l.id
+            LEFT JOIN bench_categories c ON dk.category_id = c.id
+            LEFT JOIN active_assessment aa ON true
+            LEFT JOIN bench_inventory_assessments_devices iad ON iad.device_id = d.id AND iad.assessing_id = aa.id
+        WHERE
+            d.id = $1
+            AND d.deleted_at IS NULL
+    ";
+
+    let row = match client.query_opt(sql, &[&device_uuid, &lab_uuid]).await {
+        Ok(Some(row)) => row,
+        Ok(None) => return Ok(json!({ "error": "Device not found" })),
+        Err(err) => return Err(Box::new(err)),
+    };
+
+    let device_lab_id: Uuid = row.get("lab_id");
+    if device_lab_id != lab_uuid {
+        return Ok(json!({ "error": "Device does not belong to this lab" }));
     }
 
-    if updates.is_empty() {
-        return Ok(json!({ "error": "No fields provided for update" }));
-    }
-
-    let update_clause = updates.join(", ");
-    let query = format!(
-        "UPDATE bench_devices
-        SET {}
-        WHERE id = '{}'::uuid
-        RETURNING id::text",
-        update_clause, device_id
-    );
-
-    let result = transaction.query_opt(&query, &[]).await?;
-    
-    match result {
-        Some(row) => {
-            let updated_id = row.get::<_, String>(0);
-            transaction.commit().await?;
-            
-            Ok(json!({
-                "success": true,
-                "id": updated_id
-            }))
+    Ok(json!({
+        "id": row.get::<_, Uuid>("id").to_string(),
+        "fullId": row.get::<_, String>("full_id"),
+        "status": row.get::<_, String>("status"),
+        "currentStatus": row.get::<_, String>("current_status"),
+        "auditCondition": row.get::<_, String>("audit_condition"),
+        "image": {
+            "mainImage": row.get::<_, serde_json::Value>("image").get("mainImage").and_then(|v| v.as_str()).unwrap_or("")
         },
-        None => {
-            transaction.rollback().await?;
-            
-            Ok(json!({
-                "success": false,
-                "error": "Device not found"
-            }))
-        }
-    }
+        "unit": row.get::<_, String>("unit"),
+        "deviceName": row.get::<_, String>("device_name"),
+        "isBorrowableLabOnly": row.get::<_, bool>("is_borrowable_lab_only"),
+        "labRoom": row.get::<_, String>("room"),
+        "labBranch": row.get::<_, String>("branch"),
+        "kind": row.get::<_, Uuid>("kind").to_string(),
+        "categoryName": row.get::<_, String>("category_name")
+    }))
 }
 
-async fn delete_device(
+async fn get_device_maintenance_by_id(
     app_state: &AppState,
-    params: &InsertParams,
+    device_id: &str,
+    lab_id: Option<&str>,
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    let mut client = app_state.db.get_client().await?;
-    let transaction = client.transaction().await?;
+    let client = app_state.db.get_client().await?;
 
-    let device_id = params.value.get("id").and_then(|v| v.as_str()).unwrap_or("");
     if device_id.is_empty() {
-        return Ok(json!({ "error": "Device ID is required" }));
+        return Ok(json!({ "error": "Missing device ID" }));
     }
 
-    // Soft delete by setting deleted_at
-    let query = format!(
-        "UPDATE bench_devices
-        SET deleted_at = CURRENT_TIMESTAMP
-        WHERE id = '{}'::uuid
-        RETURNING id::text",
-        device_id
-    );
+    let device_uuid = match Uuid::parse_str(device_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(json!({ "error": "Invalid device ID format" })),
+    };
 
-    let result = transaction.query_opt(&query, &[]).await?;
-    
-    match result {
-        Some(row) => {
-            let deleted_id = row.get::<_, String>(0);
-            transaction.commit().await?;
-            
-            Ok(json!({
-                "success": true,
-                "id": deleted_id
-            }))
-        },
-        None => {
-            transaction.rollback().await?;
-            
-            Ok(json!({
-                "success": false,
-                "error": "Device not found"
-            }))
+    let lab_uuid = if let Some(lab_id) = lab_id {
+        match Uuid::parse_str(lab_id) {
+            Ok(uuid) => Some(uuid),
+            Err(_) => return Ok(json!({ "error": "Invalid lab ID format" })),
+        }
+    } else {
+        None
+    };
+
+    let sql = "
+        SELECT
+            d.id,
+            CASE
+                WHEN d.status = 'maintaining' THEN COALESCE(md.prev_status, d.status)
+                ELSE d.status
+            END as status,
+            d.status as current_status,
+            md.after_status as outcome,
+            d.kind,
+            d.lab_id,
+            dk.image,
+            dk.unit,
+            dk.name AS device_name,
+            dk.is_borrowable_lab_only,
+            l.room,
+            l.branch,
+            m.id as maintenance_id,
+            m.maintainer_id as technician_id,
+            u.name as technician_name,
+            a.note as notes,
+            a.created_at
+        FROM
+            bench_devices d
+            LEFT JOIN bench_device_kinds dk ON d.kind = dk.id
+            LEFT JOIN bench_labs l ON d.lab_id = l.id
+            LEFT JOIN bench_maintenances_devices md ON d.id = md.device_id
+            LEFT JOIN bench_maintenances m ON md.maintaining_id = m.id
+            LEFT JOIN bench_users u ON m.maintainer_id = u.id
+            LEFT JOIN bench_activities a ON m.id = a.id
+        WHERE
+            d.id = $1
+            AND d.deleted_at IS NULL
+        ORDER BY
+            a.created_at DESC
+        LIMIT 1
+    ";
+
+    let row = match client.query_opt(sql, &[&device_uuid]).await {
+        Ok(Some(row)) => row,
+        Ok(None) => return Ok(json!({ "error": "Device not found" })),
+        Err(err) => return Err(Box::new(err)),
+    };
+
+    if let Some(lab_uuid) = lab_uuid {
+        let device_lab_id: Uuid = row.get("lab_id");
+        if device_lab_id != lab_uuid {
+            return Ok(json!({ "error": "Device does not belong to this lab" }));
         }
     }
+
+    let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+    let room: String = row.get("room");
+    let branch: String = row.get("branch");
+    let location = if !room.is_empty() && !branch.is_empty() {
+        format!("{}, {}", room, branch)
+    } else {
+        "".to_string()
+    };
+
+    Ok(json!({
+        "id": row.get::<_, Uuid>("id").to_string(),
+        "maintenanceId": row.get::<_, Uuid>("maintenance_id").to_string(),
+        "technician": {
+            "id": row.get::<_, Uuid>("technician_id").to_string(),
+            "name": row.get::<_, String>("technician_name")
+        },
+        "status": row.get::<_, String>("status"),
+        "currentStatus": row.get::<_, String>("current_status"),
+        "outcome": row.get::<_, String>("outcome"),
+        "kind": row.get::<_, Uuid>("kind").to_string(),
+        "deviceName": row.get::<_, String>("device_name"),
+        "image": row.get::<_, serde_json::Value>("image"),
+        "unit": row.get::<_, String>("unit"),
+        "isBorrowableLabOnly": row.get::<_, bool>("is_borrowable_lab_only"),
+        "location": location,
+        "notes": row.try_get::<_, String>("notes").ok(),
+        "createdAt": created_at.to_rfc3339()
+    }))
+}
+
+async fn get_device_shipment_by_id(
+    app_state: &AppState,
+    device_id: &str,
+    lab_id: Option<&str>,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let client = app_state.db.get_client().await?;
+
+    if device_id.is_empty() {
+        return Ok(json!({ "error": "Missing device ID" }));
+    }
+
+    let device_uuid = match Uuid::parse_str(device_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(json!({ "error": "Invalid device ID format" })),
+    };
+
+    let lab_uuid = if let Some(lab_id) = lab_id {
+        match Uuid::parse_str(lab_id) {
+            Ok(uuid) => Some(uuid),
+            Err(_) => return Ok(json!({ "error": "Invalid lab ID format" })),
+        }
+    } else {
+        None
+    };
+
+    let sql = "
+        SELECT
+            d.id,
+            d.full_id,
+            d.status,
+            d.kind,
+            d.lab_id,
+            dk.image,
+            dk.unit,
+            dk.name AS device_name,
+            dk.allowed_borrow_roles,
+            dk.allowed_view_roles,
+            dk.brand,
+            dk.manufacturer,
+            dk.description,
+            dk.is_borrowable_lab_only,
+            c.name AS category_name,
+            l.room,
+            l.branch,
+            sd.prev_status as prev_condition,
+            sd.after_status as after_condition,
+            s.id as shipment_id,
+            s.status as shipment_status,
+            s_start.name AS source_location,
+            s_arrive.name AS destination_location,
+            sender.name AS sender_name,
+            receiver.name AS receiver_name
+        FROM
+            bench_devices d
+            LEFT JOIN bench_device_kinds dk ON d.kind = dk.id
+            LEFT JOIN bench_labs l ON d.lab_id = l.id
+            LEFT JOIN bench_categories c ON dk.category_id = c.id
+            LEFT JOIN bench_shipments_devices sd ON d.id = sd.device_id
+            LEFT JOIN bench_shipments s ON sd.shipment_id = s.id
+            LEFT JOIN bench_labs s_start ON s.start_lab_id = s_start.id
+            LEFT JOIN bench_labs s_arrive ON s.arrive_lab_id = s_arrive.id
+            LEFT JOIN bench_users sender ON s.sender_id = sender.id
+            LEFT JOIN bench_users receiver ON s.receiver_id = receiver.id
+        WHERE
+            d.id = $1
+            AND d.deleted_at IS NULL
+        ORDER BY
+            s.from_at DESC
+        LIMIT 1
+    ";
+
+    let row = match client.query_opt(sql, &[&device_uuid]).await {
+        Ok(Some(row)) => row,
+        Ok(None) => return Ok(json!({ "error": "Device not found" })),
+        Err(err) => return Err(Box::new(err)),
+    };
+
+    if let Some(lab_uuid) = lab_uuid {
+        let device_lab_id: Uuid = row.get("lab_id");
+        if device_lab_id != lab_uuid {
+            return Ok(json!({ "error": "Device does not belong to this lab" }));
+        }
+    }
+
+    Ok(json!({
+        "status": row.get::<_, String>("status"),
+        "prevCondition": row.try_get::<_, String>("prev_condition").ok(),
+        "afterCondition": row.try_get::<_, String>("after_condition").ok(),
+        "shipmentId": row.try_get::<_, Uuid>("shipment_id").ok().map(|id| id.to_string()),
+        "sourceLocation": row.try_get::<_, String>("source_location").ok(),
+        "destinationLocation": row.try_get::<_, String>("destination_location").ok(),
+        "senderName": row.try_get::<_, String>("sender_name").ok(),
+        "receiverName": row.try_get::<_, String>("receiver_name").ok(),
+        "image": row.get::<_, serde_json::Value>("image"),
+        "unit": row.get::<_, String>("unit"),
+        "deviceName": row.get::<_, String>("device_name"),
+        "isBorrowableLabOnly": row.get::<_, bool>("is_borrowable_lab_only")
+    }))
+}
+
+async fn get_device_inventory_in_audit(
+    app_state: &AppState,
+    kind_id: &str,
+    lab_id: &str,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let client = app_state.db.get_client().await?;
+
+    if kind_id.is_empty() || lab_id.is_empty() {
+        return Ok(json!({ "error": "Missing kind ID or lab ID" }));
+    }
+
+    let kind_uuid = match Uuid::parse_str(kind_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(json!({ "error": "Invalid kind ID format" })),
+    };
+
+    let lab_uuid = match Uuid::parse_str(lab_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(json!({ "error": "Invalid lab ID format" })),
+    };
+
+    let sql = "
+        WITH lab_devices AS (
+            SELECT
+                d.id,
+                d.status
+            FROM bench_devices d
+            WHERE d.kind = $1
+            AND d.lab_id = $2
+            AND d.deleted_at IS NULL
+        ),
+        lab_inventory AS (
+            SELECT
+                COUNT(*) FILTER (WHERE status IN ('healthy', 'broken', 'discarded', 'lost', 'assessing')) as available_quantity
+            FROM lab_devices
+        ),
+        unscanned_devices AS (
+            SELECT
+                id::text
+            FROM lab_devices
+            WHERE status IN ('healthy', 'broken', 'discarded', 'lost', 'assessing')
+        )
+        SELECT
+            li.*,
+            ARRAY_AGG(ud.id) as unscanned_device_ids
+        FROM lab_inventory li
+        LEFT JOIN unscanned_devices ud ON TRUE
+        GROUP BY
+            li.available_quantity
+    ";
+
+    let row = match client.query_opt(sql, &[&kind_uuid, &lab_uuid]).await {
+        Ok(Some(row)) => row,
+        Ok(None) => return Ok(json!({ "error": "Device inventory not found" })),
+        Err(err) => return Err(Box::new(err)),
+    };
+
+    Ok(json!({
+        "availableQuantity": row.get::<_, i64>("available_quantity"),
+        "unscannedDeviceIds": row.get::<_, Vec<String>>("unscanned_device_ids")
+    }))
+}
+
+async fn get_device_inventory_by_kind(
+    app_state: &AppState,
+    kind_id: &str,
+) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+    let client = app_state.db.get_client().await?;
+
+    if kind_id.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let kind_uuid = match Uuid::parse_str(kind_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(Vec::new()),
+    };
+
+    let sql = "
+        SELECT
+            l.name || ', ' || l.branch AS location,
+            COUNT(d.id) FILTER (WHERE d.status = 'healthy') AS healthy,
+            COUNT(d.id) FILTER (WHERE d.status = 'broken') AS broken,
+            COUNT(d.id) FILTER (WHERE d.status = 'discarded') AS discarded,
+            COUNT(d.id) FILTER (WHERE d.status = 'lost') AS lost
+        FROM
+            bench_devices d
+            JOIN bench_labs l ON d.lab_id = l.id
+        WHERE
+            d.kind = $1
+            AND d.deleted_at IS NULL
+        GROUP BY
+            l.name, l.branch
+        ORDER BY
+            l.branch, l.name
+    ";
+
+    let rows = client.query(sql, &[&kind_uuid]).await?;
+
+    if rows.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let results = rows
+        .iter()
+        .map(|row| {
+            json!({
+                "location": row.get::<_, String>("location"),
+                "healthy": row.get::<_, i64>("healthy"),
+                "broken": row.get::<_, i64>("broken"),
+                "discarded": row.get::<_, i64>("discarded"),
+                "lost": row.get::<_, i64>("lost")
+            })
+        })
+        .collect();
+
+    Ok(results)
+}
+
+async fn get_device_audit_history(
+    app_state: &AppState,
+    device_id: &str,
+) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+    let client = app_state.db.get_client().await?;
+
+    if device_id.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let device_uuid = match Uuid::parse_str(device_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(Vec::new()),
+    };
+
+    let sql = "
+        SELECT
+            d.id,
+            d.full_id AS \"fullId\",
+            ia.id AS \"assessmentId\",
+            u.id AS \"auditor_id\",
+            u.name AS \"auditor_name\",
+            u.email AS \"auditor_email\",
+            u.image AS \"auditor_avatar\",
+            a.created_at AS \"auditDate\",
+            ia.status AS \"auditResult\",
+            a.note AS \"notes\",
+            iad.prev_status AS \"prevStatus\",
+            iad.after_status AS \"afterStatus\"
+        FROM
+            bench_devices d
+            JOIN bench_inventory_assessments_devices iad ON d.id = iad.device_id
+            JOIN bench_inventory_assessments ia ON iad.assessing_id = ia.id
+            JOIN bench_activities a ON ia.id = a.id
+            LEFT JOIN bench_users u ON ia.accountant_id = u.id
+        WHERE
+            d.id = $1
+            AND d.deleted_at IS NULL
+        ORDER BY
+            a.created_at DESC
+    ";
+
+    let rows = client.query(sql, &[&device_uuid]).await?;
+
+    if rows.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let results = rows
+        .iter()
+        .map(|row| {
+            let audit_date: chrono::DateTime<chrono::Utc> = row.get("auditDate");
+
+            json!({
+                "id": row.get::<_, Uuid>("id").to_string(),
+                "fullId": row.get::<_, String>("fullId"),
+                "auditor": {
+                    "id": row.get::<_, Uuid>("auditor_id").to_string(),
+                    "name": row.get::<_, String>("auditor_name"),
+                    "email": row.get::<_, String>("auditor_email"),
+                    "avatar": row.get::<_, serde_json::Value>("auditor_avatar")
+                },
+                "auditDate": audit_date.to_rfc3339(),
+                "auditResult": row.get::<_, String>("auditResult"),
+                "notes": row.try_get::<_, String>("notes").ok(),
+                "prevStatus": row.try_get::<_, String>("prevStatus").ok(),
+                "afterStatus": row.try_get::<_, String>("afterStatus").ok()
+            })
+        })
+        .collect();
+
+    Ok(results)
+}
+
+async fn get_device_transport_history(
+    app_state: &AppState,
+    device_id: &str,
+) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+    let client = app_state.db.get_client().await?;
+
+    if device_id.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let device_uuid = match Uuid::parse_str(device_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(Vec::new()),
+    };
+
+    let sql = "
+        SELECT
+            d.id,
+            d.full_id AS \"fullId\",
+            s.id AS \"shipmentId\",
+            start_lab.name AS \"sourceLocation\",
+            arrive_lab.name AS \"destinationLocation\",
+            a_from.created_at AS \"transportDate\",
+            s.status,
+            sender.id AS \"sender_id\",
+            sender.name AS \"sender_name\",
+            sender.email AS \"sender_email\",
+            sender.image AS \"sender_avatar\",
+            receiver.id AS \"receiver_id\",
+            receiver.name AS \"receiver_name\",
+            receiver.email AS \"receiver_email\",
+            receiver.image AS \"receiver_avatar\"
+        FROM
+            bench_devices d
+            JOIN bench_shipments_devices sd ON d.id = sd.device_id
+            JOIN bench_shipments s ON sd.shipment_id = s.id
+            JOIN bench_labs start_lab ON s.start_lab_id = start_lab.id
+            JOIN bench_labs arrive_lab ON s.arrive_lab_id = arrive_lab.id
+            LEFT JOIN bench_activities a_from ON s.from_at = a_from.id
+            LEFT JOIN bench_users sender ON s.sender_id = sender.id
+            LEFT JOIN bench_users receiver ON s.receiver_id = receiver.id
+        WHERE
+            d.id = $1
+            AND d.deleted_at IS NULL
+        ORDER BY
+            a_from.created_at DESC
+    ";
+
+    let rows = client.query(sql, &[&device_uuid]).await?;
+
+    if rows.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let results = rows
+        .iter()
+        .map(|row| {
+            let transport_date: chrono::DateTime<chrono::Utc> = row.get("transportDate");
+            let sender_id: Option<Uuid> = row.try_get("sender_id").ok();
+            let receiver_id: Option<Uuid> = row.try_get("receiver_id").ok();
+
+            json!({
+                "id": row.get::<_, Uuid>("id").to_string(),
+                "fullId": row.get::<_, String>("fullId"),
+                "sourceLocation": row.get::<_, String>("sourceLocation"),
+                "destinationLocation": row.get::<_, String>("destinationLocation"),
+                "transportDate": transport_date.to_rfc3339(),
+                "status": row.get::<_, String>("status"),
+                "sender": sender_id.map(|id| {
+                    json!({
+                        "id": id.to_string(),
+                        "name": row.get::<_, String>("sender_name"),
+                        "email": row.get::<_, String>("sender_email"),
+                        "avatar": row.get::<_, serde_json::Value>("sender_avatar")
+                    })
+                }),
+                "receiver": receiver_id.map(|id| {
+                    json!({
+                        "id": id.to_string(),
+                        "name": row.get::<_, String>("receiver_name"),
+                        "email": row.get::<_, String>("receiver_email"),
+                        "avatar": row.get::<_, serde_json::Value>("receiver_avatar")
+                    })
+                })
+            })
+        })
+        .collect();
+
+    Ok(results)
+}
+
+async fn get_device_borrow_history(
+    app_state: &AppState,
+    device_id: &str,
+) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+    let client = app_state.db.get_client().await?;
+
+    if device_id.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let device_uuid = match Uuid::parse_str(device_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(Vec::new()),
+    };
+
+    let sql = "
+        SELECT
+            d.id,
+            d.full_id AS \"fullId\",
+            CASE
+                WHEN rd.returned_receipt_id IS NULL THEN
+                    CASE
+                        WHEN rd.expected_returned_at < NOW() THEN 'OVERDUE'
+                        WHEN rd.expected_returned_at < NOW() + INTERVAL '3 days' THEN 'NEAR_DUE'
+                        ELSE 'ON_TIME'
+                    END
+                ELSE 'RETURNED'
+            END AS status,
+            actor.id AS \"borrower_id\",
+            actor.name AS \"borrower_name\",
+            actor.email AS \"borrower_email\",
+            actor.image AS \"borrower_avatar\",
+            a_borrow.created_at AS \"borrow_date\",
+            rd.expected_returned_at,
+            (rd.return_id IS NOT NULL) AS has_been_returned,
+            a_return.created_at AS \"returned_at\",
+            a_return.note AS \"returned_note\",
+            bl.name AS \"borrowed_lab\",
+            COALESCE(rl.name, 'N/A') AS \"expected_return_lab\"
+        FROM
+            bench_devices d
+            JOIN bench_receipts_devices rd ON d.id = rd.device_id
+            JOIN bench_receipts r_borrow ON rd.borrowed_receipt_id = r_borrow.id
+            JOIN bench_users actor ON r_borrow.actor_id = actor.id
+            JOIN bench_labs bl ON r_borrow.lab_id = bl.id
+            LEFT JOIN bench_labs rl ON rd.expected_returned_lab_id = rl.id
+            LEFT JOIN bench_activities a_borrow ON rd.borrow_id = a_borrow.id
+            LEFT JOIN bench_receipts r_return ON rd.returned_receipt_id = r_return.id
+            LEFT JOIN bench_activities a_return ON rd.return_id = a_return.id
+        WHERE
+            d.id = $1
+            AND d.deleted_at IS NULL
+        ORDER BY
+            a_borrow.created_at DESC
+    ";
+
+    let rows = client.query(sql, &[&device_uuid]).await?;
+
+    if rows.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let results = rows
+        .iter()
+        .map(|row| {
+            let borrow_date: chrono::DateTime<chrono::Utc> = row.get("borrow_date");
+            let expected_returned_at: chrono::DateTime<chrono::Utc> =
+                row.get("expected_returned_at");
+            let returned_at: Option<chrono::DateTime<chrono::Utc>> =
+                row.try_get("returned_at").ok();
+
+            json!({
+                "id": row.get::<_, Uuid>("id").to_string(),
+                "fullId": row.get::<_, String>("fullId"),
+                "status": row.get::<_, String>("status"),
+                "borrower": {
+                    "id": row.get::<_, Uuid>("borrower_id").to_string(),
+                    "name": row.get::<_, String>("borrower_name"),
+                    "email": row.get::<_, String>("borrower_email"),
+                    "avatar": row.get::<_, serde_json::Value>("borrower_avatar")
+                },
+                "borrowDate": borrow_date.to_rfc3339(),
+                "expectedReturnedAt": expected_returned_at.to_rfc3339(),
+                "hasBeenReturned": row.get::<_, bool>("has_been_returned"),
+                "returnedAt": returned_at.map(|dt| dt.to_rfc3339()),
+                "returnedNote": row.try_get::<_, String>("returned_note").ok(),
+                "borrowedLab": row.get::<_, String>("borrowed_lab"),
+                "expectedReturnLab": row.get::<_, String>("expected_return_lab")
+            })
+        })
+        .collect();
+
+    Ok(results)
+}
+
+async fn get_device_maintenance_history(
+    app_state: &AppState,
+    device_id: &str,
+) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+    let client = app_state.db.get_client().await?;
+
+    if device_id.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let device_uuid = match Uuid::parse_str(device_id) {
+        Ok(uuid) => uuid,
+        Err(_) => return Ok(Vec::new()),
+    };
+
+    let sql = "
+        SELECT
+            d.id,
+            d.full_id AS \"fullId\",
+            a.note AS \"maintenanceReason\",
+            m.status,
+            u.id AS \"technician_id\",
+            u.name AS \"technician_name\",
+            u.email AS \"technician_email\",
+            u.image AS \"technician_avatar\",
+            a.created_at AS \"maintenanceStartDate\",
+            m.finished_at AS \"finishedAt\"
+        FROM
+            bench_devices d
+            JOIN bench_maintenances_devices md ON d.id = md.device_id
+            JOIN bench_maintenances m ON md.maintaining_id = m.id
+            JOIN bench_activities a ON m.id = a.id
+            LEFT JOIN bench_users u ON m.maintainer_id = u.id
+        WHERE
+            d.id = $1
+            AND d.deleted_at IS NULL
+        ORDER BY
+            a.created_at DESC
+    ";
+
+    let rows = client.query(sql, &[&device_uuid]).await?;
+
+    if rows.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let results = rows.iter().map(|row| {
+        let maintenance_start_date: chrono::DateTime<chrono::Utc> = row.get("maintenanceStartDate");
+        let finished_at: Option<chrono::DateTime<chrono::Utc>> = row.try_get("finishedAt").ok();
+
+        // Calculate expected completion date (2 weeks from start if not finished)
+        let expected_completion_date = finished_at.map(|dt| dt.to_rfc3339()).unwrap_or_else(|| {
+            let expected_date = maintenance_start_date + chrono::Duration::days(14);
+            expected_date.to_rfc3339()
+        });
+
+        json!({
+            "id": row.get::<_, Uuid>("id").to_string(),
+            "fullId": row.get::<_, String>("fullId"),
+            "maintenanceReason": row.get::<_, Option<String>>("maintenanceReason").unwrap_or_else(|| "Bảo trì định kỳ".to_string()),
+            "status": row.get::<_, String>("status"),
+            "technician": {
+                "id": row.get::<_, Uuid>("technician_id").to_string(),
+                "name": row.get::<_, String>("technician_name"),
+                "email": row.get::<_, String>("technician_email"),
+                "avatar": row.get::<_, serde_json::Value>("technician_avatar")
+            },
+            "maintenanceStartDate": maintenance_start_date.to_rfc3339(),
+            "finishedAt": finished_at.map(|dt| dt.to_rfc3339()),
+            "expectedCompletionDate": expected_completion_date,
+            "notes": row.try_get::<_, String>("maintenanceReason").ok()
+        })
+    }).collect();
+
+    Ok(results)
 }
 
 fn benchmark_device(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for device benchmarks");
-    let app_state = rt.block_on(setup_bench_env());
-    
-    // Create test device for detailed operations
-    let test_device_id = rt.block_on(async {
-        let create_params = InsertParams {
-            table: "bench_devices".to_string(),
-            value: json!({
-                "fullId": "DEV-BENCH-TEST",
-                "kindId": "aaaaaaaa-0000-4000-a000-000000000001",
-                "labId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-                "status": "healthy"
-            }),
-        };
-        
-        match create_device(&app_state, &create_params).await {
-            Ok(result) => result.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-            Err(_) => "".to_string()
+
+    let app_state = rt.block_on(async {
+        let state = setup_bench_env().await;
+        let _ = cleanup_test_tables(&state.db).await;
+        populate_large_test_data(&state.db, 1000, 2000, 50000, 10)
+            .await
+            .expect("Failed to populate large test data");
+        state
+    });
+
+    let (test_device_id, kind_id, lab_id) = rt.block_on(async {
+        let client = app_state.db.get_client().await.unwrap();
+
+        let device_query = "SELECT d.id::text, d.kind, d.lab_id
+                           FROM bench_devices d
+                           WHERE d.status = 'healthy'
+                           LIMIT 1";
+
+        match client.query_opt(device_query, &[]).await {
+            Ok(Some(row)) => {
+                let device_id = row.get::<_, String>(0);
+                let kind_id = row.get::<_, Uuid>(1);
+                let lab_id = row.get::<_, Uuid>(2);
+                (device_id, kind_id, lab_id)
+            }
+            _ => {
+                let kind_id = match client
+                    .query_opt("SELECT id FROM bench_device_kinds LIMIT 1", &[])
+                    .await
+                {
+                    Ok(Some(row)) => row.get::<_, Uuid>(0),
+                    _ => Uuid::new_v4(),
+                };
+
+                let lab_id = match client
+                    .query_opt("SELECT id FROM bench_labs LIMIT 1", &[])
+                    .await
+                {
+                    Ok(Some(row)) => row.get::<_, Uuid>(0),
+                    _ => Uuid::new_v4(),
+                };
+
+                let device_id = Uuid::new_v4();
+                let insert_query = "INSERT INTO bench_devices (id, full_id, kind, lab_id, status)
+                    VALUES ($1, $2, $3, $4, $5::bench_device_status)
+                    RETURNING id::text";
+
+                match client
+                    .query_one(
+                        insert_query,
+                        &[
+                            &device_id,
+                            &format!("DEV-BENCH-{}", device_id.simple()),
+                            &kind_id,
+                            &lab_id,
+                            &"healthy",
+                        ],
+                    )
+                    .await
+                {
+                    Ok(row) => (row.get::<_, String>(0), kind_id, lab_id),
+                    Err(_) => ("".to_string(), kind_id, lab_id),
+                }
+            }
         }
     });
-    
+
     let mut group = c.benchmark_group("Device Operations");
-    
+
     // Benchmark 1: Fetch devices
     let fetch_params = QueryParams {
         table: "bench_devices".to_string(),
@@ -326,7 +1084,7 @@ fn benchmark_device(c: &mut Criterion) {
         offset: Some(0),
         joins: None,
     };
-    
+
     group.bench_with_input(
         BenchmarkId::new("Fetch Devices", 10),
         &fetch_params,
@@ -344,7 +1102,7 @@ fn benchmark_device(c: &mut Criterion) {
             });
         },
     );
-    
+
     // Benchmark 2: Fetch device details (if test device was created successfully)
     if !test_device_id.is_empty() {
         let details_params = QueryParams {
@@ -356,7 +1114,7 @@ fn benchmark_device(c: &mut Criterion) {
             offset: None,
             joins: None,
         };
-        
+
         group.bench_with_input(
             BenchmarkId::new("Fetch Device Details", 1),
             &details_params,
@@ -374,111 +1132,182 @@ fn benchmark_device(c: &mut Criterion) {
                 });
             },
         );
-    }
-    
-    // Benchmark 3: Create device
-    let create_params = InsertParams {
-        table: "bench_devices".to_string(),
-        value: json!({
-            "fullId": format!("DEV-BENCH-{}", Uuid::new_v4().to_string().split('-').next().unwrap()),
-            "kindId": "aaaaaaaa-0000-4000-a000-000000000001",
-            "labId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "status": "healthy"
-        }),
-    };
-    
-    group.bench_with_input(
-        BenchmarkId::new("Create Device", 1),
-        &create_params,
-        |b, p| {
+
+        // Benchmark for device borrow history
+        group.bench_function(BenchmarkId::new("Fetch Device Borrow History", 1), |b| {
             b.to_async(&rt).iter(|| async {
-                let params = InsertParams {
-                    table: p.table.clone(),
-                    value: json!({
-                        "fullId": format!("DEV-BENCH-{}", Uuid::new_v4().to_string().split('-').next().unwrap()),
-                        "kindId": "aaaaaaaa-0000-4000-a000-000000000001",
-                        "labId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-                        "status": "healthy"
-                    }),
-                };
-                
-                match create_device(&app_state, &params).await {
+                match get_device_borrow_history(&app_state, &test_device_id).await {
                     Ok(result) => {
                         black_box(result);
                     }
                     Err(err) => {
-                        eprintln!("Error in Create Device benchmark: {}", err);
+                        eprintln!("Error in Fetch Device Borrow History benchmark: {}", err);
+                        black_box(Vec::<serde_json::Value>::new());
+                    }
+                }
+            });
+        });
+
+        // Benchmark for device maintenance history
+        group.bench_function(
+            BenchmarkId::new("Fetch Device Maintenance History", 1),
+            |b| {
+                b.to_async(&rt).iter(|| async {
+                    match get_device_maintenance_history(&app_state, &test_device_id).await {
+                        Ok(result) => {
+                            black_box(result);
+                        }
+                        Err(err) => {
+                            eprintln!(
+                                "Error in Fetch Device Maintenance History benchmark: {}",
+                                err
+                            );
+                            black_box(Vec::<serde_json::Value>::new());
+                        }
+                    }
+                });
+            },
+        );
+
+        // Benchmark for device receipt by ID
+        let lab_id_str = lab_id.to_string();
+        group.bench_function(BenchmarkId::new("Fetch Device Receipt", 1), |b| {
+            b.to_async(&rt).iter(|| async {
+                match get_device_receipt_by_id(&app_state, &test_device_id, &lab_id_str).await {
+                    Ok(result) => {
+                        black_box(result);
+                    }
+                    Err(err) => {
+                        eprintln!("Error in Fetch Device Receipt benchmark: {}", err);
                         black_box(json!({"error": err.to_string()}));
                     }
                 }
             });
-        },
-    );
-    
-    // Benchmark 4: Update device (if test device was created successfully)
-    if !test_device_id.is_empty() {
-        let update_params = InsertParams {
-            table: "bench_devices".to_string(),
-            value: json!({
-                "id": test_device_id,
-                "status": "assessing",
-                "labId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-            }),
-        };
-        
-        group.bench_with_input(
-            BenchmarkId::new("Update Device", 1),
-            &update_params,
-            |b, p| {
+        });
+
+        // Benchmark for device audit by ID
+        group.bench_function(BenchmarkId::new("Fetch Device Audit", 1), |b| {
+            b.to_async(&rt).iter(|| async {
+                match get_device_audit_by_id(&app_state, &test_device_id, &lab_id_str).await {
+                    Ok(result) => {
+                        black_box(result);
+                    }
+                    Err(err) => {
+                        eprintln!("Error in Fetch Device Audit benchmark: {}", err);
+                        black_box(json!({"error": err.to_string()}));
+                    }
+                }
+            });
+        });
+
+        // Benchmark for device shipment by ID
+        group.bench_function(BenchmarkId::new("Fetch Device Shipment", 1), |b| {
+            b.to_async(&rt).iter(|| async {
+                match get_device_shipment_by_id(&app_state, &test_device_id, Some(&lab_id_str))
+                    .await
+                {
+                    Ok(result) => {
+                        black_box(result);
+                    }
+                    Err(err) => {
+                        eprintln!("Error in Fetch Device Shipment benchmark: {}", err);
+                        black_box(json!({"error": err.to_string()}));
+                    }
+                }
+            });
+        });
+
+        // Benchmark for device maintenance by ID
+        group.bench_function(BenchmarkId::new("Fetch Device Maintenance", 1), |b| {
+            b.to_async(&rt).iter(|| async {
+                match get_device_maintenance_by_id(&app_state, &test_device_id, Some(&lab_id_str))
+                    .await
+                {
+                    Ok(result) => {
+                        black_box(result);
+                    }
+                    Err(err) => {
+                        eprintln!("Error in Fetch Device Maintenance benchmark: {}", err);
+                        black_box(json!({"error": err.to_string()}));
+                    }
+                }
+            });
+        });
+
+        // Benchmark for device audit history
+        group.bench_function(BenchmarkId::new("Fetch Device Audit History", 1), |b| {
+            b.to_async(&rt).iter(|| async {
+                match get_device_audit_history(&app_state, &test_device_id).await {
+                    Ok(result) => {
+                        black_box(result);
+                    }
+                    Err(err) => {
+                        eprintln!("Error in Fetch Device Audit History benchmark: {}", err);
+                        black_box(Vec::<serde_json::Value>::new());
+                    }
+                }
+            });
+        });
+
+        // Benchmark for device transport history
+        group.bench_function(BenchmarkId::new("Fetch Device Transport History", 1), |b| {
+            b.to_async(&rt).iter(|| async {
+                match get_device_transport_history(&app_state, &test_device_id).await {
+                    Ok(result) => {
+                        black_box(result);
+                    }
+                    Err(err) => {
+                        eprintln!("Error in Fetch Device Transport History benchmark: {}", err);
+                        black_box(Vec::<serde_json::Value>::new());
+                    }
+                }
+            });
+        });
+
+        // Benchmark for device inventory in audit
+        let kind_id_str = kind_id.to_string();
+        group.bench_function(
+            BenchmarkId::new("Fetch Device Inventory In Audit", 1),
+            |b| {
                 b.to_async(&rt).iter(|| async {
-                    match update_device(&app_state, p).await {
+                    match get_device_inventory_in_audit(&app_state, &kind_id_str, &lab_id_str).await
+                    {
                         Ok(result) => {
                             black_box(result);
                         }
                         Err(err) => {
-                            eprintln!("Error in Update Device benchmark: {}", err);
+                            eprintln!(
+                                "Error in Fetch Device Inventory In Audit benchmark: {}",
+                                err
+                            );
                             black_box(json!({"error": err.to_string()}));
                         }
                     }
                 });
             },
         );
-    }
-    
-    // Benchmark 5: Delete device (if test device was created successfully)
-    if !test_device_id.is_empty() {
-        let delete_params = InsertParams {
-            table: "bench_devices".to_string(),
-            value: json!({
-                "id": test_device_id
-            }),
-        };
-        
-        group.bench_with_input(
-            BenchmarkId::new("Delete Device", 1),
-            &delete_params,
-            |b, p| {
-                b.to_async(&rt).iter(|| async {
-                    match delete_device(&app_state, p).await {
-                        Ok(result) => {
-                            black_box(result);
-                        }
-                        Err(err) => {
-                            eprintln!("Error in Delete Device benchmark: {}", err);
-                            black_box(json!({"error": err.to_string()}));
-                        }
+
+        // Benchmark for device inventory by kind
+        group.bench_function(BenchmarkId::new("Fetch Device Inventory By Kind", 1), |b| {
+            b.to_async(&rt).iter(|| async {
+                match get_device_inventory_by_kind(&app_state, &kind_id_str).await {
+                    Ok(result) => {
+                        black_box(result);
                     }
-                });
-            },
-        );
+                    Err(err) => {
+                        eprintln!("Error in Fetch Device Inventory By Kind benchmark: {}", err);
+                        black_box(Vec::<serde_json::Value>::new());
+                    }
+                }
+            });
+        });
     }
-    
+
     group.finish();
-    
-    // Clean up test tables after benchmarks
+
     rt.block_on(cleanup_test_tables(&app_state.db))
         .expect("Failed to clean up test tables");
 }
 
 criterion_group!(benches, benchmark_device);
-criterion_main!(benches); 
+criterion_main!(benches);

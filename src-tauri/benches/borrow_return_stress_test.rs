@@ -2,7 +2,6 @@ use chrono;
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::{rng, Rng};
 use serde_json::json;
-use std::collections::HashMap;
 use std::env;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -13,7 +12,7 @@ use uuid::Uuid;
 use hmi_lib::commands::db_commands::{InsertParams, QueryParams};
 
 mod common;
-use common::{setup_bench_env, AppState};
+use common::{cleanup_test_tables, populate_large_test_data, setup_bench_env, AppState};
 
 const DEFAULT_NUM_USERS: usize = 1_000;
 const DEFAULT_NUM_DEVICE_KINDS: usize = 2_000;
@@ -87,6 +86,7 @@ fn get_config() -> (usize, usize, usize, usize, &'static [usize], u64, bool) {
     )
 }
 
+#[allow(dead_code)]
 async fn print_table_counts(client: &tokio_postgres::Client) -> Result<(), StdError> {
     println!("\n--- Current Database State ---");
     let tables = [
@@ -115,315 +115,6 @@ async fn print_table_counts(client: &tokio_postgres::Client) -> Result<(), StdEr
     Ok(())
 }
 
-async fn generate_test_data(
-    app_state: &AppState,
-    num_users: usize,
-    num_device_kinds: usize,
-    num_devices: usize,
-    num_labs: usize,
-) -> Result<(), StdError> {
-    println!("Generating test data...");
-    let start_time = Instant::now();
-
-    let mut client = app_state.db.get_client().await?;
-
-    println!("Cleaning up existing data...");
-
-    // Drop indexes first to speed up deletion
-    client
-        .batch_execute(
-            "
-        DROP INDEX IF EXISTS idx_bench_devices_status_id_kind_lab;
-        DROP INDEX IF EXISTS idx_bench_devices_status_healthy;
-        DROP INDEX IF EXISTS idx_bench_devices_status_borrowing;
-        DROP INDEX IF EXISTS idx_bench_activities_created_at;
-        DROP INDEX IF EXISTS idx_bench_receipts_devices_borrowed_receipt;
-        DROP INDEX IF EXISTS idx_bench_receipts_devices_return;
-        DROP INDEX IF EXISTS idx_bench_receipts_devices_return_id;
-    ",
-        )
-        .await?;
-
-    // Use a single transaction for all deletions to speed up the process
-    let transaction = client.transaction().await?;
-    transaction
-        .execute("DELETE FROM bench_receipts_devices", &[])
-        .await?;
-    transaction
-        .execute("DELETE FROM bench_activities", &[])
-        .await?;
-    transaction
-        .execute("DELETE FROM bench_receipts", &[])
-        .await?;
-    transaction
-        .execute("DELETE FROM bench_devices", &[])
-        .await?;
-    transaction
-        .execute("DELETE FROM bench_device_kinds", &[])
-        .await?;
-    transaction.execute("DELETE FROM bench_users", &[]).await?;
-    transaction.execute("DELETE FROM bench_labs", &[]).await?;
-    transaction.commit().await?;
-
-    println!("Data cleanup complete");
-
-    // Disable triggers temporarily to speed up inserts
-    client
-        .execute("SET session_replication_role = 'replica'", &[])
-        .await?;
-
-    println!("Creating labs...");
-    {
-        // Prepare all lab data at once
-        let mut lab_values = Vec::with_capacity(num_labs);
-        for i in 0..num_labs {
-            let lab_id = Uuid::new_v4();
-            let lab_name = format!("Lab {}", i + 1);
-            lab_values.push(format!(
-                "('{}', '{}', 'Room {}', 'Branch {}')",
-                lab_id,
-                lab_name,
-                i + 100,
-                (i % 5) + 1
-            ));
-        }
-
-        // Insert all labs in a single query
-        let query = format!(
-            "INSERT INTO bench_labs (id, name, room, branch) VALUES {}",
-            lab_values.join(", ")
-        );
-
-        client.execute(&query, &[]).await?;
-        println!("Created {} labs", num_labs);
-    }
-
-    let lab_rows = client.query("SELECT id::text FROM bench_labs", &[]).await?;
-    let lab_ids: Vec<String> = lab_rows.iter().map(|row| row.get(0)).collect();
-
-    if lab_ids.is_empty() {
-        return Err("Failed to create any labs".into());
-    }
-
-    println!("Creating users...");
-    // Increase batch size for better performance
-    let batch_size = 1000;
-    for batch in 0..(num_users / batch_size + 1) {
-        let start_idx = batch * batch_size;
-        let end_idx = std::cmp::min((batch + 1) * batch_size, num_users);
-
-        if start_idx >= end_idx {
-            break;
-        }
-
-        let mut user_values = Vec::with_capacity(end_idx - start_idx);
-        for i in start_idx..end_idx {
-            let user_id = Uuid::new_v4();
-            let user_name = format!("User {}", i + 1);
-            let email = format!("user{}@example.com", i + 1);
-            let image = json!({
-                "url": format!("https://example.com/avatars/{}.jpg", i + 1)
-            });
-
-            user_values.push(format!(
-                "('{}', '{}', '{}', '{}')",
-                user_id, user_name, email, image
-            ));
-        }
-
-        let query = format!(
-            "INSERT INTO bench_users (id, name, email, image) VALUES {}",
-            user_values.join(", ")
-        );
-
-        client.execute(&query, &[]).await?;
-
-        if (batch + 1) % 10 == 0 || end_idx == num_users {
-            println!("Created {}/{} users", end_idx, num_users);
-        }
-    }
-
-    println!("Creating device kinds...");
-    // Increase batch size for better performance
-    let batch_size = 1000;
-    for batch in 0..(num_device_kinds / batch_size + 1) {
-        let start_idx = batch * batch_size;
-        let end_idx = std::cmp::min((batch + 1) * batch_size, num_device_kinds);
-
-        if start_idx >= end_idx {
-            break;
-        }
-
-        let mut kind_values = Vec::with_capacity(end_idx - start_idx);
-        for i in start_idx..end_idx {
-            let kind_id = Uuid::new_v4();
-            let kind_name = format!("Device Kind {}", i + 1);
-            let image = json!({
-                "url": format!("https://example.com/devices/{}.jpg", i + 1)
-            });
-
-            kind_values.push(format!(
-                "('{}', '{}', '{}', false, '{{}}', '{{}}')",
-                kind_id, kind_name, image
-            ));
-        }
-
-        let query = format!(
-            "INSERT INTO bench_device_kinds (id, name, image, is_borrowable_lab_only, allowed_borrow_roles, allowed_view_roles) VALUES {}",
-            kind_values.join(", ")
-        );
-
-        client.execute(&query, &[]).await?;
-
-        if (batch + 1) % 10 == 0 || end_idx == num_device_kinds {
-            println!("Created {}/{} device kinds", end_idx, num_device_kinds);
-        }
-    }
-
-    let kind_rows = client
-        .query("SELECT id::text FROM bench_device_kinds", &[])
-        .await?;
-    let kind_ids: Vec<String> = kind_rows.iter().map(|row| row.get(0)).collect();
-
-    if kind_ids.is_empty() {
-        return Err("Failed to create any device kinds".into());
-    }
-
-    println!("Creating devices...");
-    // Increase batch size significantly for devices
-    let batch_size = 5000;
-    // Make sure we have more healthy devices than other statuses
-    let statuses = [
-        "healthy",
-        "healthy",
-        "healthy",
-        "borrowing",
-        "broken",
-        "lost",
-    ];
-    let total_batches = (num_devices + batch_size - 1) / batch_size;
-
-    for batch in 0..total_batches {
-        let start_idx = batch * batch_size;
-        let end_idx = std::cmp::min((batch + 1) * batch_size, num_devices);
-
-        if start_idx >= end_idx {
-            break;
-        }
-
-        let mut device_values = Vec::with_capacity(end_idx - start_idx);
-        for i in start_idx..end_idx {
-            let device_id = Uuid::new_v4();
-            let kind_idx = i % kind_ids.len();
-            let lab_idx = i % lab_ids.len();
-            let status_idx = i % statuses.len();
-            let full_id = format!(
-                "DEV-{}-{}",
-                i,
-                device_id.to_string().split('-').next().unwrap_or("")
-            );
-
-            device_values.push(format!(
-                "('{}', '{}', '{}'::bench_device_status, '{}', '{}')",
-                device_id, kind_ids[kind_idx], statuses[status_idx], lab_ids[lab_idx], full_id
-            ));
-        }
-
-        let query = format!(
-            "INSERT INTO bench_devices (id, kind, status, lab_id, full_id) VALUES {}",
-            device_values.join(", ")
-        );
-
-        let result = client.execute(&query, &[]).await;
-        if let Err(e) = result {
-            println!("Error in batch {}/{}: {}", batch + 1, total_batches, e);
-            return Err(e.into());
-        }
-
-        if (batch + 1) % 10 == 0 || end_idx == num_devices {
-            println!(
-                "Created {}/{} devices ({:.2}%)",
-                end_idx,
-                num_devices,
-                (end_idx as f64 / num_devices as f64) * 100.0
-            );
-        }
-    }
-
-    // Re-enable triggers
-    client
-        .execute("SET session_replication_role = 'origin'", &[])
-        .await?;
-
-    // Create only necessary indexes after data insertion
-    println!("Creating optimized indexes to speed up queries...");
-    client
-        .batch_execute(
-            "
-        -- Optimized index strategy for bench_devices
-        -- Use a single covering index for the most common query patterns
-        CREATE INDEX IF NOT EXISTS idx_bench_devices_status_id_kind_lab
-            ON bench_devices(status, id, kind, lab_id);
-
-        -- Specialized index for the borrow operation with INCLUDE to avoid additional lookups
-        CREATE INDEX IF NOT EXISTS idx_bench_devices_status_healthy
-            ON bench_devices(id)
-            WHERE status = 'healthy'::bench_device_status;
-
-        -- Specialized index for the return operation
-        CREATE INDEX IF NOT EXISTS idx_bench_devices_status_borrowing
-            ON bench_devices(id)
-            WHERE status = 'borrowing'::bench_device_status;
-
-        -- Index for bench_activities created_at (used in sorting)
-        CREATE INDEX IF NOT EXISTS idx_bench_activities_created_at
-            ON bench_activities(created_at);
-
-        -- Optimized index for receipts_devices queries
-        CREATE INDEX IF NOT EXISTS idx_bench_receipts_devices_borrowed_receipt
-            ON bench_receipts_devices(borrowed_receipt_id, device_id);
-
-        -- Optimized index for return queries
-        CREATE INDEX IF NOT EXISTS idx_bench_receipts_devices_return
-            ON bench_receipts_devices(device_id, returned_receipt_id)
-            WHERE returned_receipt_id IS NULL;
-
-        -- Index for get_random_borrowing_device_ids with INCLUDE to avoid lookups
-        CREATE INDEX IF NOT EXISTS idx_bench_receipts_devices_return_id
-            ON bench_receipts_devices(device_id)
-            INCLUDE (borrow_id, expected_returned_at)
-            WHERE return_id IS NULL;
-    ",
-        )
-        .await?;
-
-    println!("Indexes created successfully");
-
-    println!(
-        "Test data generation completed in {:?}",
-        start_time.elapsed()
-    );
-    print_table_counts(&client).await?;
-
-    // Check device status counts
-    let status_counts = client
-        .query(
-            "SELECT status::text, COUNT(*) FROM bench_devices GROUP BY status ORDER BY status",
-            &[],
-        )
-        .await?;
-
-    println!("\n--- Device Status Counts ---");
-    for row in &status_counts {
-        let status: String = row.get(0);
-        let count: i64 = row.get(1);
-        println!("{}: {} devices", status, count);
-    }
-    println!("---------------------------\n");
-
-    Ok(())
-}
-
 async fn fetch_ready_borrow_devices(
     app_state: &AppState,
     params: &QueryParams,
@@ -433,7 +124,6 @@ async fn fetch_ready_borrow_devices(
     let limit = params.limit.unwrap_or(10) as i64;
     let offset = params.offset.unwrap_or(0) as i64;
 
-    // Default to ordering by name
     let order_by_name = match params.order_by {
         Some(ref order) if !order.is_empty() => {
             let (field, is_asc) = &order[0];
@@ -446,56 +136,82 @@ async fn fetch_ready_borrow_devices(
         _ => &true,
     };
 
-    // Use prepared statement with parameters for better performance
     let sql = if *order_by_name {
-        // Optimized query using indexes (idx_bench_devices_status) with ASC order
-        "SELECT
-            bench_device_kinds.id as kind,
-            bench_device_kinds.name,
-            bench_device_kinds.image,
-            COUNT(*) as quantity,
-            bench_labs.name as place,
-            COUNT(*) OVER() as total_count
+        "WITH healthy_devices AS (
+            SELECT
+                kind,
+                lab_id,
+                COUNT(*) as quantity
+            FROM
+                bench_devices
+            WHERE
+                status = 'healthy'::bench_device_status
+                AND deleted_at IS NULL
+            GROUP BY
+                kind, lab_id
+        ),
+        device_info AS (
+            SELECT
+                dk.id as kind,
+                dk.name,
+                dk.image,
+                hd.quantity,
+                l.name as place
+            FROM
+                healthy_devices hd
+                JOIN bench_device_kinds dk ON hd.kind = dk.id
+                LEFT JOIN bench_labs l ON hd.lab_id = l.id
+        )
+        SELECT
+            kind,
+            name,
+            image,
+            quantity,
+            place,
+            SUM(quantity) OVER() as total_count
         FROM
-            bench_devices
-            JOIN bench_device_kinds ON bench_devices.kind = bench_device_kinds.id
-            LEFT JOIN bench_labs ON bench_devices.lab_id = bench_labs.id
-        WHERE
-            bench_devices.status = 'healthy'::bench_device_status
-            AND bench_devices.deleted_at IS NULL
-        GROUP BY
-            bench_device_kinds.id,
-            bench_device_kinds.name,
-            bench_device_kinds.image,
-            bench_labs.name
-        ORDER BY bench_device_kinds.name ASC
+            device_info
+        ORDER BY name ASC
         LIMIT $1 OFFSET $2"
     } else {
-        // Optimized query using indexes (idx_bench_devices_status) with DESC order
-        "SELECT
-            bench_device_kinds.id as kind,
-            bench_device_kinds.name,
-            bench_device_kinds.image,
-            COUNT(*) as quantity,
-            bench_labs.name as place,
-            COUNT(*) OVER() as total_count
+        "WITH healthy_devices AS (
+            SELECT
+                kind,
+                lab_id,
+                COUNT(*) as quantity
+            FROM
+                bench_devices
+            WHERE
+                status = 'healthy'::bench_device_status
+                AND deleted_at IS NULL
+            GROUP BY
+                kind, lab_id
+        ),
+        device_info AS (
+            SELECT
+                dk.id as kind,
+                dk.name,
+                dk.image,
+                hd.quantity,
+                l.name as place
+            FROM
+                healthy_devices hd
+                JOIN bench_device_kinds dk ON hd.kind = dk.id
+                LEFT JOIN bench_labs l ON hd.lab_id = l.id
+        )
+        SELECT
+            kind,
+            name,
+            image,
+            quantity,
+            place,
+            SUM(quantity) OVER() as total_count
         FROM
-            bench_devices
-            JOIN bench_device_kinds ON bench_devices.kind = bench_device_kinds.id
-            LEFT JOIN bench_labs ON bench_devices.lab_id = bench_labs.id
-        WHERE
-            bench_devices.status = 'healthy'::bench_device_status
-            AND bench_devices.deleted_at IS NULL
-        GROUP BY
-            bench_device_kinds.id,
-            bench_device_kinds.name,
-            bench_device_kinds.image,
-            bench_labs.name
-        ORDER BY bench_device_kinds.name DESC
+            device_info
+        ORDER BY name DESC
         LIMIT $1 OFFSET $2"
     };
 
-    // Prepare and execute the statement
     let stmt = client.prepare(sql).await?;
     let rows = client.query(&stmt, &[&limit, &offset]).await?;
 
@@ -524,60 +240,78 @@ async fn fetch_borrowing_devices(
 
     let limit = params.limit.unwrap_or(10);
     let offset = params.offset.unwrap_or(0);
-    let order_clause = match params.order_by {
+    let order_field = match params.order_by {
         Some(ref order) if !order.is_empty() => {
             let (field, is_asc) = &order[0];
-            format!(
-                "ORDER BY {} {}",
-                field,
-                if *is_asc { "ASC" } else { "DESC" }
-            )
+            if field == "bench_activities.created_at" {
+                if *is_asc {
+                    "borrowed_at ASC"
+                } else {
+                    "borrowed_at DESC"
+                }
+            } else {
+                field.as_str()
+            }
         }
-        _ => "ORDER BY bench_activities.created_at DESC".to_string(),
+        _ => "borrowed_at DESC",
     };
 
-    // Optimized query using indexes (idx_bench_receipts_devices_return_id, idx_bench_activities_created_at)
     let sql = format!(
-        "SELECT
-            bench_receipts.id as receipt_code,
-            bench_users.name as borrower_name,
-            bench_users.image as borrower_image,
-            COUNT(*) as total_qty,
-            COUNT(CASE WHEN bench_receipts_devices.return_id IS NOT NULL THEN 1 END) as returned_qty,
-            bench_labs.name as borrowed_place,
-            bench_activities.created_at as borrowed_at,
-            bench_receipts_devices.expected_returned_at,
-            CASE
-                WHEN bench_receipts_devices.expected_returned_at < CURRENT_TIMESTAMP THEN 'late'
-                ELSE 'on_time'
-            END as status,
-            CASE
-                WHEN bench_receipts_devices.return_id IS NULL THEN 'borrowing'
-                ELSE 'returned'
-            END as borrow_state,
+        "WITH active_borrowings AS (
+            SELECT
+                rd.borrowed_receipt_id,
+                rd.return_id,
+                rd.expected_returned_at,
+                a.created_at as borrowed_at,
+                COUNT(*) as device_count,
+                COUNT(CASE WHEN rd.return_id IS NOT NULL THEN 1 END) as returned_count
+            FROM
+                bench_receipts_devices rd
+                JOIN bench_activities a ON rd.borrow_id = a.id
+            WHERE
+                rd.return_id IS NULL
+            GROUP BY
+                rd.borrowed_receipt_id,
+                rd.return_id,
+                rd.expected_returned_at,
+                a.created_at
+        ),
+        borrower_info AS (
+            SELECT
+                r.id as receipt_code,
+                u.name as borrower_name,
+                u.image as borrower_image,
+                l.name as borrowed_place,
+                ab.borrowed_at,
+                ab.expected_returned_at,
+                ab.device_count as total_qty,
+                ab.returned_count as returned_qty,
+                CASE
+                    WHEN ab.expected_returned_at < CURRENT_TIMESTAMP THEN 'late'
+                    ELSE 'on_time'
+                END as status,
+                CASE
+                    WHEN ab.return_id IS NULL THEN 'borrowing'
+                    ELSE 'returned'
+                END as borrow_state
+            FROM
+                active_borrowings ab
+                JOIN bench_receipts r ON ab.borrowed_receipt_id = r.id
+                JOIN bench_users u ON r.actor_id = u.id
+                JOIN bench_labs l ON r.lab_id = l.id
+            WHERE
+                u.deleted_at IS NULL
+        )
+        SELECT
+            bi.*,
             COUNT(*) OVER() as total_count
         FROM
-            bench_receipts_devices
-            JOIN bench_receipts ON bench_receipts_devices.borrowed_receipt_id = bench_receipts.id
-            JOIN bench_users ON bench_receipts.actor_id = bench_users.id
-            JOIN bench_labs ON bench_receipts.lab_id = bench_labs.id
-            JOIN bench_activities ON bench_receipts_devices.borrow_id = bench_activities.id
-        WHERE
-            bench_users.deleted_at IS NULL
-            AND bench_receipts_devices.return_id IS NULL
-        GROUP BY
-            bench_receipts.id,
-            bench_users.name,
-            bench_users.image,
-            bench_labs.name,
-            bench_activities.created_at,
-            bench_receipts_devices.expected_returned_at,
-            bench_receipts_devices.return_id
-        {} LIMIT {} OFFSET {}",
-        order_clause, limit, offset
+            borrower_info bi
+        ORDER BY {}
+        LIMIT {} OFFSET {}",
+        order_field, limit, offset
     );
 
-    // Use prepared statement for better performance
     let stmt = client.prepare(&sql).await?;
     let rows = client.query(&stmt, &[]).await?;
 
@@ -622,55 +356,72 @@ async fn fetch_returned_devices(
 
     let limit = params.limit.unwrap_or(10);
     let offset = params.offset.unwrap_or(0);
-    let order_clause = match params.order_by {
+    let order_field = match params.order_by {
         Some(ref order) if !order.is_empty() => {
             let (field, is_asc) = &order[0];
-            format!(
-                "ORDER BY {} {}",
-                field,
-                if *is_asc { "ASC" } else { "DESC" }
-            )
+            if field == "bench_activities.created_at" {
+                if *is_asc {
+                    "returned_at ASC"
+                } else {
+                    "returned_at DESC"
+                }
+            } else {
+                field.as_str()
+            }
         }
-        _ => "ORDER BY bench_activities.created_at DESC".to_string(),
+        _ => "returned_at DESC",
     };
 
-    // Optimized query using indexes (idx_bench_receipts_devices_return_id, idx_bench_activities_created_at)
     let sql = format!(
-        "SELECT
-            bench_receipts.id as receipt_code,
-            bench_users.name as returned_name,
-            bench_users.image as returned_image,
-            COUNT(*) as quantity,
-            bench_labs.name as returned_place,
-            bench_activities.created_at as returned_at,
-            CASE
-                WHEN bench_receipts_devices.expected_returned_at < bench_activities.created_at THEN 'late'
-                ELSE 'on_time'
-            END as status,
-            bench_receipts_devices.note,
+        "WITH returned_items AS (
+            SELECT
+                rd.returned_receipt_id,
+                rd.expected_returned_at,
+                rd.note,
+                a.created_at as returned_at,
+                COUNT(*) as device_count
+            FROM
+                bench_receipts_devices rd
+                JOIN bench_activities a ON rd.return_id = a.id
+            WHERE
+                rd.return_id IS NOT NULL
+            GROUP BY
+                rd.returned_receipt_id,
+                rd.expected_returned_at,
+                rd.note,
+                a.created_at
+        ),
+        return_info AS (
+            SELECT
+                r.id as receipt_code,
+                u.name as returned_name,
+                u.image as returned_image,
+                l.name as returned_place,
+                ri.returned_at,
+                ri.device_count as quantity,
+                ri.note,
+                CASE
+                    WHEN ri.expected_returned_at < ri.returned_at THEN 'late'
+                    ELSE 'on_time'
+                END as status
+            FROM
+                returned_items ri
+                JOIN bench_receipts r ON ri.returned_receipt_id = r.id
+                JOIN bench_users u ON r.actor_id = u.id
+                JOIN bench_labs l ON r.lab_id = l.id
+            WHERE
+                u.deleted_at IS NULL
+        )
+        SELECT
+            ri.*,
             COUNT(*) OVER() as total_count
         FROM
-            bench_receipts_devices
-            JOIN bench_receipts ON bench_receipts_devices.returned_receipt_id = bench_receipts.id
-            JOIN bench_users ON bench_receipts.actor_id = bench_users.id
-            JOIN bench_labs ON bench_receipts.lab_id = bench_labs.id
-            JOIN bench_activities ON bench_receipts_devices.return_id = bench_activities.id
-        WHERE
-            bench_users.deleted_at IS NULL
-            AND bench_receipts_devices.return_id IS NOT NULL
-        GROUP BY
-            bench_receipts.id,
-            bench_users.name,
-            bench_users.image,
-            bench_labs.name,
-            bench_activities.created_at,
-            bench_receipts_devices.expected_returned_at,
-            bench_receipts_devices.note
-        {} LIMIT {} OFFSET {}",
-        order_clause, limit, offset
+            return_info ri
+        ORDER BY {}
+        LIMIT {} OFFSET {}",
+        order_field, limit, offset
     );
 
-    // Use prepared statement for better performance
     let stmt = client.prepare(&sql).await?;
     let rows = client.query(&stmt, &[]).await?;
 
@@ -723,17 +474,17 @@ async fn create_receipt(
         .value
         .get("borrowerId")
         .and_then(|v| v.as_str())
-        .unwrap_or("11111111-1111-1111-1111-111111111111");
+        .unwrap_or("");
     let borrow_checker_id = params
         .value
         .get("borrowCheckerId")
         .and_then(|v| v.as_str())
-        .unwrap_or("22222222-2222-2222-2222-222222222222");
+        .unwrap_or("");
     let borrowed_lab_id = params
         .value
         .get("borrowedLabId")
         .and_then(|v| v.as_str())
-        .unwrap_or("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        .unwrap_or("");
 
     let devices_vec = params
         .value
@@ -746,7 +497,6 @@ async fn create_receipt(
         return Ok(json!({ "error": "No devices specified for borrowing" }));
     }
 
-    // Extract device IDs first
     let mut device_ids = Vec::with_capacity(devices.len());
     for device in devices {
         let device_id = device.get("id").and_then(|v| v.as_str()).unwrap_or("");
@@ -761,15 +511,18 @@ async fn create_receipt(
         return Ok(json!({ "error": "No valid device IDs provided" }));
     }
 
-    // Prepare parameters for the multi-step operation
+    if borrower_id.is_empty() || borrow_checker_id.is_empty() || borrowed_lab_id.is_empty() {
+        return Ok(
+            json!({ "error": "Missing required parameters: borrowerId, borrowCheckerId, or borrowedLabId" }),
+        );
+    }
+
     let borrower_uuid = Uuid::parse_str(borrower_id)?;
     let checker_uuid = Uuid::parse_str(borrow_checker_id)?;
     let lab_uuid = Uuid::parse_str(borrowed_lab_id)?;
     let now = chrono::Utc::now();
     let expected_returned_at = now + chrono::Duration::days(7);
 
-    // Use a single CTE query to perform all operations in one database round-trip
-    // This dramatically reduces latency and improves throughput
     let device_id_list: Vec<String> = device_ids
         .iter()
         .map(|uuid| format!("'{}'", uuid))
@@ -831,11 +584,9 @@ async fn create_receipt(
         lab_uuid
     );
 
-    // Execute the entire operation in a single query
     let result_row = transaction.query_one(&query, &[]).await?;
     let processed_count: i64 = result_row.get("processed_count");
 
-    // Commit the transaction
     transaction.commit().await?;
 
     Ok(json!({
@@ -849,178 +600,168 @@ async fn return_receipt(
     app_state: &AppState,
     params: &InsertParams,
 ) -> Result<serde_json::Value, StdError> {
-    let mut client = app_state.db.get_client().await?;
-
-    // Use READ COMMITTED isolation level for better performance
-    let transaction = client
-        .build_transaction()
-        .isolation_level(tokio_postgres::IsolationLevel::ReadCommitted)
-        .start()
-        .await?;
+    let client = app_state.db.get_client().await?;
 
     let receipt_uuid = Uuid::new_v4();
     let receipt_id = receipt_uuid.to_string();
+    let activity_uuid = Uuid::new_v4();
 
     let returner_id = params
         .value
         .get("returnerId")
         .and_then(|v| v.as_str())
-        .unwrap_or("11111111-1111-1111-1111-111111111111");
+        .unwrap_or("");
     let return_checker_id = params
         .value
         .get("returnedCheckerId")
         .and_then(|v| v.as_str())
-        .unwrap_or("22222222-2222-2222-2222-222222222222");
+        .unwrap_or("");
     let returned_lab_id = params
         .value
         .get("returnedLabId")
         .and_then(|v| v.as_str())
-        .unwrap_or("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        .unwrap_or("");
     let note = params.value.get("note").and_then(|v| v.as_str());
 
-    let devices_vec = params
+    let devices = params
         .value
         .get("devices")
         .and_then(|v| v.as_array().cloned())
         .unwrap_or_default();
-    let devices = &devices_vec;
 
     if devices.is_empty() {
         return Ok(json!({ "error": "No devices specified for return" }));
     }
 
-    // Extract device IDs and quality map
-    let mut device_ids = Vec::with_capacity(devices.len());
-    let mut device_quality_map = HashMap::new();
+    let devices_json = serde_json::Value::Array(devices.clone());
 
-    for device in devices {
-        let device_id = device.get("id").and_then(|v| v.as_str()).unwrap_or("");
-        if device_id.is_empty() {
-            continue;
-        }
-        let device_uuid = Uuid::parse_str(device_id)?;
-        device_ids.push(device_uuid);
+    let mut query = String::from(
+        "
+        WITH
+        -- Parse the input JSON
+        input_data AS (
+            SELECT
+                $1::uuid as receipt_id,
+                $2::uuid as activity_id,
+                $3::uuid as returner_id,
+                $4::uuid as checker_id,
+                $5::uuid as lab_id
+        ),
+        -- Parse the devices JSON array
+        device_data AS (
+            SELECT
+                (d->>'id')::uuid as device_id,
+                COALESCE((d->>'afterQuality')::bench_device_status, 'healthy'::bench_device_status) as quality
+            FROM
+                json_array_elements($6) as d
+        ),
+        -- Create the receipt
+        receipt AS (
+            INSERT INTO bench_receipts (id, actor_id, checker_id, lab_id)
+            SELECT receipt_id, returner_id, checker_id, lab_id FROM input_data
+            RETURNING id
+        ),
+        -- Create the activity
+        activity AS (
+            INSERT INTO bench_activities (id, type",
+    );
 
-        let after_quality = device
-            .get("afterQuality")
-            .and_then(|v| v.as_str())
-            .unwrap_or("healthy");
-
-        device_quality_map.insert(device_uuid, after_quality.to_string());
+    if note.is_some() {
+        query.push_str(
+            ", note) SELECT activity_id, 'return'::bench_activity_type, $7 FROM input_data",
+        );
+    } else {
+        query.push_str(") SELECT activity_id, 'return'::bench_activity_type FROM input_data");
     }
 
-    if device_ids.is_empty() {
-        return Ok(json!({ "error": "No valid device IDs provided" }));
+    query.push_str(
+        "
+            RETURNING id
+        ),
+        -- Lock and update devices in one step
+        locked_devices AS (
+            SELECT rd.device_id, d.quality
+            FROM bench_receipts_devices rd
+            JOIN bench_devices bd ON rd.device_id = bd.id
+            JOIN device_data d ON rd.device_id = d.device_id
+            WHERE rd.returned_receipt_id IS NULL
+            AND bd.status = 'borrowing'::bench_device_status
+            FOR UPDATE SKIP LOCKED
+        ),
+        -- Update receipts_devices
+        updated_receipts AS (
+            UPDATE bench_receipts_devices
+            SET
+                returned_receipt_id = (SELECT id FROM receipt),
+                return_id = (SELECT id FROM activity),
+                after_quality = ld.quality
+            FROM
+                locked_devices ld
+            WHERE
+                bench_receipts_devices.device_id = ld.device_id
+                AND bench_receipts_devices.returned_receipt_id IS NULL
+            RETURNING bench_receipts_devices.device_id
+        ),
+        -- Update device status
+        updated_devices AS (
+            UPDATE bench_devices
+            SET status = ld.quality
+            FROM
+                locked_devices ld
+            WHERE
+                bench_devices.id = ld.device_id
+            RETURNING bench_devices.id
+        )
+        -- Return the count and receipt ID
+        SELECT
+            (SELECT id FROM receipt) as receipt_id,
+            COUNT(*) as processed_count
+        FROM updated_devices
+    ",
+    );
+
+    if returner_id.is_empty() || return_checker_id.is_empty() || returned_lab_id.is_empty() {
+        return Ok(
+            json!({ "error": "Missing required parameters: returnerId, returnedCheckerId, or returnedLabId" }),
+        );
     }
 
-    // Prepare parameters for the multi-step operation
     let returner_uuid = Uuid::parse_str(returner_id)?;
     let checker_uuid = Uuid::parse_str(return_checker_id)?;
     let lab_uuid = Uuid::parse_str(returned_lab_id)?;
 
-    // Lock the devices and verify they are still in borrowing status and not already returned
-    let device_id_list: Vec<String> = device_ids
-        .iter()
-        .map(|uuid| format!("'{}'", uuid))
-        .collect();
-
-    let lock_query = format!(
-        "SELECT rd.device_id
-         FROM bench_receipts_devices rd
-         JOIN bench_devices d ON rd.device_id = d.id
-         WHERE rd.device_id IN ({})
-         AND rd.returned_receipt_id IS NULL
-         AND d.status = 'borrowing'::bench_device_status
-         FOR UPDATE SKIP LOCKED",
-        device_id_list.join(",")
-    );
-
-    let locked_rows = transaction.query(&lock_query, &[]).await?;
-    let locked_ids: Vec<Uuid> = locked_rows.iter().map(|row| row.get(0)).collect();
-
-    // Check if we have any devices to return
-    if locked_ids.is_empty() {
-        return Ok(json!({
-            "error": "No devices are available for return"
-        }));
-    }
-
-    // We'll proceed with the devices we were able to lock
-    let device_ids = locked_ids;
-
-    // Insert receipt
-    transaction
-        .execute(
-            "INSERT INTO bench_receipts (id, actor_id, checker_id, lab_id) VALUES ($1, $2, $3, $4)",
-            &[&receipt_uuid, &returner_uuid, &checker_uuid, &lab_uuid],
-        )
-        .await?;
-
-    // Create activity
-    let activity_row = if let Some(note_text) = note {
-        transaction
+    let result = if let Some(note_text) = note {
+        client
             .query_one(
-                "INSERT INTO bench_activities (id, type, note)
-                VALUES (gen_random_uuid(), 'return'::bench_activity_type, $1)
-                RETURNING id",
-                &[&note_text],
+                &query,
+                &[
+                    &receipt_uuid,
+                    &activity_uuid,
+                    &returner_uuid,
+                    &checker_uuid,
+                    &lab_uuid,
+                    &devices_json,
+                    &note_text,
+                ],
             )
             .await?
     } else {
-        transaction
+        client
             .query_one(
-                "INSERT INTO bench_activities (id, type)
-                VALUES (gen_random_uuid(), 'return'::bench_activity_type)
-                RETURNING id",
-                &[],
+                &query,
+                &[
+                    &receipt_uuid,
+                    &activity_uuid,
+                    &returner_uuid,
+                    &checker_uuid,
+                    &lab_uuid,
+                    &devices_json,
+                ],
             )
             .await?
     };
-    let activity_uuid: Uuid = activity_row.get(0);
 
-    // Process each device individually to avoid SQL syntax issues
-    let mut processed_count = 0;
-
-    for device_uuid in device_ids {
-        let quality = device_quality_map
-            .get(&device_uuid)
-            .unwrap_or(&"healthy".to_string())
-            .clone();
-
-        // Use string interpolation for the enum type to avoid type conversion issues
-        let update_query = format!(
-            "UPDATE bench_receipts_devices
-             SET returned_receipt_id = '{}',
-                 return_id = '{}',
-                 after_quality = '{}'::bench_device_status
-             WHERE device_id = '{}'
-             AND returned_receipt_id IS NULL",
-            receipt_uuid,
-            activity_uuid,
-            quality,
-            device_uuid
-        );
-
-        let updated = transaction.execute(&update_query, &[]).await?;
-
-        if updated > 0 {
-            // Use string interpolation for the enum type
-            let device_update_query = format!(
-                "UPDATE bench_devices
-                 SET status = '{}'::bench_device_status
-                 WHERE id = '{}'",
-                quality,
-                device_uuid
-            );
-
-            transaction.execute(&device_update_query, &[]).await?;
-
-            processed_count += 1;
-        }
-    }
-
-    // Commit the transaction
-    transaction.commit().await?;
+    let processed_count: i64 = result.get("processed_count");
 
     Ok(json!({
         "success": true,
@@ -1035,17 +776,14 @@ async fn get_random_healthy_device_ids(
 ) -> Result<Vec<String>, StdError> {
     let client = app_state.db.get_client().await?;
 
-    // Use a more efficient query with specialized index
-    // This avoids the need for a transaction and reduces database round-trips
     let query = format!(
         "SELECT id::text FROM bench_devices
          WHERE status = 'healthy'::bench_device_status
          ORDER BY random()
          LIMIT {}",
-        count * 2 // Get more than needed to increase chances of success
+        count * 2
     );
 
-    // Execute the query directly without a transaction for better performance
     let rows = client.query(&query, &[]).await?;
     let mut device_ids: Vec<String> = rows.iter().map(|row| row.get(0)).collect();
 
@@ -1053,7 +791,6 @@ async fn get_random_healthy_device_ids(
         return Err("No healthy devices available".into());
     }
 
-    // Shuffle and trim to requested count
     if device_ids.len() > count {
         use rand::seq::SliceRandom;
         device_ids.shuffle(&mut rng());
@@ -1066,16 +803,13 @@ async fn get_random_healthy_device_ids(
 async fn get_random_user_ids(app_state: &AppState, count: usize) -> Result<Vec<String>, StdError> {
     let client = app_state.db.get_client().await?;
 
-    // Use a more efficient query without transaction
-    // This reduces database round-trips and improves performance
     let query = format!(
         "SELECT id::text FROM bench_users
          ORDER BY random()
          LIMIT {}",
-        count * 2 // Get more than needed to increase chances of success
+        count * 2
     );
 
-    // Execute the query directly without a transaction for better performance
     let rows = client.query(&query, &[]).await?;
     let mut user_ids: Vec<String> = rows.iter().map(|row| row.get(0)).collect();
 
@@ -1083,7 +817,6 @@ async fn get_random_user_ids(app_state: &AppState, count: usize) -> Result<Vec<S
         return Err("No users available".into());
     }
 
-    // Shuffle and trim to requested count
     if user_ids.len() > count {
         use rand::seq::SliceRandom;
         user_ids.shuffle(&mut rng());
@@ -1096,8 +829,6 @@ async fn get_random_user_ids(app_state: &AppState, count: usize) -> Result<Vec<S
 async fn get_random_lab_id(app_state: &AppState) -> Result<String, StdError> {
     let client = app_state.db.get_client().await?;
 
-    // Use a more efficient query without transaction
-    // This reduces database round-trips and improves performance
     let row = client
         .query_one(
             "SELECT id::text FROM bench_labs ORDER BY random() LIMIT 1",
@@ -1115,17 +846,14 @@ async fn get_random_borrowing_device_ids(
 ) -> Result<Vec<String>, StdError> {
     let client = app_state.db.get_client().await?;
 
-    // Use a more efficient query with specialized index
-    // This avoids the need for a transaction and reduces database round-trips
     let query = format!(
         "SELECT device_id::text FROM bench_receipts_devices
          WHERE return_id IS NULL
          ORDER BY random()
          LIMIT {}",
-        count * 2 // Get more than needed to increase chances of success
+        count * 2
     );
 
-    // Execute the query directly without a transaction for better performance
     let rows = client.query(&query, &[]).await?;
     let mut device_ids: Vec<String> = rows.iter().map(|row| row.get(0)).collect();
 
@@ -1133,7 +861,6 @@ async fn get_random_borrowing_device_ids(
         return Err("No borrowing devices available".into());
     }
 
-    // Shuffle and trim to requested count
     if device_ids.len() > count {
         use rand::seq::SliceRandom;
         device_ids.shuffle(&mut rng());
@@ -1223,7 +950,6 @@ async fn measure_throughput(
                             .map(|_| ())
                     }
                     "create_borrow" => {
-                        // Implement retry logic for serialization failures
                         const MAX_RETRIES: usize = 3;
                         let mut retry_count = 0;
 
@@ -1270,7 +996,6 @@ async fn measure_throughput(
                             match create_receipt(&app_state_clone, &params).await {
                                 Ok(_) => break Ok(()),
                                 Err(e) => {
-                                    // Check if it's a serialization failure that can be retried
                                     if retry_count < MAX_RETRIES
                                         && e.to_string().contains("could not serialize access")
                                     {
@@ -1282,7 +1007,6 @@ async fn measure_throughput(
                                         .await;
                                         continue;
                                     } else {
-                                        // Other error or too many retries
                                         break Err(e);
                                     }
                                 }
@@ -1290,7 +1014,6 @@ async fn measure_throughput(
                         }
                     }
                     "return_devices" => {
-                        // Implement retry logic for serialization failures
                         const MAX_RETRIES: usize = 3;
                         let mut retry_count = 0;
 
@@ -1336,7 +1059,6 @@ async fn measure_throughput(
                             match return_receipt(&app_state_clone, &params).await {
                                 Ok(_) => break Ok(()),
                                 Err(e) => {
-                                    // Check if it's a serialization failure that can be retried
                                     if retry_count < MAX_RETRIES
                                         && e.to_string().contains("could not serialize access")
                                     {
@@ -1348,7 +1070,6 @@ async fn measure_throughput(
                                         .await;
                                         continue;
                                     } else {
-                                        // Other error or too many retries
                                         break Err(e);
                                     }
                                 }
@@ -1371,7 +1092,6 @@ async fn measure_throughput(
                     Err(e) => {
                         let mut err_count = errors_clone.lock().unwrap();
                         *err_count += 1;
-                        // Print the first few errors to help diagnose issues
                         if *err_count <= 3 {
                             println!("Error in operation {}: {}", operation_clone, e);
                         }
@@ -1420,42 +1140,6 @@ async fn measure_throughput(
     Ok((throughput, avg_latency, p95_latency))
 }
 
-async fn cleanup_test_data(app_state: &AppState) -> Result<(), StdError> {
-    println!("Cleaning up test data...");
-    let client = app_state.db.get_client().await?;
-
-    // Drop indexes first to speed up deletion
-    client
-        .batch_execute(
-            "
-        DROP INDEX IF EXISTS idx_bench_devices_status_id_kind_lab;
-        DROP INDEX IF EXISTS idx_bench_devices_status_healthy;
-        DROP INDEX IF EXISTS idx_bench_devices_status_borrowing;
-        DROP INDEX IF EXISTS idx_bench_activities_created_at;
-        DROP INDEX IF EXISTS idx_bench_receipts_devices_borrowed_receipt;
-        DROP INDEX IF EXISTS idx_bench_receipts_devices_return;
-        DROP INDEX IF EXISTS idx_bench_receipts_devices_return_id;
-    ",
-        )
-        .await?;
-
-    // Delete all data
-    client
-        .execute("DELETE FROM bench_receipts_devices", &[])
-        .await?;
-    client.execute("DELETE FROM bench_activities", &[]).await?;
-    client.execute("DELETE FROM bench_receipts", &[]).await?;
-    client.execute("DELETE FROM bench_devices", &[]).await?;
-    client
-        .execute("DELETE FROM bench_device_kinds", &[])
-        .await?;
-    client.execute("DELETE FROM bench_users", &[]).await?;
-    client.execute("DELETE FROM bench_labs", &[]).await?;
-
-    println!("Test data cleanup completed");
-    Ok(())
-}
-
 async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
     println!("\n=== STARTING PERFORMANCE STRESS TEST ===\n");
 
@@ -1469,8 +1153,14 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
         _,
     ) = get_config();
 
-    generate_test_data(
-        &app_state,
+    println!("Cleaning up existing data...");
+    match cleanup_test_tables(&app_state.db).await {
+        Ok(_) => println!("Data cleanup complete"),
+        Err(e) => return Err(format!("Error cleaning up test tables: {}", e).into()),
+    }
+
+    populate_large_test_data(
+        &app_state.db,
         num_users,
         num_device_kinds,
         num_devices,
@@ -1493,7 +1183,6 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
 
     println!("\nTesting create_receipt (borrow) operation...");
 
-    // Check if we have enough healthy devices before running the borrow test
     let client = app_state.db.get_client().await?;
     let count_stmt =
         "SELECT COUNT(*) FROM bench_devices WHERE status = 'healthy'::bench_device_status";
@@ -1552,7 +1241,11 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
         .await?;
     }
 
-    cleanup_test_data(&app_state).await?;
+    println!("Cleaning up test data...");
+    match cleanup_test_tables(&app_state.db).await {
+        Ok(_) => println!("Test data cleanup complete"),
+        Err(e) => return Err(format!("Error cleaning up test tables: {}", e).into()),
+    }
 
     println!("\n=== STRESS TEST COMPLETED ===\n");
     Ok(())

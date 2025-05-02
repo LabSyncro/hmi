@@ -36,22 +36,22 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
 
     let create_tables = r#"
     -- Create test types
-    DO $$ 
+    DO $$
     BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'bench_device_status') THEN
             CREATE TYPE bench_device_status AS ENUM (
-                'healthy', 'broken', 'discarded', 'lost', 
+                'healthy', 'broken', 'discarded', 'lost',
                 'assessing', 'shipping', 'maintaining', 'borrowing'
             );
         END IF;
-        
+
         IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'bench_activity_type') THEN
             CREATE TYPE bench_activity_type AS ENUM (
                 'assessment', 'borrow', 'return', 'maintenance', 'shipment'
             );
         END IF;
     END $$;
-    
+
     -- Users table for testing
     CREATE TABLE IF NOT EXISTS bench_users (
         id UUID PRIMARY KEY,
@@ -60,7 +60,7 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
         image TEXT,
         deleted_at TIMESTAMPTZ
     );
-    
+
     -- Labs table for testing
     CREATE TABLE IF NOT EXISTS bench_labs (
         id UUID PRIMARY KEY,
@@ -69,14 +69,14 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
         branch TEXT NOT NULL,
         deleted_at TIMESTAMPTZ
     );
-    
+
     -- Categories table for testing
     CREATE TABLE IF NOT EXISTS bench_categories (
         id UUID PRIMARY KEY,
         name TEXT NOT NULL,
         deleted_at TIMESTAMPTZ
     );
-    
+
     -- Device kinds table for testing
     CREATE TABLE IF NOT EXISTS bench_device_kinds (
         id UUID PRIMARY KEY,
@@ -92,7 +92,7 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
         category_id UUID REFERENCES bench_categories(id),
         deleted_at TIMESTAMPTZ
     );
-    
+
     -- Devices table for testing
     CREATE TABLE IF NOT EXISTS bench_devices (
         id UUID PRIMARY KEY,
@@ -103,7 +103,7 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
         accessory_for_kind_id UUID REFERENCES bench_device_kinds(id),
         deleted_at TIMESTAMPTZ
     );
-    
+
     -- Activities table for testing
     CREATE TABLE IF NOT EXISTS bench_activities (
         id UUID PRIMARY KEY,
@@ -111,7 +111,7 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
         note TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
-    
+
     -- Inventory assessments table for testing
     CREATE TABLE IF NOT EXISTS bench_inventory_assessments (
         id UUID PRIMARY KEY REFERENCES bench_activities(id),
@@ -120,7 +120,7 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
         status TEXT NOT NULL DEFAULT 'assessing',
         finished_at TIMESTAMPTZ
     );
-    
+
     -- Inventory assessments devices table for testing
     CREATE TABLE IF NOT EXISTS bench_inventory_assessments_devices (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -130,7 +130,7 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
         after_status bench_device_status,
         UNIQUE(assessing_id, device_id)
     );
-    
+
     -- Receipts table for testing
     CREATE TABLE IF NOT EXISTS bench_receipts (
         id UUID PRIMARY KEY,
@@ -138,7 +138,7 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
         checker_id UUID REFERENCES bench_users(id),
         lab_id UUID REFERENCES bench_labs(id)
     );
-    
+
     -- Receipts devices table for testing
     CREATE TABLE IF NOT EXISTS bench_receipts_devices (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -172,7 +172,7 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
         after_status bench_device_status,
         UNIQUE(maintenance_id, device_id)
     );
-    
+
     -- Shipments table for testing
     CREATE TABLE IF NOT EXISTS bench_shipments (
         id UUID PRIMARY KEY REFERENCES bench_activities(id),
@@ -182,7 +182,7 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
         status TEXT NOT NULL DEFAULT 'preparing',
         finished_at TIMESTAMPTZ
     );
-    
+
     -- Shipments devices table for testing
     CREATE TABLE IF NOT EXISTS bench_shipments_devices (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -196,102 +196,301 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
 
     client.batch_execute(create_tables).await?;
 
-    populate_test_data(db).await?;
+    // No default data insertion here
 
     Ok(())
 }
 
-pub async fn populate_test_data(db: &Database) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn populate_large_test_data(
+    db: &Database,
+    num_users: usize,
+    num_device_kinds: usize,
+    num_devices: usize,
+    num_labs: usize,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let client = db.get_client().await?;
 
-    let insert_users = r#"
-    INSERT INTO bench_users (id, name, email, image)
-    VALUES 
-        ('11111111-1111-1111-1111-111111111111', 'Test User 1', 'user1@test.com', '{"url": "https://example.com/avatar1.jpg"}'),
-        ('22222222-2222-2222-2222-222222222222', 'Test User 2', 'user2@test.com', '{"url": "https://example.com/avatar2.jpg"}'),
-        ('33333333-3333-3333-3333-333333333333', 'Test User 3', 'user3@test.com', '{"url": "https://example.com/avatar3.jpg"}')
-    ON CONFLICT (id) DO NOTHING;
-    "#;
+    println!("Generating test data with:");
+    println!("  - {} users", num_users);
+    println!("  - {} device kinds", num_device_kinds);
+    println!("  - {} devices", num_devices);
+    println!("  - {} labs", num_labs);
 
-    let insert_labs = r#"
-    INSERT INTO bench_labs (id, name, room, branch)
-    VALUES 
-        ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Lab 1', 'Room 101', 'Branch A'),
-        ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Lab 2', 'Room 202', 'Branch B'),
-        ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Lab 3', 'Room 303', 'Branch C')
-    ON CONFLICT (id) DO NOTHING;
-    "#;
+    // No default data insertion
 
-    let insert_categories = r#"
-    INSERT INTO bench_categories (id, name)
-    VALUES 
-        ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'Computers'),
-        ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Networks'),
-        ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'Peripherals')
-    ON CONFLICT (id) DO NOTHING;
-    "#;
+    // Disable triggers temporarily to speed up inserts
+    client
+        .execute("SET session_replication_role = 'replica'", &[])
+        .await?;
 
-    let insert_device_kinds = r#"
-    INSERT INTO bench_device_kinds (id, name, unit, brand, manufacturer, description, image, category_id, allowed_borrow_roles, allowed_view_roles)
-    VALUES 
-        ('aaaaaaaa-0000-4000-a000-000000000001', 'Laptop', 'unit', 'Dell', 'Dell Inc.', 'Standard laptop', '{"mainImage": "laptop.jpg"}', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '{student,teacher}', '{student,teacher,admin}'),
-        ('bbbbbbbb-0000-4000-a000-000000000002', 'Router', 'unit', 'Cisco', 'Cisco Systems', 'Network router', '{"mainImage": "router.jpg"}', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '{teacher}', '{student,teacher,admin}'),
-        ('cccccccc-0000-4000-a000-000000000003', 'Mouse', 'unit', 'Logitech', 'Logitech Inc.', 'Computer mouse', '{"mainImage": "mouse.jpg"}', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '{student,teacher}', '{student,teacher,admin}')
-    ON CONFLICT (id) DO NOTHING;
-    "#;
+    // Generate users
+    println!("Creating users...");
+    // Increase batch size for better performance
+    let batch_size = 1000;
+    for batch in 0..((num_users) / batch_size + 1) {
+        let start_idx = batch * batch_size;
+        let end_idx = std::cmp::min((batch + 1) * batch_size, num_users);
 
-    let insert_devices = r#"
-    WITH device_data AS (
-        SELECT 
-            gen_random_uuid() as id,
-            'DEV-' || lpad(n::text, 5, '0') as full_id,
-            'aaaaaaaa-0000-4000-a000-000000000001'::uuid as kind,
-            'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid as lab_id,
-            'healthy'::bench_device_status as status
-        FROM generate_series(1, 34) as n
-        UNION ALL
-        SELECT 
-            gen_random_uuid() as id,
-            'DEV-' || lpad((n+34)::text, 5, '0') as full_id,
-            'bbbbbbbb-0000-4000-a000-000000000002'::uuid as kind,
-            'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid as lab_id,
-            'healthy'::bench_device_status as status
-        FROM generate_series(1, 33) as n
-        UNION ALL
-        SELECT 
-            gen_random_uuid() as id,
-            'DEV-' || lpad((n+67)::text, 5, '0') as full_id,
-            'cccccccc-0000-4000-a000-000000000003'::uuid as kind,
-            'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid as lab_id,
-            'healthy'::bench_device_status as status
-        FROM generate_series(1, 33) as n
-    )
-    INSERT INTO bench_devices (id, full_id, kind, lab_id, status)
-    SELECT id, full_id, kind, lab_id, status
-    FROM device_data
-    ON CONFLICT (id) DO NOTHING;
-    "#;
+        if start_idx >= end_idx {
+            break;
+        }
 
+        let mut user_values = Vec::with_capacity(end_idx - start_idx);
+        for i in start_idx..end_idx {
+            let user_id = uuid::Uuid::new_v4();
+            let user_name = format!("User {}", i + 1);
+            let email = format!("user{}@example.com", i + 1);
+            let image = serde_json::json!({
+                "url": format!("https://example.com/avatars/{}.jpg", i + 1)
+            });
+
+            user_values.push(format!(
+                "('{}', '{}', '{}', '{}')",
+                user_id, user_name, email, image
+            ));
+        }
+
+        let query = format!(
+            "INSERT INTO bench_users (id, name, email, image) VALUES {}",
+            user_values.join(", ")
+        );
+
+        client.execute(&query, &[]).await?;
+
+        if (batch + 1) % 10 == 0 || end_idx == num_users {
+            println!("Created {}/{} users", end_idx, num_users);
+        }
+    }
+
+    // Generate labs
+    println!("Creating labs...");
+    let mut lab_values = Vec::with_capacity(num_labs);
+    for i in 0..num_labs {
+        let lab_id = uuid::Uuid::new_v4();
+        let lab_name = format!("Lab {}", i + 1);
+        lab_values.push(format!(
+            "('{}', '{}', 'Room {}', 'Branch {}')",
+            lab_id,
+            lab_name,
+            i + 100,
+            (i % 5) + 1
+        ));
+    }
+
+    // Insert all labs in a single query
+    let query = format!(
+        "INSERT INTO bench_labs (id, name, room, branch) VALUES {}",
+        lab_values.join(", ")
+    );
+
+    client.execute(&query, &[]).await?;
+    println!("Created {} labs", num_labs);
+
+    // Generate device kinds
+    println!("Creating device kinds...");
+    // Increase batch size for better performance
+    let batch_size = 1000;
+    for batch in 0..((num_device_kinds) / batch_size + 1) {
+        let start_idx = batch * batch_size;
+        let end_idx = std::cmp::min((batch + 1) * batch_size, num_device_kinds);
+
+        if start_idx >= end_idx {
+            break;
+        }
+
+        let mut kind_values = Vec::with_capacity(end_idx - start_idx);
+        for i in start_idx..end_idx {
+            let kind_id = uuid::Uuid::new_v4();
+            let kind_name = format!("Device Kind {}", i + 1);
+            let image = serde_json::json!({
+                "url": format!("https://example.com/devices/{}.jpg", i + 1)
+            });
+
+            kind_values.push(format!(
+                "('{}', '{}', '{}', false, '{{}}', '{{}}')",
+                kind_id, kind_name, image
+            ));
+        }
+
+        let query = format!(
+            "INSERT INTO bench_device_kinds (id, name, image, is_borrowable_lab_only, allowed_borrow_roles, allowed_view_roles) VALUES {}",
+            kind_values.join(", ")
+        );
+
+        client.execute(&query, &[]).await?;
+
+        if (batch + 1) % 10 == 0 || end_idx == num_device_kinds {
+            println!("Created {}/{} device kinds", end_idx, num_device_kinds);
+        }
+    }
+
+    // Create categories for device kinds
+    println!("Creating categories...");
+    let categories = [
+        ("Computers", uuid::Uuid::new_v4()),
+        ("Networks", uuid::Uuid::new_v4()),
+        ("Peripherals", uuid::Uuid::new_v4()),
+    ];
+
+    let mut category_values = Vec::with_capacity(categories.len());
+    for (name, id) in &categories {
+        category_values.push(format!("('{}', '{}')", id, name));
+    }
+
+    let query = format!(
+        "INSERT INTO bench_categories (id, name) VALUES {}",
+        category_values.join(", ")
+    );
+
+    client.execute(&query, &[]).await?;
+    println!("Created {} categories", categories.len());
+
+    // Get all lab and device kind IDs for device creation
+    let lab_rows = client.query("SELECT id::text FROM bench_labs", &[]).await?;
+    let lab_ids: Vec<String> = lab_rows.iter().map(|row| row.get(0)).collect();
+
+    let kind_rows = client
+        .query("SELECT id::text FROM bench_device_kinds", &[])
+        .await?;
+    let kind_ids: Vec<String> = kind_rows.iter().map(|row| row.get(0)).collect();
+
+    if lab_ids.is_empty() || kind_ids.is_empty() {
+        return Err("Failed to create labs or device kinds".into());
+    }
+
+    // Generate devices
+    println!("Creating devices...");
+    // Increase batch size significantly for devices
+    let batch_size = 5000;
+    // Make sure we have more healthy devices than other statuses
+    let statuses = [
+        "healthy",
+        "healthy",
+        "healthy",
+        "borrowing",
+        "broken",
+        "lost",
+    ];
+    let total_batches = (num_devices + batch_size - 1) / batch_size;
+
+    for batch in 0..total_batches {
+        let start_idx = batch * batch_size;
+        let end_idx = std::cmp::min((batch + 1) * batch_size, num_devices);
+
+        if start_idx >= end_idx {
+            break;
+        }
+
+        let mut device_values = Vec::with_capacity(end_idx - start_idx);
+        for i in start_idx..end_idx {
+            let device_id = uuid::Uuid::new_v4();
+            let kind_idx = i % kind_ids.len();
+            let lab_idx = i % lab_ids.len();
+            let status_idx = i % statuses.len();
+            let full_id = format!(
+                "DEV-{}-{}",
+                i,
+                device_id.to_string().split('-').next().unwrap_or("")
+            );
+
+            device_values.push(format!(
+                "('{}', '{}', '{}'::bench_device_status, '{}', '{}')",
+                device_id, kind_ids[kind_idx], statuses[status_idx], lab_ids[lab_idx], full_id
+            ));
+        }
+
+        let query = format!(
+            "INSERT INTO bench_devices (id, kind, status, lab_id, full_id) VALUES {}",
+            device_values.join(", ")
+        );
+
+        let result = client.execute(&query, &[]).await;
+        if let Err(e) = result {
+            println!("Error in batch {}/{}: {}", batch + 1, total_batches, e);
+            return Err(e.into());
+        }
+
+        if (batch + 1) % 10 == 0 || end_idx == num_devices {
+            println!(
+                "Created {}/{} devices ({:.2}%)",
+                end_idx,
+                num_devices,
+                (end_idx as f64 / num_devices as f64) * 100.0
+            );
+        }
+    }
+
+    // Re-enable triggers
     client
-        .batch_execute(insert_users)
-        .await
-        .map_err(|e| format!("Failed to insert users: {}", e))?;
+        .execute("SET session_replication_role = 'origin'", &[])
+        .await?;
+
+    // Create only necessary indexes after data insertion
+    println!("Creating optimized indexes to speed up queries...");
     client
-        .batch_execute(insert_labs)
-        .await
-        .map_err(|e| format!("Failed to insert labs: {}", e))?;
-    client
-        .batch_execute(insert_categories)
-        .await
-        .map_err(|e| format!("Failed to insert categories: {}", e))?;
-    client
-        .batch_execute(insert_device_kinds)
-        .await
-        .map_err(|e| format!("Failed to insert device kinds: {}", e))?;
-    client
-        .batch_execute(insert_devices)
-        .await
-        .map_err(|e| format!("Failed to insert devices: {}", e))?;
+        .batch_execute(
+            "
+        -- Optimized index strategy for bench_devices
+        -- Use a single covering index for the most common query patterns
+        CREATE INDEX IF NOT EXISTS idx_bench_devices_status_id_kind_lab
+            ON bench_devices(status, id, kind, lab_id);
+
+        -- Specialized index for the borrow operation with INCLUDE to avoid additional lookups
+        CREATE INDEX IF NOT EXISTS idx_bench_devices_status_healthy
+            ON bench_devices(id)
+            WHERE status = 'healthy'::bench_device_status;
+
+        -- Specialized index for the return operation
+        CREATE INDEX IF NOT EXISTS idx_bench_devices_status_borrowing
+            ON bench_devices(id)
+            WHERE status = 'borrowing'::bench_device_status;
+
+        -- Index for bench_activities created_at (used in sorting)
+        CREATE INDEX IF NOT EXISTS idx_bench_activities_created_at
+            ON bench_activities(created_at);
+
+        -- Optimized index for receipts_devices queries
+        CREATE INDEX IF NOT EXISTS idx_bench_receipts_devices_borrowed_receipt
+            ON bench_receipts_devices(borrowed_receipt_id, device_id);
+
+        -- Optimized index for return queries
+        CREATE INDEX IF NOT EXISTS idx_bench_receipts_devices_return
+            ON bench_receipts_devices(device_id, returned_receipt_id)
+            WHERE returned_receipt_id IS NULL;
+
+        -- Index for get_random_borrowing_device_ids with INCLUDE to avoid lookups
+        CREATE INDEX IF NOT EXISTS idx_bench_receipts_devices_return_id
+            ON bench_receipts_devices(device_id)
+            INCLUDE (borrow_id, expected_returned_at)
+            WHERE return_id IS NULL;
+    ",
+        )
+        .await?;
+
+    println!("Indexes created successfully");
+
+    // Print table counts
+    let tables = [
+        "bench_labs",
+        "bench_users",
+        "bench_device_kinds",
+        "bench_devices",
+    ];
+
+    println!("\n--- Current Database State ---");
+    for table in tables {
+        match client
+            .query_one(&format!("SELECT COUNT(*) FROM {}", table), &[])
+            .await
+        {
+            Ok(row) => {
+                let count: i64 = row.get(0);
+                println!("{}: {} rows", table, count);
+            }
+            Err(e) => println!("Error querying {}: {}", table, e),
+        }
+    }
+    println!("-----------------------------\n");
 
     Ok(())
 }
@@ -315,7 +514,7 @@ pub async fn cleanup_test_tables(db: &Database) -> Result<(), Box<dyn std::error
     DROP TABLE IF EXISTS bench_categories;
     DROP TABLE IF EXISTS bench_labs;
     DROP TABLE IF EXISTS bench_users;
-    
+
     -- Drop custom types
     DROP TYPE IF EXISTS bench_device_status;
     DROP TYPE IF EXISTS bench_activity_type;

@@ -6,7 +6,7 @@ use uuid::Uuid;
 use hmi_lib::commands::db_commands::{InsertParams, QueryParams};
 
 mod common;
-use common::{cleanup_test_tables, setup_bench_env, AppState};
+use common::{cleanup_test_tables, populate_large_test_data, setup_bench_env, AppState};
 
 async fn fetch_ready_borrow_devices(
     app_state: &AppState,
@@ -29,25 +29,40 @@ async fn fetch_ready_borrow_devices(
     };
 
     let sql = format!(
-        "SELECT 
-            bench_device_kinds.id as kind,
-            bench_device_kinds.name,
-            bench_device_kinds.image,
-            COUNT(*) as quantity,
-            bench_labs.name as place,
+        "WITH healthy_devices AS (
+            SELECT
+                d.kind,
+                d.lab_id,
+                COUNT(*) as quantity
+            FROM
+                bench_devices d
+            WHERE
+                d.status::text = 'healthy'
+                AND d.deleted_at IS NULL
+            GROUP BY
+                d.kind, d.lab_id
+        ),
+        device_info AS (
+            SELECT
+                dk.id as kind,
+                dk.name,
+                dk.image,
+                hd.quantity,
+                l.name as place
+            FROM
+                healthy_devices hd
+                JOIN bench_device_kinds dk ON hd.kind = dk.id
+                LEFT JOIN bench_labs l ON hd.lab_id = l.id
+        )
+        SELECT
+            di.kind,
+            di.name,
+            di.image,
+            di.quantity,
+            di.place,
             COUNT(*) OVER() as total_count
-        FROM 
-            bench_devices
-            JOIN bench_device_kinds ON bench_devices.kind = bench_device_kinds.id
-            LEFT JOIN bench_labs ON bench_devices.lab_id = bench_labs.id
-        WHERE
-            bench_devices.status::text = 'healthy'
-            AND bench_devices.deleted_at IS NULL
-        GROUP BY 
-            bench_device_kinds.id,
-            bench_device_kinds.name,
-            bench_device_kinds.image,
-            bench_labs.name
+        FROM
+            device_info di
         {} LIMIT {} OFFSET {}",
         order_clause, limit, offset
     );
@@ -90,46 +105,61 @@ async fn fetch_borrowing_devices(
                 if *is_asc { "ASC" } else { "DESC" }
             )
         }
-        _ => "ORDER BY bench_activities.created_at DESC".to_string(),
+        _ => "ORDER BY borrowed_at DESC".to_string(),
     };
 
     let sql = format!(
-        "SELECT 
-            bench_receipts.id as receipt_code,
-            bench_users.name as borrower_name,
-            bench_users.image as borrower_image,
-            COUNT(*) as total_qty,
-            COUNT(CASE WHEN bench_receipts_devices.return_id IS NOT NULL THEN 1 END) as returned_qty,
-            bench_labs.name as borrowed_place,
-            bench_activities.created_at as borrowed_at,
-            bench_receipts_devices.expected_returned_at,
-            CASE 
-                WHEN bench_receipts_devices.expected_returned_at < CURRENT_TIMESTAMP THEN 'late'
-                ELSE 'on_time'
-            END as status,
-            CASE 
-                WHEN bench_receipts_devices.return_id IS NULL THEN 'borrowing'
-                ELSE 'returned'
-            END as borrow_state,
+        "WITH active_borrowings AS (
+            SELECT
+                rd.borrowed_receipt_id,
+                rd.return_id,
+                rd.expected_returned_at,
+                a.created_at as borrowed_at,
+                COUNT(*) as device_count,
+                COUNT(CASE WHEN rd.return_id IS NOT NULL THEN 1 END) as returned_count
+            FROM
+                bench_receipts_devices rd
+                JOIN bench_activities a ON rd.borrow_id = a.id
+            WHERE
+                rd.return_id IS NULL
+            GROUP BY
+                rd.borrowed_receipt_id,
+                rd.return_id,
+                rd.expected_returned_at,
+                a.created_at
+        ),
+        borrower_info AS (
+            SELECT
+                r.id as receipt_code,
+                u.name as borrower_name,
+                u.image as borrower_image,
+                l.name as borrowed_place,
+                ab.borrowed_at,
+                ab.expected_returned_at,
+                ab.device_count as total_qty,
+                ab.returned_count as returned_qty,
+                CASE
+                    WHEN ab.expected_returned_at < CURRENT_TIMESTAMP THEN 'late'
+                    ELSE 'on_time'
+                END as status,
+                CASE
+                    WHEN ab.return_id IS NULL THEN 'borrowing'
+                    ELSE 'returned'
+                END as borrow_state
+            FROM
+                active_borrowings ab
+                JOIN bench_receipts r ON ab.borrowed_receipt_id = r.id
+                JOIN bench_users u ON r.actor_id = u.id
+                JOIN bench_labs l ON r.lab_id = l.id
+            WHERE
+                u.deleted_at IS NULL
+        )
+        SELECT
+            bi.*,
             COUNT(*) OVER() as total_count
-        FROM 
-            bench_receipts_devices
-            JOIN bench_receipts ON bench_receipts_devices.borrowed_receipt_id = bench_receipts.id
-            JOIN bench_users ON bench_receipts.actor_id = bench_users.id
-            JOIN bench_labs ON bench_receipts.lab_id = bench_labs.id
-            JOIN bench_activities ON bench_receipts_devices.borrow_id = bench_activities.id
-        WHERE 
-            bench_users.deleted_at IS NULL
-            AND bench_receipts_devices.return_id IS NULL
-        GROUP BY 
-            bench_receipts.id,
-            bench_users.name,
-            bench_users.image,
-            bench_labs.name,
-            bench_activities.created_at,
-            bench_receipts_devices.expected_returned_at,
-            bench_receipts_devices.return_id
-        {} LIMIT {} OFFSET {}", 
+        FROM
+            borrower_info bi
+        {} LIMIT {} OFFSET {}",
         order_clause, limit, offset
     );
 
@@ -177,41 +207,55 @@ async fn fetch_returned_devices(
                 if *is_asc { "ASC" } else { "DESC" }
             )
         }
-        _ => "ORDER BY bench_activities.created_at DESC".to_string(),
+        _ => "ORDER BY returned_at DESC".to_string(),
     };
 
     let sql = format!(
-        "SELECT 
-            bench_receipts.id as receipt_code,
-            bench_users.name as returned_name,
-            bench_users.image as returned_image,
-            COUNT(*) as quantity,
-            bench_labs.name as returned_place,
-            bench_activities.created_at as returned_at,
-            CASE 
-                WHEN bench_receipts_devices.expected_returned_at < bench_activities.created_at THEN 'late'
-                ELSE 'on_time'
-            END as status,
-            bench_receipts_devices.note,
+        "WITH returned_items AS (
+            SELECT
+                rd.returned_receipt_id,
+                rd.expected_returned_at,
+                rd.note,
+                a.created_at as returned_at,
+                COUNT(*) as device_count
+            FROM
+                bench_receipts_devices rd
+                JOIN bench_activities a ON rd.return_id = a.id
+            WHERE
+                rd.return_id IS NOT NULL
+            GROUP BY
+                rd.returned_receipt_id,
+                rd.expected_returned_at,
+                rd.note,
+                a.created_at
+        ),
+        return_info AS (
+            SELECT
+                r.id as receipt_code,
+                u.name as returned_name,
+                u.image as returned_image,
+                l.name as returned_place,
+                ri.returned_at,
+                ri.device_count as quantity,
+                ri.note,
+                CASE
+                    WHEN ri.expected_returned_at < ri.returned_at THEN 'late'
+                    ELSE 'on_time'
+                END as status
+            FROM
+                returned_items ri
+                JOIN bench_receipts r ON ri.returned_receipt_id = r.id
+                JOIN bench_users u ON r.actor_id = u.id
+                JOIN bench_labs l ON r.lab_id = l.id
+            WHERE
+                u.deleted_at IS NULL
+        )
+        SELECT
+            ri.*,
             COUNT(*) OVER() as total_count
-        FROM 
-            bench_receipts_devices
-            JOIN bench_receipts ON bench_receipts_devices.returned_receipt_id = bench_receipts.id
-            JOIN bench_users ON bench_receipts_devices.return_id IS NOT NULL
-            JOIN bench_labs ON bench_receipts.lab_id = bench_labs.id
-            JOIN bench_activities ON bench_receipts_devices.return_id = bench_activities.id
-        WHERE 
-            bench_users.deleted_at IS NULL
-            AND bench_receipts_devices.return_id IS NOT NULL
-        GROUP BY 
-            bench_receipts.id,
-            bench_users.name,
-            bench_users.image,
-            bench_labs.name,
-            bench_activities.created_at,
-            bench_receipts_devices.expected_returned_at,
-            bench_receipts_devices.note
-        {} LIMIT {} OFFSET {}", 
+        FROM
+            return_info ri
+        {} LIMIT {} OFFSET {}",
         order_clause, limit, offset
     );
 
@@ -243,27 +287,23 @@ async fn create_receipt(
     app_state: &AppState,
     params: &InsertParams,
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    let mut client = app_state.db.get_client().await?;
-    let transaction = client.transaction().await?;
+    let client = app_state.db.get_client().await?;
 
     let receipt_uuid = Uuid::new_v4();
     let receipt_id = receipt_uuid.to_string();
 
-    let borrower_id = params
-        .value
-        .get("borrowerId")
-        .and_then(|v| v.as_str())
-        .unwrap_or("11111111-1111-1111-1111-111111111111");
-    let borrow_checker_id = params
-        .value
-        .get("borrowCheckerId")
-        .and_then(|v| v.as_str())
-        .unwrap_or("22222222-2222-2222-2222-222222222222");
-    let borrowed_lab_id = params
-        .value
-        .get("borrowedLabId")
-        .and_then(|v| v.as_str())
-        .unwrap_or("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    let borrower_id = match params.value.get("borrowerId").and_then(|v| v.as_str()) {
+        Some(id) if !id.is_empty() => id,
+        _ => return Ok(json!({ "error": "Borrower ID is required" })),
+    };
+    let borrow_checker_id = match params.value.get("borrowCheckerId").and_then(|v| v.as_str()) {
+        Some(id) if !id.is_empty() => id,
+        _ => return Ok(json!({ "error": "Borrow checker ID is required" })),
+    };
+    let borrowed_lab_id = match params.value.get("borrowedLabId").and_then(|v| v.as_str()) {
+        Some(id) if !id.is_empty() => id,
+        _ => return Ok(json!({ "error": "Borrowed lab ID is required" })),
+    };
 
     let devices_vec = params
         .value
@@ -276,17 +316,7 @@ async fn create_receipt(
         return Ok(json!({ "error": "No devices specified for borrowing" }));
     }
 
-    let receipt_query = format!(
-        "INSERT INTO bench_receipts (id, actor_id, checker_id, lab_id)
-        VALUES ('{}', '{}', '{}', '{}')",
-        receipt_id, borrower_id, borrow_checker_id, borrowed_lab_id
-    );
-    transaction.execute(&receipt_query, &[]).await?;
-
-    let activity_query = "INSERT INTO bench_activities (id, type) VALUES (gen_random_uuid(), 'borrow'::bench_activity_type) RETURNING id::text";
-    let activity_row = transaction.query_one(activity_query, &[]).await?;
-    let activity_id = activity_row.get::<_, String>(0);
-
+    let mut device_values = Vec::new();
     for device in devices {
         let device_id = device.get("id").and_then(|v| v.as_str()).unwrap_or("");
         if device_id.is_empty() {
@@ -299,42 +329,74 @@ async fn create_receipt(
             None => "NOW() + INTERVAL '7 days'".to_string(),
         };
 
-        let expected_returned_lab_id = device
-            .get("expectedReturnedLabId")
-            .and_then(|v| v.as_str())
-            .unwrap_or(borrowed_lab_id);
-        let prev_quality = device
-            .get("prevQuality")
-            .and_then(|v| v.as_str())
-            .unwrap_or("healthy");
+        let expected_returned_lab_id =
+            match device.get("expectedReturnedLabId").and_then(|v| v.as_str()) {
+                Some(id) if !id.is_empty() => id,
+                _ => borrowed_lab_id,
+            };
+        let prev_quality = match device.get("prevQuality").and_then(|v| v.as_str()) {
+            Some(quality) if !quality.is_empty() => quality,
+            _ => continue,
+        };
 
-        let device_query = format!(
-            "INSERT INTO bench_receipts_devices (
-                borrowed_receipt_id, device_id, borrow_id, 
-                expected_returned_at, expected_returned_lab_id, prev_quality
-            ) 
-            VALUES (
-                '{}', '{}', '{}', 
-                {}, '{}', '{}'::bench_device_status
-            )",
-            receipt_id,
-            device_id,
-            activity_id,
-            expected_returned_at,
-            expected_returned_lab_id,
-            prev_quality
-        );
-
-        transaction.execute(&device_query, &[]).await?;
-
-        let update_query = format!(
-            "UPDATE bench_devices SET status = 'borrowing'::bench_device_status WHERE id = '{}'",
-            device_id
-        );
-        transaction.execute(&update_query, &[]).await?;
+        device_values.push(format!(
+            "('{}', {}, '{}', '{}'::bench_device_status)",
+            device_id, expected_returned_at, expected_returned_lab_id, prev_quality
+        ));
     }
 
-    transaction.commit().await?;
+    if device_values.is_empty() {
+        return Ok(json!({ "error": "No valid devices specified for borrowing" }));
+    }
+
+    let device_values_str = device_values.join(", ");
+
+    let query = format!(
+        "WITH new_receipt AS (
+            INSERT INTO bench_receipts (id, actor_id, checker_id, lab_id)
+            VALUES ('{}', '{}', '{}', '{}')
+            RETURNING id
+        ),
+        new_activity AS (
+            INSERT INTO bench_activities (id, type)
+            VALUES (gen_random_uuid(), 'borrow'::bench_activity_type)
+            RETURNING id
+        ),
+        device_data(device_id, expected_returned_at, expected_returned_lab_id, prev_quality) AS (
+            VALUES {}
+        ),
+        insert_devices AS (
+            INSERT INTO bench_receipts_devices (
+                borrowed_receipt_id, device_id, borrow_id,
+                expected_returned_at, expected_returned_lab_id, prev_quality
+            )
+            SELECT
+                '{}',
+                dd.device_id,
+                (SELECT id FROM new_activity),
+                dd.expected_returned_at::timestamptz,
+                dd.expected_returned_lab_id::uuid,
+                dd.prev_quality
+            FROM device_data dd
+            RETURNING device_id
+        ),
+        update_devices AS (
+            UPDATE bench_devices
+            SET status = 'borrowing'::bench_device_status
+            WHERE id IN (SELECT device_id FROM insert_devices)
+            RETURNING id
+        )
+        SELECT '{}' as id",
+        receipt_id,
+        borrower_id,
+        borrow_checker_id,
+        borrowed_lab_id,
+        device_values_str,
+        receipt_id,
+        receipt_id
+    );
+
+    client.query_one(&query, &[]).await?;
 
     Ok(json!({
         "success": true,
@@ -346,27 +408,27 @@ async fn return_receipt(
     app_state: &AppState,
     params: &InsertParams,
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    let mut client = app_state.db.get_client().await?;
-    let transaction = client.transaction().await?;
+    let client = app_state.db.get_client().await?;
 
     let receipt_uuid = Uuid::new_v4();
     let receipt_id = receipt_uuid.to_string();
 
-    let returner_id = params
-        .value
-        .get("returnerId")
-        .and_then(|v| v.as_str())
-        .unwrap_or("11111111-1111-1111-1111-111111111111");
-    let return_checker_id = params
+    let returner_id = match params.value.get("returnerId").and_then(|v| v.as_str()) {
+        Some(id) if !id.is_empty() => id,
+        _ => return Ok(json!({ "error": "Returner ID is required" })),
+    };
+    let return_checker_id = match params
         .value
         .get("returnedCheckerId")
         .and_then(|v| v.as_str())
-        .unwrap_or("22222222-2222-2222-2222-222222222222");
-    let returned_lab_id = params
-        .value
-        .get("returnedLabId")
-        .and_then(|v| v.as_str())
-        .unwrap_or("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    {
+        Some(id) if !id.is_empty() => id,
+        _ => return Ok(json!({ "error": "Return checker ID is required" })),
+    };
+    let returned_lab_id = match params.value.get("returnedLabId").and_then(|v| v.as_str()) {
+        Some(id) if !id.is_empty() => id,
+        _ => return Ok(json!({ "error": "Returned lab ID is required" })),
+    };
     let note = params.value.get("note").and_then(|v| v.as_str());
 
     let devices_vec = params
@@ -380,55 +442,77 @@ async fn return_receipt(
         return Ok(json!({ "error": "No devices specified for return" }));
     }
 
-    let receipt_query = format!(
-        "INSERT INTO bench_receipts (id, actor_id, checker_id, lab_id)
-        VALUES ('{}', '{}', '{}', '{}')",
-        receipt_id, returner_id, return_checker_id, returned_lab_id
-    );
-    transaction.execute(&receipt_query, &[]).await?;
-
-    let note_value = note.map_or("NULL".to_string(), |n| format!("'{}'", n));
-    let activity_query = format!(
-        "INSERT INTO bench_activities (id, type, note) 
-        VALUES (gen_random_uuid(), 'return'::bench_activity_type, {}) 
-        RETURNING id::text",
-        note_value
-    );
-    let activity_row = transaction.query_one(&activity_query, &[]).await?;
-    let activity_id = activity_row.get::<_, String>(0);
-
+    let mut device_values = Vec::new();
     for device in devices {
         let device_id = device.get("id").and_then(|v| v.as_str()).unwrap_or("");
         if device_id.is_empty() {
             continue;
         }
 
-        let after_quality = device
-            .get("afterQuality")
-            .and_then(|v| v.as_str())
-            .unwrap_or("healthy");
+        let after_quality = match device.get("afterQuality").and_then(|v| v.as_str()) {
+            Some(quality) if !quality.is_empty() => quality,
+            _ => continue,
+        };
 
-        let update_receipt_query = format!(
-            "UPDATE bench_receipts_devices 
-            SET returned_receipt_id = '{}', 
-                return_id = '{}',
-                after_quality = '{}'::bench_device_status
-            WHERE device_id = '{}' 
-                AND returned_receipt_id IS NULL",
-            receipt_id, activity_id, after_quality, device_id
-        );
-        transaction.execute(&update_receipt_query, &[]).await?;
-
-        let update_device_query = format!(
-            "UPDATE bench_devices 
-            SET status = '{}'::bench_device_status 
-            WHERE id = '{}'",
-            after_quality, device_id
-        );
-        transaction.execute(&update_device_query, &[]).await?;
+        device_values.push(format!(
+            "('{}', '{}'::bench_device_status)",
+            device_id, after_quality
+        ));
     }
 
-    transaction.commit().await?;
+    if device_values.is_empty() {
+        return Ok(json!({ "error": "No valid devices specified for return" }));
+    }
+
+    let device_values_str = device_values.join(", ");
+    let note_value = note.map_or("NULL".to_string(), |n| {
+        format!("'{}'", n.replace("'", "''"))
+    });
+
+    let query = format!(
+        "WITH new_receipt AS (
+            INSERT INTO bench_receipts (id, actor_id, checker_id, lab_id)
+            VALUES ('{}', '{}', '{}', '{}')
+            RETURNING id
+        ),
+        new_activity AS (
+            INSERT INTO bench_activities (id, type, note)
+            VALUES (gen_random_uuid(), 'return'::bench_activity_type, {})
+            RETURNING id
+        ),
+        device_data(device_id, after_quality) AS (
+            VALUES {}
+        ),
+        update_receipts_devices AS (
+            UPDATE bench_receipts_devices
+            SET
+                returned_receipt_id = '{}',
+                return_id = (SELECT id FROM new_activity),
+                after_quality = dd.after_quality
+            FROM device_data dd
+            WHERE bench_receipts_devices.device_id = dd.device_id
+                AND bench_receipts_devices.returned_receipt_id IS NULL
+            RETURNING bench_receipts_devices.device_id
+        ),
+        update_devices AS (
+            UPDATE bench_devices
+            SET status = dd.after_quality
+            FROM device_data dd
+            WHERE bench_devices.id = dd.device_id
+            RETURNING id
+        )
+        SELECT '{}' as id",
+        receipt_id,
+        returner_id,
+        return_checker_id,
+        returned_lab_id,
+        note_value,
+        device_values_str,
+        receipt_id,
+        receipt_id
+    );
+
+    client.query_one(&query, &[]).await?;
 
     Ok(json!({
         "success": true,
@@ -438,7 +522,15 @@ async fn return_receipt(
 
 fn benchmark_borrow_return(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for borrow-return benchmarks");
-    let app_state = rt.block_on(setup_bench_env());
+
+    let app_state = rt.block_on(async {
+        let state = setup_bench_env().await;
+        let _ = cleanup_test_tables(&state.db).await;
+        populate_large_test_data(&state.db, 1000, 2000, 50000, 10)
+            .await
+            .expect("Failed to populate large test data");
+        state
+    });
 
     let real_device_ids = rt.block_on(async {
         let client = app_state
@@ -446,17 +538,15 @@ fn benchmark_borrow_return(c: &mut Criterion) {
             .get_client()
             .await
             .expect("Failed to get client");
-        let query = "SELECT id::text FROM bench_devices LIMIT 2";
+        let query = "SELECT id::text FROM bench_devices WHERE status = 'healthy' LIMIT 2";
         let rows = client
             .query(query, &[])
             .await
             .expect("Failed to fetch device IDs");
 
         if rows.len() < 2 {
-            vec![
-                "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".to_string(),
-                "aaaaaaaa-bbbb-cccc-dddd-ffffffffffff".to_string(),
-            ]
+            println!("Warning: Not enough healthy devices found for benchmarking");
+            Vec::new()
         } else {
             rows.iter()
                 .map(|row| row.get::<_, String>(0))
@@ -553,84 +643,176 @@ fn benchmark_borrow_return(c: &mut Criterion) {
         },
     );
 
-    // Benchmark 4: Create borrow receipt
-    let borrow_params = InsertParams {
-        table: "bench_receipts".to_string(),
-        value: json!({
-            "borrowerId": "11111111-1111-1111-1111-111111111111",
-            "borrowCheckerId": "22222222-2222-2222-2222-222222222222",
-            "borrowedLabId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "devices": [
-                {
-                    "id": real_device_ids.get(0).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".to_string()),
-                    "expectedReturnedAt": "NOW() + INTERVAL '7 days'",
-                    "prevQuality": "healthy"
+    // Benchmark 4: Create borrow receipt - only run if we have real device IDs
+    let _create_borrow_benchmark = if real_device_ids.len() >= 2 {
+        let (user_id, checker_id, lab_id) = rt.block_on(async {
+            let client = app_state
+                .db
+                .get_client()
+                .await
+                .expect("Failed to get client");
+
+            let users = client
+                .query("SELECT id::text FROM bench_users LIMIT 2", &[])
+                .await
+                .expect("Failed to fetch user IDs");
+
+            let user_id = if !users.is_empty() {
+                users[0].get::<_, String>(0)
+            } else {
+                println!("Warning: No users found for benchmarking");
+                return ("".to_string(), "".to_string(), "".to_string());
+            };
+
+            let checker_id = if users.len() > 1 {
+                users[1].get::<_, String>(0)
+            } else {
+                user_id.clone()
+            };
+
+            let lab_id = client
+                .query_one("SELECT id::text FROM bench_labs LIMIT 1", &[])
+                .await
+                .map(|row| row.get::<_, String>(0))
+                .unwrap_or_else(|_| "".to_string());
+
+            (user_id, checker_id, lab_id)
+        });
+
+        if user_id.is_empty() || lab_id.is_empty() {
+            println!("Warning: Could not find users or lab for borrow benchmark");
+            false
+        } else {
+            let borrow_params = InsertParams {
+                table: "bench_receipts".to_string(),
+                value: json!({
+                    "borrowerId": user_id,
+                    "borrowCheckerId": checker_id,
+                    "borrowedLabId": lab_id,
+                    "devices": [
+                        {
+                            "id": real_device_ids[0],
+                            "expectedReturnedAt": "NOW() + INTERVAL '7 days'",
+                            "prevQuality": "healthy"
+                        },
+                        {
+                            "id": real_device_ids[1],
+                            "expectedReturnedAt": "NOW() + INTERVAL '14 days'",
+                            "prevQuality": "healthy"
+                        }
+                    ]
+                }),
+            };
+
+            group.bench_with_input(
+                BenchmarkId::new("Create Borrow Receipt", 2),
+                &borrow_params,
+                |b, p| {
+                    b.to_async(&rt).iter(|| async {
+                        match create_receipt(&app_state, p).await {
+                            Ok(result) => {
+                                black_box(result);
+                            }
+                            Err(err) => {
+                                eprintln!("Error in Create Borrow Receipt benchmark: {}", err);
+                                black_box(json!({"error": err.to_string()}));
+                            }
+                        }
+                    });
                 },
-                {
-                    "id": real_device_ids.get(1).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-ffffffffffff".to_string()),
-                    "expectedReturnedAt": "NOW() + INTERVAL '14 days'",
-                    "prevQuality": "healthy"
-                }
-            ]
-        }),
+            );
+
+            true
+        }
+    } else {
+        println!("Warning: Not enough device IDs for borrow receipt benchmark");
+        false
     };
 
-    group.bench_with_input(
-        BenchmarkId::new("Create Borrow Receipt", 2),
-        &borrow_params,
-        |b, p| {
-            b.to_async(&rt).iter(|| async {
-                match create_receipt(&app_state, p).await {
-                    Ok(result) => {
-                        black_box(result);
-                    }
-                    Err(err) => {
-                        eprintln!("Error in Create Borrow Receipt benchmark: {}", err);
-                        black_box(json!({"error": err.to_string()}));
-                    }
-                }
-            });
-        },
-    );
+    // Benchmark 5: Return receipt - only run if we have real device IDs
+    let _return_benchmark = if real_device_ids.len() >= 2 {
+        let (user_id, checker_id, lab_id) = rt.block_on(async {
+            let client = app_state
+                .db
+                .get_client()
+                .await
+                .expect("Failed to get client");
 
-    // Benchmark 5: Return receipt
-    let return_params = InsertParams {
-        table: "bench_receipts".to_string(),
-        value: json!({
-            "returnerId": "11111111-1111-1111-1111-111111111111",
-            "returnedCheckerId": "22222222-2222-2222-2222-222222222222",
-            "returnedLabId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "devices": [
-                {
-                    "id": real_device_ids.get(0).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".to_string()),
-                    "afterQuality": "healthy"
+            let users = client
+                .query("SELECT id::text FROM bench_users LIMIT 2", &[])
+                .await
+                .expect("Failed to fetch user IDs");
+
+            let user_id = if !users.is_empty() {
+                users[0].get::<_, String>(0)
+            } else {
+                println!("Warning: No users found for benchmarking");
+                return ("".to_string(), "".to_string(), "".to_string());
+            };
+
+            let checker_id = if users.len() > 1 {
+                users[1].get::<_, String>(0)
+            } else {
+                user_id.clone()
+            };
+
+            let lab_id = client
+                .query_one("SELECT id::text FROM bench_labs LIMIT 1", &[])
+                .await
+                .map(|row| row.get::<_, String>(0))
+                .unwrap_or_else(|_| "".to_string());
+
+            (user_id, checker_id, lab_id)
+        });
+
+        if user_id.is_empty() || lab_id.is_empty() {
+            println!("Warning: Could not find users or lab for return benchmark");
+            false
+        } else {
+            let return_params = InsertParams {
+                table: "bench_receipts".to_string(),
+                value: json!({
+                    "returnerId": user_id,
+                    "returnedCheckerId": checker_id,
+                    "returnedLabId": lab_id,
+                    "devices": [
+                        {
+                            "id": real_device_ids[0],
+                            "afterQuality": "healthy"
+                        },
+                        {
+                            "id": real_device_ids[1],
+                            "afterQuality": "broken"
+                        }
+                    ],
+                    "note": "Returned after lab session"
+                }),
+            };
+
+            group.bench_with_input(
+                BenchmarkId::new("Return Receipt", 2),
+                &return_params,
+                |b, p| {
+                    b.to_async(&rt).iter(|| async {
+                        match return_receipt(&app_state, p).await {
+                            Ok(result) => {
+                                black_box(result);
+                            }
+                            Err(err) => {
+                                eprintln!("Error in Return Receipt benchmark: {}", err);
+                                black_box(json!({"error": err.to_string()}));
+                            }
+                        }
+                    });
                 },
-                {
-                    "id": real_device_ids.get(1).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-ffffffffffff".to_string()),
-                    "afterQuality": "broken"
-                }
-            ],
-            "note": "Returned after lab session"
-        }),
-    };
+            );
 
-    group.bench_with_input(
-        BenchmarkId::new("Return Receipt", 2),
-        &return_params,
-        |b, p| {
-            b.to_async(&rt).iter(|| async {
-                match return_receipt(&app_state, p).await {
-                    Ok(result) => {
-                        black_box(result);
-                    }
-                    Err(err) => {
-                        eprintln!("Error in Return Receipt benchmark: {}", err);
-                        black_box(json!({"error": err.to_string()}));
-                    }
-                }
-            });
-        },
-    );
+            true
+        }
+    } else {
+        println!("Warning: Not enough device IDs for return receipt benchmark");
+        false
+    };
 
     group.finish();
 

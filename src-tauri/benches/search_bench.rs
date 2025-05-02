@@ -5,7 +5,7 @@ use tokio::runtime::Runtime;
 use hmi_lib::commands::db_commands::QueryParams;
 
 mod common;
-use common::{setup_bench_env, cleanup_test_tables, AppState};
+use common::{setup_bench_env, cleanup_test_tables, populate_large_test_data, AppState};
 
 async fn search_devices(
     app_state: &AppState,
@@ -14,10 +14,10 @@ async fn search_devices(
     let client = app_state.db.get_client().await?;
 
     let search_term = format!("%{}%", query.to_lowercase());
-    
+
     let sql = "
-        SELECT 
-            d.id::text, 
+        SELECT
+            d.id::text,
             d.full_id,
             dk.name as kind_name,
             dk.id::text as kind_id,
@@ -25,17 +25,17 @@ async fn search_devices(
             l.id::text as lab_id,
             d.status::text,
             'device'::text as result_type
-        FROM 
+        FROM
             bench_devices d
             JOIN bench_device_kinds dk ON d.kind = dk.id
             JOIN bench_labs l ON d.lab_id = l.id
-        WHERE 
+        WHERE
             (LOWER(d.full_id) LIKE $1 OR
              LOWER(dk.name) LIKE $1 OR
              LOWER(l.name) LIKE $1)
             AND d.deleted_at IS NULL
-        ORDER BY 
-            CASE 
+        ORDER BY
+            CASE
                 WHEN LOWER(d.full_id) LIKE $1 THEN 0
                 WHEN LOWER(dk.name) LIKE $1 THEN 1
                 ELSE 2
@@ -70,22 +70,22 @@ async fn search_users(
     let client = app_state.db.get_client().await?;
 
     let search_term = format!("%{}%", query.to_lowercase());
-    
+
     let sql = "
-        SELECT 
+        SELECT
             u.id::text,
             u.name,
             u.email,
             u.image,
             'user'::text as result_type
-        FROM 
+        FROM
             bench_users u
-        WHERE 
+        WHERE
             (LOWER(u.name) LIKE $1 OR
              LOWER(u.email) LIKE $1)
             AND u.deleted_at IS NULL
-        ORDER BY 
-            CASE 
+        ORDER BY
+            CASE
                 WHEN LOWER(u.name) LIKE $1 THEN 0
                 ELSE 1
             END
@@ -116,23 +116,23 @@ async fn search_labs(
     let client = app_state.db.get_client().await?;
 
     let search_term = format!("%{}%", query.to_lowercase());
-    
+
     let sql = "
-        SELECT 
+        SELECT
             l.id::text,
             l.name,
             l.room,
             l.branch,
             'lab'::text as result_type
-        FROM 
+        FROM
             bench_labs l
-        WHERE 
+        WHERE
             (LOWER(l.name) LIKE $1 OR
              LOWER(l.room) LIKE $1 OR
              LOWER(l.branch) LIKE $1)
             AND l.deleted_at IS NULL
-        ORDER BY 
-            CASE 
+        ORDER BY
+            CASE
                 WHEN LOWER(l.name) LIKE $1 THEN 0
                 WHEN LOWER(l.room) LIKE $1 THEN 1
                 ELSE 2
@@ -162,47 +162,47 @@ async fn search_all(
     query: &str,
 ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
     let mut results = Vec::new();
-    
+
     // Run all searches in parallel
     let (devices, users, labs) = tokio::join!(
         search_devices(app_state, query),
         search_users(app_state, query),
         search_labs(app_state, query)
     );
-    
+
     // Combine results
     if let Ok(device_results) = devices {
         results.extend(device_results);
     }
-    
+
     if let Ok(user_results) = users {
         results.extend(user_results);
     }
-    
+
     if let Ok(lab_results) = labs {
         results.extend(lab_results);
     }
-    
+
     // Sort results by result type for consistency
     results.sort_by(|a, b| {
         let a_type = a.get("resultType")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
-        
+
         let b_type = b.get("resultType")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
-        
+
         a_type.cmp(&b_type)
     });
-    
+
     // Limit total results
     if results.len() > 30 {
         results.truncate(30);
     }
-    
+
     Ok(results)
 }
 
@@ -220,9 +220,9 @@ async fn search_device_kind(
         .unwrap_or("");
 
     let search_term = format!("%{}%", query.to_lowercase());
-    
+
     let sql = "
-        SELECT 
+        SELECT
             dk.id::text,
             dk.name,
             dk.brand,
@@ -231,18 +231,18 @@ async fn search_device_kind(
             dk.image,
             c.name as category_name,
             c.id::text as category_id
-        FROM 
+        FROM
             bench_device_kinds dk
             LEFT JOIN bench_categories c ON dk.category_id = c.id
-        WHERE 
+        WHERE
             (LOWER(dk.name) LIKE $1 OR
              LOWER(dk.brand) LIKE $1 OR
              LOWER(dk.manufacturer) LIKE $1 OR
              LOWER(dk.description) LIKE $1 OR
              LOWER(c.name) LIKE $1)
             AND dk.deleted_at IS NULL
-        ORDER BY 
-            CASE 
+        ORDER BY
+            CASE
                 WHEN LOWER(dk.name) LIKE $1 THEN 0
                 WHEN LOWER(dk.brand) LIKE $1 THEN 1
                 WHEN LOWER(dk.manufacturer) LIKE $1 THEN 2
@@ -273,10 +273,19 @@ async fn search_device_kind(
 
 fn benchmark_search(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for search benchmarks");
-    let app_state = rt.block_on(setup_bench_env());
-    
+
+    // Set up large dataset for benchmarking
+    // 1000 users, 2000 device kinds, 50000 devices, 10 labs
+    let app_state = rt.block_on(async {
+        let state = setup_bench_env().await;
+        // Clean up existing data and populate with large dataset
+        let _ = cleanup_test_tables(&state.db).await;
+        populate_large_test_data(&state.db, 1000, 2000, 50000, 10).await.expect("Failed to populate large test data");
+        state
+    });
+
     let mut group = c.benchmark_group("Search Operations");
-    
+
     // Benchmark 1: Search devices
     group.bench_function("Search Devices", |b| {
         b.to_async(&rt).iter(|| async {
@@ -291,7 +300,7 @@ fn benchmark_search(c: &mut Criterion) {
             }
         });
     });
-    
+
     // Benchmark 2: Search users
     group.bench_function("Search Users", |b| {
         b.to_async(&rt).iter(|| async {
@@ -306,7 +315,7 @@ fn benchmark_search(c: &mut Criterion) {
             }
         });
     });
-    
+
     // Benchmark 3: Search labs
     group.bench_function("Search Labs", |b| {
         b.to_async(&rt).iter(|| async {
@@ -321,7 +330,7 @@ fn benchmark_search(c: &mut Criterion) {
             }
         });
     });
-    
+
     // Benchmark 4: Search all
     group.bench_function("Search All", |b| {
         b.to_async(&rt).iter(|| async {
@@ -336,7 +345,7 @@ fn benchmark_search(c: &mut Criterion) {
             }
         });
     });
-    
+
     // Benchmark 5: Search device kinds
     let device_kind_params = QueryParams {
         table: "bench_device_kinds".to_string(),
@@ -347,7 +356,7 @@ fn benchmark_search(c: &mut Criterion) {
         offset: Some(0),
         joins: None,
     };
-    
+
     group.bench_with_input(
         BenchmarkId::new("Search Device Kinds", 20),
         &device_kind_params,
@@ -365,13 +374,13 @@ fn benchmark_search(c: &mut Criterion) {
             });
         },
     );
-    
+
     group.finish();
-    
+
     // Clean up test tables after benchmarks
     rt.block_on(cleanup_test_tables(&app_state.db))
         .expect("Failed to clean up test tables");
 }
 
 criterion_group!(benches, benchmark_search);
-criterion_main!(benches); 
+criterion_main!(benches);

@@ -1,4 +1,4 @@
-use criterion::{black_box, BenchmarkId, criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use serde_json::json;
 use tokio::runtime::Runtime;
 use uuid::Uuid;
@@ -6,7 +6,7 @@ use uuid::Uuid;
 use hmi_lib::commands::db_commands::{InsertParams, QueryParams};
 
 mod common;
-use common::{setup_bench_env, cleanup_test_tables, AppState};
+use common::{cleanup_test_tables, populate_large_test_data, setup_bench_env, AppState};
 
 async fn fetch_assessments(
     app_state: &AppState,
@@ -19,31 +19,56 @@ async fn fetch_assessments(
     let order_clause = match params.order_by {
         Some(ref order) if !order.is_empty() => {
             let (field, is_asc) = &order[0];
-            format!("ORDER BY {} {}", field, if *is_asc { "ASC" } else { "DESC" })
+            format!(
+                "ORDER BY {} {}",
+                field,
+                if *is_asc { "ASC" } else { "DESC" }
+            )
         }
         _ => "ORDER BY bench_activities.created_at DESC".to_string(),
     };
 
     let sql = format!(
-        "SELECT 
-            ia.id::text, 
-            ia.status,
-            u.name as accountant_name,
-            u.id::text as accountant_id,
-            l.name as lab_name,
-            l.id::text as lab_id,
-            a.created_at as created_at,
-            ia.finished_at,
-            COUNT(iad.id) as device_count,
-            a.id::text as activity_id
-        FROM 
-            bench_inventory_assessments ia
-            JOIN bench_activities a ON ia.id = a.id
-            JOIN bench_users u ON ia.accountant_id = u.id
-            JOIN bench_labs l ON ia.lab_id = l.id
-            LEFT JOIN bench_inventory_assessments_devices iad ON ia.id = iad.assessing_id
-        GROUP BY
-            ia.id, ia.status, u.name, u.id, l.name, l.id, a.created_at, ia.finished_at, a.id
+        "WITH assessment_data AS (
+            SELECT
+                ia.id,
+                ia.status,
+                u.name as accountant_name,
+                u.id as accountant_id,
+                l.name as lab_name,
+                l.id as lab_id,
+                a.created_at as created_at,
+                ia.finished_at,
+                a.id as activity_id
+            FROM
+                bench_inventory_assessments ia
+                JOIN bench_activities a ON ia.id = a.id
+                JOIN bench_users u ON ia.accountant_id = u.id
+                JOIN bench_labs l ON ia.lab_id = l.id
+        ),
+        device_counts AS (
+            SELECT
+                assessing_id,
+                COUNT(id) as device_count
+            FROM
+                bench_inventory_assessments_devices
+            GROUP BY
+                assessing_id
+        )
+        SELECT
+            ad.id::text,
+            ad.status,
+            ad.accountant_name,
+            ad.accountant_id::text,
+            ad.lab_name,
+            ad.lab_id::text,
+            ad.created_at,
+            ad.finished_at,
+            COALESCE(dc.device_count, 0) as device_count,
+            ad.activity_id::text
+        FROM
+            assessment_data ad
+            LEFT JOIN device_counts dc ON ad.id = dc.assessing_id
         {} LIMIT {} OFFSET {}",
         order_clause, limit, offset
     );
@@ -55,7 +80,7 @@ async fn fetch_assessments(
         .map(|row| {
             let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
             let finished_at: Option<chrono::DateTime<chrono::Utc>> = row.get("finished_at");
-            
+
             json!({
                 "id": row.get::<_, String>(0),
                 "status": row.get::<_, String>(1),
@@ -96,77 +121,81 @@ async fn fetch_assessment_details(
         Err(_) => return Ok(json!({ "error": "Invalid assessment ID format" })),
     };
 
-    // First, get the assessment details
-    let assessment_query = "
-        SELECT 
-            ia.id::text, 
-            ia.status,
-            u.name as accountant_name,
-            u.id::text as accountant_id,
-            l.name as lab_name,
-            l.id::text as lab_id,
-            a.created_at as created_at,
-            ia.finished_at,
-            a.note,
-            a.id::text as activity_id
-        FROM 
-            bench_inventory_assessments ia
-            JOIN bench_activities a ON ia.id = a.id
-            JOIN bench_users u ON ia.accountant_id = u.id
-            JOIN bench_labs l ON ia.lab_id = l.id
-        WHERE ia.id = $1";
+    let query = "
+        WITH assessment_data AS (
+            SELECT
+                ia.id::text,
+                ia.status,
+                u.name as accountant_name,
+                u.id::text as accountant_id,
+                l.name as lab_name,
+                l.id::text as lab_id,
+                a.created_at as created_at,
+                ia.finished_at,
+                a.note,
+                a.id::text as activity_id
+            FROM
+                bench_inventory_assessments ia
+                JOIN bench_activities a ON ia.id = a.id
+                JOIN bench_users u ON ia.accountant_id = u.id
+                JOIN bench_labs l ON ia.lab_id = l.id
+            WHERE ia.id = $1
+        ),
+        device_data AS (
+            SELECT
+                iad.id::text,
+                d.id::text as device_id,
+                d.full_id as device_full_id,
+                dk.name as device_kind_name,
+                iad.prev_status::text,
+                iad.after_status::text
+            FROM
+                bench_inventory_assessments_devices iad
+                JOIN bench_devices d ON iad.device_id = d.id
+                JOIN bench_device_kinds dk ON d.kind = dk.id
+            WHERE iad.assessing_id = $1
+        )
+        SELECT
+            json_build_object(
+                'assessment', (SELECT row_to_json(a) FROM assessment_data a),
+                'devices', (SELECT json_agg(d) FROM device_data d)
+            ) as result";
 
-    let assessment_row = match client.query_opt(assessment_query, &[&assessment_uuid]).await {
+    let row = match client.query_opt(query, &[&assessment_uuid]).await {
         Ok(Some(row)) => row,
         Ok(None) => return Ok(json!({ "error": "Assessment not found" })),
         Err(err) => return Err(Box::new(err)),
     };
 
-    let created_at: chrono::DateTime<chrono::Utc> = assessment_row.get("created_at");
-    let finished_at: Option<chrono::DateTime<chrono::Utc>> = assessment_row.get("finished_at");
+    let result: serde_json::Value = row.get("result");
+    let assessment = &result["assessment"];
+    let devices = &result["devices"];
 
-    // Then, get the devices
-    let devices_query = "
-        SELECT 
-            iad.id::text,
-            d.id::text as device_id,
-            d.full_id as device_full_id,
-            dk.name as device_kind_name,
-            iad.prev_status::text,
-            iad.after_status::text
-        FROM 
-            bench_inventory_assessments_devices iad
-            JOIN bench_devices d ON iad.device_id = d.id
-            JOIN bench_device_kinds dk ON d.kind = dk.id
-        WHERE iad.assessing_id = $1";
+    let created_at =
+        chrono::DateTime::parse_from_rfc3339(assessment["created_at"].as_str().unwrap_or(""))
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?
+            .with_timezone(&chrono::Utc);
 
-    let device_rows = client.query(devices_query, &[&assessment_uuid]).await?;
-
-    let devices = device_rows
-        .iter()
-        .map(|row| {
-            json!({
-                "id": row.get::<_, String>(0),
-                "deviceId": row.get::<_, String>(1),
-                "deviceFullId": row.get::<_, String>(2),
-                "deviceKindName": row.get::<_, String>(3),
-                "prevStatus": row.get::<_, String>(4),
-                "afterStatus": row.get::<_, String>(5)
-            })
+    let finished_at = assessment["finished_at"]
+        .as_str()
+        .map(|dt_str| {
+            chrono::DateTime::parse_from_rfc3339(dt_str)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .ok()
         })
-        .collect::<Vec<_>>();
+        .flatten();
 
     Ok(json!({
-        "id": assessment_row.get::<_, String>(0),
-        "status": assessment_row.get::<_, String>(1),
-        "accountantName": assessment_row.get::<_, String>(2),
-        "accountantId": assessment_row.get::<_, String>(3),
-        "labName": assessment_row.get::<_, String>(4),
-        "labId": assessment_row.get::<_, String>(5),
+        "id": assessment["id"],
+        "status": assessment["status"],
+        "accountantName": assessment["accountant_name"],
+        "accountantId": assessment["accountant_id"],
+        "labName": assessment["lab_name"],
+        "labId": assessment["lab_id"],
         "createdAt": created_at.to_rfc3339(),
         "finishedAt": finished_at.map(|dt| dt.to_rfc3339()),
-        "note": assessment_row.get::<_, Option<String>>(8),
-        "activityId": assessment_row.get::<_, String>(9),
+        "note": assessment["note"],
+        "activityId": assessment["activity_id"],
         "devices": devices
     }))
 }
@@ -175,84 +204,104 @@ async fn create_assessment(
     app_state: &AppState,
     params: &InsertParams,
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    let mut client = app_state.db.get_client().await?;
-    let transaction = client.transaction().await?;
+    let client = app_state.db.get_client().await?;
 
-    let lab_id = params.value.get("labId").and_then(|v| v.as_str()).unwrap_or("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-    let accountant_id = params.value.get("accountantId").and_then(|v| v.as_str()).unwrap_or("11111111-1111-1111-1111-111111111111");
+    let lab_id = match params.value.get("labId").and_then(|v| v.as_str()) {
+        Some(id) if !id.is_empty() => id,
+        _ => return Ok(json!({ "error": "Lab ID is required" })),
+    };
+    let accountant_id = match params.value.get("accountantId").and_then(|v| v.as_str()) {
+        Some(id) if !id.is_empty() => id,
+        _ => return Ok(json!({ "error": "Accountant ID is required" })),
+    };
     let note = params.value.get("note").and_then(|v| v.as_str());
-    
-    // Create stable vector to avoid temporary value issue
-    let devices_vec = params.value.get("devices")
+
+    let devices_vec = params
+        .value
+        .get("devices")
         .and_then(|v| v.as_array().cloned())
         .unwrap_or_default();
     let devices = &devices_vec;
-    
+
     if devices.is_empty() {
         return Ok(json!({ "error": "No devices specified for assessment" }));
     }
 
-    // Create assessment activity
     let note_part = match note {
-        Some(n) => format!("'{}'", n),
-        None => "NULL".to_string()
+        Some(n) => format!("'{}'", n.replace("'", "''")),
+        None => "NULL".to_string(),
     };
-    
-    let query = format!(
-        "WITH new_activity AS (
-            INSERT INTO bench_activities (id, type, note) 
-            VALUES (gen_random_uuid(), 'assessment'::bench_activity_type, {})
-            RETURNING id
-        ),
-        new_assessment AS (
-            INSERT INTO bench_inventory_assessments (id, lab_id, accountant_id, status) 
-            SELECT 
-                id, 
-                '{}'::uuid, 
-                '{}'::uuid, 
-                'assessing'
-            FROM new_activity
-            RETURNING id
-        )
-        SELECT id::text FROM new_assessment",
-        note_part, lab_id, accountant_id
-    );
 
-    let row = transaction.query_one(&query, &[]).await?;
-    let assessment_id = row.get::<_, String>(0);
-
-    // Insert devices
+    let mut device_values = Vec::new();
     for device in devices {
         let device_id = device.get("id").and_then(|v| v.as_str()).unwrap_or("");
         if device_id.is_empty() {
             continue;
         }
 
-        let prev_status = device.get("prevStatus").and_then(|v| v.as_str()).unwrap_or("healthy");
-        let after_status = device.get("afterStatus").and_then(|v| v.as_str()).unwrap_or("healthy");
+        let prev_status = match device.get("prevStatus").and_then(|v| v.as_str()) {
+            Some(status) if !status.is_empty() => status,
+            _ => continue,
+        };
+        let after_status = match device.get("afterStatus").and_then(|v| v.as_str()) {
+            Some(status) if !status.is_empty() => status,
+            _ => continue,
+        };
 
-        let device_query = format!(
-            "INSERT INTO bench_inventory_assessments_devices 
-             (assessing_id, device_id, prev_status, after_status) 
-             VALUES 
-             ('{}', '{}', '{}'::bench_device_status, '{}'::bench_device_status)",
-            assessment_id, device_id, prev_status, after_status
-        );
-
-        transaction.execute(&device_query, &[]).await?;
-
-        // Update device status
-        let update_query = format!(
-            "UPDATE bench_devices 
-             SET status = 'assessing'::bench_device_status 
-             WHERE id = '{}'::uuid",
-            device_id
-        );
-
-        transaction.execute(&update_query, &[]).await?;
+        device_values.push(format!(
+            "('{}', '{}'::bench_device_status, '{}'::bench_device_status)",
+            device_id, prev_status, after_status
+        ));
     }
 
-    transaction.commit().await?;
+    if device_values.is_empty() {
+        return Ok(json!({ "error": "No valid devices specified for assessment" }));
+    }
+
+    let device_values_str = device_values.join(", ");
+
+    let query = format!(
+        "WITH new_activity AS (
+            INSERT INTO bench_activities (id, type, note)
+            VALUES (gen_random_uuid(), 'assessment'::bench_activity_type, {})
+            RETURNING id
+        ),
+        new_assessment AS (
+            INSERT INTO bench_inventory_assessments (id, lab_id, accountant_id, status)
+            SELECT
+                id,
+                '{}'::uuid,
+                '{}'::uuid,
+                'assessing'
+            FROM new_activity
+            RETURNING id
+        ),
+        device_data(device_id, prev_status, after_status) AS (
+            VALUES {}
+        ),
+        insert_devices AS (
+            INSERT INTO bench_inventory_assessments_devices
+            (assessing_id, device_id, prev_status, after_status)
+            SELECT
+                (SELECT id FROM new_assessment),
+                dd.device_id,
+                dd.prev_status,
+                dd.after_status
+            FROM device_data dd
+            RETURNING device_id
+        ),
+        update_devices AS (
+            UPDATE bench_devices
+            SET status = 'assessing'::bench_device_status
+            WHERE id IN (SELECT device_id FROM insert_devices)
+            RETURNING id
+        )
+        SELECT id::text FROM new_assessment",
+        note_part, lab_id, accountant_id, device_values_str
+    );
+
+    let row = client.query_one(&query, &[]).await?;
+    let assessment_id = row.get::<_, String>(0);
 
     Ok(json!({
         "success": true,
@@ -264,122 +313,191 @@ async fn finish_assessment(
     app_state: &AppState,
     params: &InsertParams,
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    let mut client = app_state.db.get_client().await?;
-    let transaction = client.transaction().await?;
+    let client = app_state.db.get_client().await?;
 
-    let assessment_id = params.value.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    let assessment_id = params
+        .value
+        .get("id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     if assessment_id.is_empty() {
         return Ok(json!({ "error": "Assessment ID is required" }));
     }
 
-    // Create stable vector to avoid temporary value issue
-    let devices_vec = params.value.get("devices")
+    let devices_vec = params
+        .value
+        .get("devices")
         .and_then(|v| v.as_array().cloned())
         .unwrap_or_default();
     let devices = &devices_vec;
-    
+
     if devices.is_empty() {
         return Ok(json!({ "error": "No devices specified for assessment completion" }));
     }
 
-    // Update assessment status
-    let update_query = format!(
-        "UPDATE bench_inventory_assessments 
-         SET status = 'completed', finished_at = CURRENT_TIMESTAMP 
-         WHERE id = '{}'",
-        assessment_id
-    );
-    transaction.execute(&update_query, &[]).await?;
-
-    // Update devices
+    let mut device_values = Vec::new();
     for device in devices {
         let device_id = device.get("id").and_then(|v| v.as_str()).unwrap_or("");
         if device_id.is_empty() {
             continue;
         }
 
-        let after_status = device.get("afterStatus").and_then(|v| v.as_str()).unwrap_or("healthy");
+        let after_status = match device.get("afterStatus").and_then(|v| v.as_str()) {
+            Some(status) if !status.is_empty() => status,
+            _ => continue,
+        };
 
-        // Update assessment device
-        let update_assessment_device_query = format!(
-            "UPDATE bench_inventory_assessments_devices 
-             SET after_status = '{}'::bench_device_status 
-             WHERE device_id = '{}' 
-                AND assessing_id = '{}'",
-            after_status, device_id, assessment_id
-        );
-        transaction.execute(&update_assessment_device_query, &[]).await?;
-
-        // Update device status
-        let update_device_query = format!(
-            "UPDATE bench_devices 
-             SET status = '{}'::bench_device_status 
-             WHERE id = '{}'",
-            after_status, device_id
-        );
-        transaction.execute(&update_device_query, &[]).await?;
+        device_values.push(format!(
+            "('{}', '{}'::bench_device_status)",
+            device_id, after_status
+        ));
     }
 
-    transaction.commit().await?;
+    if device_values.is_empty() {
+        return Ok(json!({ "error": "No valid devices specified for assessment completion" }));
+    }
+
+    let device_values_str = device_values.join(", ");
+
+    let query = format!(
+        "WITH update_assessment AS (
+            UPDATE bench_inventory_assessments
+            SET status = 'completed', finished_at = CURRENT_TIMESTAMP
+            WHERE id = '{}'
+            RETURNING id
+        ),
+        device_data(device_id, after_status) AS (
+            VALUES {}
+        ),
+        update_assessment_devices AS (
+            UPDATE bench_inventory_assessments_devices
+            SET after_status = dd.after_status
+            FROM device_data dd
+            WHERE bench_inventory_assessments_devices.device_id = dd.device_id
+                AND bench_inventory_assessments_devices.assessing_id = '{}'
+            RETURNING bench_inventory_assessments_devices.device_id
+        ),
+        update_devices AS (
+            UPDATE bench_devices
+            SET status = dd.after_status
+            FROM device_data dd
+            WHERE bench_devices.id = dd.device_id
+            RETURNING id
+        )
+        SELECT id FROM update_assessment",
+        assessment_id, device_values_str, assessment_id
+    );
+
+    let row = client.query_one(&query, &[]).await?;
+    let result_id = row.get::<_, Uuid>(0).to_string();
 
     Ok(json!({
         "success": true,
-        "id": assessment_id
+        "id": result_id
     }))
 }
 
 fn benchmark_audit(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for audit benchmarks");
-    let app_state = rt.block_on(setup_bench_env());
-    
-    // Get real device IDs for testing
+
+    let app_state = rt.block_on(async {
+        let state = setup_bench_env().await;
+        let _ = cleanup_test_tables(&state.db).await;
+        populate_large_test_data(&state.db, 1000, 2000, 50000, 10)
+            .await
+            .expect("Failed to populate large test data");
+        state
+    });
+
     let real_device_ids = rt.block_on(async {
-        let client = app_state.db.get_client().await.expect("Failed to get client");
-        let query = "SELECT id::text FROM bench_devices LIMIT 3";
-        let rows = client.query(query, &[]).await.expect("Failed to fetch device IDs");
-        
+        let client = app_state
+            .db
+            .get_client()
+            .await
+            .expect("Failed to get client");
+        let query = "SELECT id::text FROM bench_devices WHERE status = 'healthy' LIMIT 3";
+        let rows = client
+            .query(query, &[])
+            .await
+            .expect("Failed to fetch device IDs");
+
         if rows.len() < 3 {
-            vec![
-                "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".to_string(),
-                "aaaaaaaa-bbbb-cccc-dddd-ffffffffffff".to_string(),
-                "aaaaaaaa-bbbb-cccc-dddd-111111111111".to_string()
-            ]
-        } else {
-            rows.iter().map(|row| row.get::<_, String>(0)).collect::<Vec<_>>()
+            println!("Warning: Not enough healthy devices found for benchmarking");
+            return Vec::new();
         }
+
+        rows.iter()
+            .map(|row| row.get::<_, String>(0))
+            .collect::<Vec<_>>()
     });
-    
-    // Create a test assessment to use for the benchmark
-    let assessment_id = rt.block_on(async {
-        let create_params = InsertParams {
-            table: "bench_inventory_assessments".to_string(),
-            value: json!({
-                "labId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-                "accountantId": "11111111-1111-1111-1111-111111111111",
-                "note": "Test assessment for benchmarking",
-                "devices": [
-                    { 
-                        "id": real_device_ids.get(0).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".to_string()), 
-                        "prevStatus": "healthy",
-                        "afterStatus": "healthy"
-                    },
-                    { 
-                        "id": real_device_ids.get(1).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-ffffffffffff".to_string()),
-                        "prevStatus": "healthy",
-                        "afterStatus": "broken"
-                    }
-                ]
-            }),
-        };
-        
-        match create_assessment(&app_state, &create_params).await {
-            Ok(result) => result.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-            Err(_) => "".to_string()
-        }
-    });
-    
+
+    let assessment_id = if real_device_ids.len() >= 2 {
+        rt.block_on(async {
+            let client = app_state
+                .db
+                .get_client()
+                .await
+                .expect("Failed to get client");
+            let lab_id = client
+                .query_one("SELECT id::text FROM bench_labs LIMIT 1", &[])
+                .await
+                .map(|row| row.get::<_, String>(0))
+                .unwrap_or_else(|_| "".to_string());
+
+            let accountant_id = client
+                .query_one("SELECT id::text FROM bench_users LIMIT 1", &[])
+                .await
+                .map(|row| row.get::<_, String>(0))
+                .unwrap_or_else(|_| "".to_string());
+
+            if lab_id.is_empty() || accountant_id.is_empty() {
+                println!("Warning: Could not find lab or accountant for benchmarking");
+                return "".to_string();
+            }
+
+            let create_params = InsertParams {
+                table: "bench_inventory_assessments".to_string(),
+                value: json!({
+                    "labId": lab_id,
+                    "accountantId": accountant_id,
+                    "note": "Test assessment for benchmarking",
+                    "devices": [
+                        {
+                            "id": real_device_ids[0],
+                            "prevStatus": "healthy",
+                            "afterStatus": "healthy"
+                        },
+                        {
+                            "id": real_device_ids[1],
+                            "prevStatus": "healthy",
+                            "afterStatus": "broken"
+                        }
+                    ]
+                }),
+            };
+
+            match create_assessment(&app_state, &create_params).await {
+                Ok(result) => result
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                Err(e) => {
+                    println!(
+                        "Warning: Failed to create assessment for benchmarking: {}",
+                        e
+                    );
+                    "".to_string()
+                }
+            }
+        })
+    } else {
+        println!("Warning: Not enough device IDs for assessment benchmarking");
+        "".to_string()
+    };
+
     let mut group = c.benchmark_group("Audit Operations");
-    
+
     // Benchmark 1: Fetch assessments
     let fetch_params = QueryParams {
         table: "bench_inventory_assessments".to_string(),
@@ -390,7 +508,7 @@ fn benchmark_audit(c: &mut Criterion) {
         offset: Some(0),
         joins: None,
     };
-    
+
     group.bench_with_input(
         BenchmarkId::new("Fetch Assessments", 10),
         &fetch_params,
@@ -408,7 +526,7 @@ fn benchmark_audit(c: &mut Criterion) {
             });
         },
     );
-    
+
     // Benchmark 2: Fetch assessment details
     if !assessment_id.is_empty() {
         let details_params = QueryParams {
@@ -420,7 +538,7 @@ fn benchmark_audit(c: &mut Criterion) {
             offset: None,
             joins: None,
         };
-        
+
         group.bench_with_input(
             BenchmarkId::new("Fetch Assessment Details", 1),
             &details_params,
@@ -439,71 +557,104 @@ fn benchmark_audit(c: &mut Criterion) {
             },
         );
     }
-    
-    // Benchmark 3: Create assessment
-    let create_params = InsertParams {
-        table: "bench_inventory_assessments".to_string(),
-        value: json!({
-            "labId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "accountantId": "11111111-1111-1111-1111-111111111111",
-            "note": "Benchmark test assessment",
-            "devices": [
-                { 
-                    "id": real_device_ids.get(0).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".to_string()), 
-                    "prevStatus": "healthy",
-                    "afterStatus": "healthy"
+
+    // Benchmark 3: Create assessment - only run if we have real device IDs
+    let _create_benchmark = if real_device_ids.len() >= 3 {
+        let (lab_id, accountant_id) = rt.block_on(async {
+            let client = app_state
+                .db
+                .get_client()
+                .await
+                .expect("Failed to get client");
+            let lab_id = client
+                .query_one("SELECT id::text FROM bench_labs LIMIT 1", &[])
+                .await
+                .map(|row| row.get::<_, String>(0))
+                .unwrap_or_else(|_| "".to_string());
+
+            let accountant_id = client
+                .query_one("SELECT id::text FROM bench_users LIMIT 1", &[])
+                .await
+                .map(|row| row.get::<_, String>(0))
+                .unwrap_or_else(|_| "".to_string());
+
+            (lab_id, accountant_id)
+        });
+
+        if lab_id.is_empty() || accountant_id.is_empty() {
+            println!("Warning: Could not find lab or accountant for create benchmark");
+            false
+        } else {
+            let create_params = InsertParams {
+                table: "bench_inventory_assessments".to_string(),
+                value: json!({
+                    "labId": lab_id,
+                    "accountantId": accountant_id,
+                    "note": "Benchmark test assessment",
+                    "devices": [
+                        {
+                            "id": real_device_ids[0],
+                            "prevStatus": "healthy",
+                            "afterStatus": "healthy"
+                        },
+                        {
+                            "id": real_device_ids[1],
+                            "prevStatus": "healthy",
+                            "afterStatus": "broken"
+                        },
+                        {
+                            "id": real_device_ids[2],
+                            "prevStatus": "healthy",
+                            "afterStatus": "lost"
+                        }
+                    ]
+                }),
+            };
+
+            group.bench_with_input(
+                BenchmarkId::new("Create Assessment", 3),
+                &create_params,
+                |b, p| {
+                    b.to_async(&rt).iter(|| async {
+                        match create_assessment(&app_state, p).await {
+                            Ok(result) => {
+                                black_box(result);
+                            }
+                            Err(err) => {
+                                eprintln!("Error in Create Assessment benchmark: {}", err);
+                                black_box(json!({"error": err.to_string()}));
+                            }
+                        }
+                    });
                 },
-                { 
-                    "id": real_device_ids.get(1).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-ffffffffffff".to_string()),
-                    "prevStatus": "healthy",
-                    "afterStatus": "broken"
-                },
-                { 
-                    "id": real_device_ids.get(2).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-111111111111".to_string()),
-                    "prevStatus": "healthy",
-                    "afterStatus": "lost"
-                }
-            ]
-        }),
+            );
+
+            true
+        }
+    } else {
+        println!("Warning: Not enough device IDs for create assessment benchmark");
+        false
     };
-    
-    group.bench_with_input(
-        BenchmarkId::new("Create Assessment", 3),
-        &create_params,
-        |b, p| {
-            b.to_async(&rt).iter(|| async {
-                match create_assessment(&app_state, p).await {
-                    Ok(result) => {
-                        black_box(result);
-                    }
-                    Err(err) => {
-                        eprintln!("Error in Create Assessment benchmark: {}", err);
-                        black_box(json!({"error": err.to_string()}));
-                    }
-                }
-            });
-        },
-    );
-    
+
     // Benchmark 4: Finish assessment
-    if !assessment_id.is_empty() {
+    if !assessment_id.is_empty() && real_device_ids.len() >= 2 {
         let finish_params = InsertParams {
             table: "bench_inventory_assessments".to_string(),
             value: json!({
                 "id": assessment_id,
                 "devices": [
-                    { 
-                        "id": real_device_ids.get(0).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".to_string()), 
+                    {
+                        "id": real_device_ids[0],
                         "afterStatus": "healthy"
                     },
-                    { 
-                        "id": real_device_ids.get(1).unwrap_or(&"aaaaaaaa-bbbb-cccc-dddd-ffffffffffff".to_string()),
+                    {
+                        "id": real_device_ids[1],
                         "afterStatus": "broken"
                     }
                 ]
             }),
         };
-        
+
         group.bench_with_input(
             BenchmarkId::new("Finish Assessment", 2),
             &finish_params,
@@ -522,13 +673,12 @@ fn benchmark_audit(c: &mut Criterion) {
             },
         );
     }
-    
+
     group.finish();
-    
-    // Clean up test tables after benchmarks
+
     rt.block_on(cleanup_test_tables(&app_state.db))
         .expect("Failed to clean up test tables");
 }
 
 criterion_group!(benches, benchmark_audit);
-criterion_main!(benches); 
+criterion_main!(benches);
