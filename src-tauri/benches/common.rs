@@ -18,10 +18,8 @@ pub async fn ensure_bench_env() -> AppState {
         .await
         .expect("Failed to connect to test database for benchmark");
 
-    // Verify that tables exist by querying them
     let client = db.get_client().await.expect("Failed to get client");
 
-    // Check if tables exist
     let tables_exist = client
         .query_one(
             "SELECT EXISTS (
@@ -41,7 +39,6 @@ pub async fn ensure_bench_env() -> AppState {
             .expect("Failed to set up test tables");
     }
 
-    // Check if we have the correct number of records
     let users_count = client
         .query_one("SELECT COUNT(*) FROM bench_users", &[])
         .await
@@ -60,7 +57,6 @@ pub async fn ensure_bench_env() -> AppState {
         .map(|row| row.get::<_, i64>(0))
         .unwrap_or(0);
 
-    // Check if we have exactly the required number of records
     if users_count != 1000 || device_kinds_count != 2000 || devices_count != 50000 {
         println!("Database doesn't have the correct number of records:");
         println!("  - Users: {} (should be 1000)", users_count);
@@ -68,8 +64,6 @@ pub async fn ensure_bench_env() -> AppState {
         println!("  - Devices: {} (should be 50000)", devices_count);
         println!("Recreating test data...");
 
-        // We'll recreate the data without dropping tables
-        // First, truncate the tables to clear existing data
         client
             .batch_execute(
                 "TRUNCATE bench_shipments_devices, bench_shipments,
@@ -82,7 +76,6 @@ pub async fn ensure_bench_env() -> AppState {
             .await
             .expect("Failed to truncate tables");
 
-        // Then populate with the correct amount of data
         populate_large_test_data(&db, 1000, 2000, 50000, 10)
             .await
             .expect("Failed to populate large test data");
@@ -270,8 +263,6 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
 
     client.batch_execute(create_tables).await?;
 
-    // No default data insertion here
-
     Ok(())
 }
 
@@ -290,16 +281,11 @@ async fn populate_large_test_data(
     println!("  - {} devices", num_devices);
     println!("  - {} labs", num_labs);
 
-    // No default data insertion
-
-    // Disable triggers temporarily to speed up inserts
     client
         .execute("SET session_replication_role = 'replica'", &[])
         .await?;
 
-    // Generate users
     println!("Creating users...");
-    // Increase batch size for better performance
     let batch_size = 1000;
     for batch in 0..((num_users) / batch_size + 1) {
         let start_idx = batch * batch_size;
@@ -336,7 +322,6 @@ async fn populate_large_test_data(
         }
     }
 
-    // Generate labs
     println!("Creating labs...");
     let mut lab_values = Vec::with_capacity(num_labs);
     for i in 0..num_labs {
@@ -351,7 +336,6 @@ async fn populate_large_test_data(
         ));
     }
 
-    // Insert all labs in a single query
     let query = format!(
         "INSERT INTO bench_labs (id, name, room, branch) VALUES {}",
         lab_values.join(", ")
@@ -360,9 +344,7 @@ async fn populate_large_test_data(
     client.execute(&query, &[]).await?;
     println!("Created {} labs", num_labs);
 
-    // Generate device kinds
     println!("Creating device kinds...");
-    // Increase batch size for better performance
     let batch_size = 1000;
     for batch in 0..((num_device_kinds) / batch_size + 1) {
         let start_idx = batch * batch_size;
@@ -398,7 +380,6 @@ async fn populate_large_test_data(
         }
     }
 
-    // Create categories for device kinds
     println!("Creating categories...");
     let categories = [
         ("Computers", uuid::Uuid::new_v4()),
@@ -419,11 +400,9 @@ async fn populate_large_test_data(
     client.execute(&query, &[]).await?;
     println!("Created {} categories", categories.len());
 
-    // Assign categories to device kinds
     println!("Assigning categories to device kinds...");
     let category_ids: Vec<uuid::Uuid> = categories.iter().map(|(_, id)| *id).collect();
 
-    // Get all device kind IDs
     let kind_rows = client
         .query("SELECT id FROM bench_device_kinds", &[])
         .await?;
@@ -432,7 +411,6 @@ async fn populate_large_test_data(
         .map(|row| row.get::<_, uuid::Uuid>(0))
         .collect();
 
-    // Assign categories in batches (distribute evenly)
     let batch_size = 500;
     for (i, chunk) in kind_ids.chunks(batch_size).enumerate() {
         let mut updates = Vec::new();
@@ -457,7 +435,6 @@ async fn populate_large_test_data(
 
     println!("Assigned categories to device kinds");
 
-    // Get all lab and device kind IDs for device creation
     let lab_rows = client.query("SELECT id::text FROM bench_labs", &[]).await?;
     let lab_ids: Vec<String> = lab_rows.iter().map(|row| row.get(0)).collect();
 
@@ -470,11 +447,8 @@ async fn populate_large_test_data(
         return Err("Failed to create labs or device kinds".into());
     }
 
-    // Generate devices
     println!("Creating devices...");
-    // Increase batch size significantly for devices
     let batch_size = 5000;
-    // Make sure we have more healthy devices than other statuses
     let statuses = [
         "healthy",
         "healthy",
@@ -532,12 +506,10 @@ async fn populate_large_test_data(
         }
     }
 
-    // Re-enable triggers
     client
         .execute("SET session_replication_role = 'origin'", &[])
         .await?;
 
-    // Create only necessary indexes after data insertion
     println!("Creating optimized indexes to speed up queries...");
     client
         .batch_execute(
@@ -581,7 +553,6 @@ async fn populate_large_test_data(
 
     println!("Indexes created successfully");
 
-    // Print table counts
     let tables = [
         "bench_labs",
         "bench_users",

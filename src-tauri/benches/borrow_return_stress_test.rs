@@ -1145,7 +1145,6 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
 
     let (_, _, _, _, concurrent_requests, test_duration_secs, _) = get_config();
 
-    // We use ensure_bench_env to set up the database
     println!("Using existing database state...");
 
     println!("\n=== RUNNING LOAD TESTS ===\n");
@@ -1221,7 +1220,6 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
         .await?;
     }
 
-    // We no longer clean up tables to preserve the database state
     println!("Database state preserved for future runs.");
 
     println!("\n=== STRESS TEST COMPLETED ===\n");

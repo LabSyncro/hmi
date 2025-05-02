@@ -235,14 +235,12 @@ async fn search_labs(
 async fn search_all(app_state: &AppState, query: &str) -> Result<Vec<serde_json::Value>, StdError> {
     let mut results = Vec::new();
 
-    // Run all searches in parallel
     let (devices, users, labs) = tokio::join!(
         search_devices(app_state, query),
         search_users(app_state, query),
         search_labs(app_state, query)
     );
 
-    // Combine results
     if let Ok(device_results) = devices {
         results.extend(device_results);
     }
@@ -255,7 +253,6 @@ async fn search_all(app_state: &AppState, query: &str) -> Result<Vec<serde_json:
         results.extend(lab_results);
     }
 
-    // Sort results by result type for consistency
     results.sort_by(|a, b| {
         let a_type = a
             .get("resultType")
@@ -272,7 +269,6 @@ async fn search_all(app_state: &AppState, query: &str) -> Result<Vec<serde_json:
         a_type.cmp(&b_type)
     });
 
-    // Limit total results
     if results.len() > 30 {
         results.truncate(30);
     }
@@ -339,7 +335,6 @@ async fn search_device_kind(
 }
 
 async fn get_random_search_terms() -> Vec<String> {
-    // Common search terms that should match some data in the test database
     vec![
         "lab".to_string(),
         "test".to_string(),
@@ -369,7 +364,6 @@ async fn measure_throughput(
 
     let mut handles = Vec::new();
 
-    // Pre-fetch some random search terms to use in the tests
     let search_terms = get_random_search_terms().await;
 
     for _ in 0..concurrency {
@@ -384,7 +378,6 @@ async fn measure_throughput(
             while Instant::now() < end_time {
                 let request_start = Instant::now();
 
-                // Get a random search term
                 let idx = rng().random_range(0..search_terms_clone.len());
                 let search_term = &search_terms_clone[idx];
 
@@ -416,7 +409,6 @@ async fn measure_throughput(
                     Err(e) => {
                         let mut err_count = errors_clone.lock().unwrap();
                         *err_count += 1;
-                        // Print the first few errors to help diagnose issues
                         if *err_count <= 3 {
                             println!("Error in operation {}: {}", operation_clone, e);
                         }
@@ -468,17 +460,8 @@ async fn measure_throughput(
 async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
     println!("\n=== STARTING SEARCH PERFORMANCE STRESS TEST ===\n");
 
-    let (
-        _,
-        _,
-        _,
-        _,
-        concurrent_requests,
-        test_duration_secs,
-        _,
-    ) = get_config();
+    let (_, _, _, _, concurrent_requests, test_duration_secs, _) = get_config();
 
-    // We use ensure_bench_env to set up the database
     println!("Using existing database state...");
 
     println!("\n=== RUNNING SEARCH LOAD TESTS ===\n");
@@ -538,7 +521,6 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
         .await?;
     }
 
-    // Database state is preserved for future runs
     println!("Database state preserved for future runs.");
 
     println!("\n=== SEARCH STRESS TEST COMPLETED ===\n");

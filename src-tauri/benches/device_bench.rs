@@ -916,7 +916,6 @@ async fn get_device_maintenance_history(
         let maintenance_start_date: chrono::DateTime<chrono::Utc> = row.get("maintenanceStartDate");
         let finished_at: Option<chrono::DateTime<chrono::Utc>> = row.try_get("finishedAt").ok();
 
-        // Calculate expected completion date (2 weeks from start if not finished)
         let expected_completion_date = finished_at.map(|dt| dt.to_rfc3339()).unwrap_or_else(|| {
             let expected_date = maintenance_start_date + chrono::Duration::days(14);
             expected_date.to_rfc3339()
@@ -946,10 +945,7 @@ async fn get_device_maintenance_history(
 fn benchmark_device(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for device benchmarks");
 
-    let app_state = rt.block_on(async {
-        // Use the ensure_bench_env function which handles setup and data population
-        ensure_bench_env().await
-    });
+    let app_state = rt.block_on(async { ensure_bench_env().await });
 
     let (test_device_id, kind_id, lab_id) = rt.block_on(async {
         let client = app_state.db.get_client().await.unwrap();
@@ -1200,7 +1196,6 @@ fn benchmark_device(c: &mut Criterion) {
             });
         });
 
-        // Get kind_id_str for the next benchmark
         let kind_id_str = kind_id.to_string();
 
         // Benchmark for device inventory by kind
@@ -1221,8 +1216,6 @@ fn benchmark_device(c: &mut Criterion) {
 
     group.finish();
 
-    // We no longer clean up tables to preserve the database state
-    // and avoid recreating data for each benchmark run
     println!("Benchmark completed. Database state preserved for future runs.");
 }
 

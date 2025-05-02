@@ -411,10 +411,7 @@ async fn finish_maintenance(
 fn benchmark_maintenance(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for maintenance benchmarks");
 
-    let app_state = rt.block_on(async {
-        // Use the ensure_bench_env function which handles setup and data population
-        ensure_bench_env().await
-    });
+    let app_state = rt.block_on(async { ensure_bench_env().await });
 
     let real_device_ids = rt.block_on(async {
         let client = app_state
@@ -656,8 +653,6 @@ fn benchmark_maintenance(c: &mut Criterion) {
 
     group.finish();
 
-    // We no longer clean up tables to preserve the database state
-    // and avoid recreating data for each benchmark run
     println!("Benchmark completed. Database state preserved for future runs.");
 }
 

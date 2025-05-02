@@ -669,8 +669,6 @@ fn benchmark_audit(c: &mut Criterion) {
 
     group.finish();
 
-    // We no longer clean up tables to preserve the database state
-    // and avoid recreating data for each benchmark run
     println!("Benchmark completed. Database state preserved for future runs.");
 }
 

@@ -1,4 +1,4 @@
-use criterion::{black_box, BenchmarkId, criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use serde_json::json;
 use tokio::runtime::Runtime;
 
@@ -163,14 +163,12 @@ async fn search_all(
 ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
     let mut results = Vec::new();
 
-    // Run all searches in parallel
     let (devices, users, labs) = tokio::join!(
         search_devices(app_state, query),
         search_users(app_state, query),
         search_labs(app_state, query)
     );
 
-    // Combine results
     if let Ok(device_results) = devices {
         results.extend(device_results);
     }
@@ -183,14 +181,15 @@ async fn search_all(
         results.extend(lab_results);
     }
 
-    // Sort results by result type for consistency
     results.sort_by(|a, b| {
-        let a_type = a.get("resultType")
+        let a_type = a
+            .get("resultType")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
-        let b_type = b.get("resultType")
+        let b_type = b
+            .get("resultType")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
@@ -198,7 +197,6 @@ async fn search_all(
         a_type.cmp(&b_type)
     });
 
-    // Limit total results
     if results.len() > 30 {
         results.truncate(30);
     }
@@ -274,10 +272,7 @@ async fn search_device_kind(
 fn benchmark_search(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for search benchmarks");
 
-    // Set up large dataset for benchmarking
-    // 1000 users, 2000 device kinds, 50000 devices, 10 labs
     let app_state = rt.block_on(async {
-        // ensure_bench_env already handles populating the database
         let state = ensure_bench_env().await;
         state
     });
@@ -375,7 +370,6 @@ fn benchmark_search(c: &mut Criterion) {
 
     group.finish();
 
-    // Database state is preserved for future runs
     println!("Benchmark completed. Database state preserved for future runs.");
 }
 

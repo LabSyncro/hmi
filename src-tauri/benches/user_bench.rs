@@ -102,7 +102,6 @@ async fn fetch_user_details(
         Err(err) => return Err(Box::new(err)),
     };
 
-    // Get user's recent activities
     let activities_sql = "
         WITH borrow_activities AS (
             SELECT
@@ -420,11 +419,8 @@ async fn get_user_activities_history(
 fn benchmark_user(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for user benchmarks");
 
-    // Use ensure_bench_env which will check if we have the correct number of records
-    // and only recreate the data if needed
     let app_state = rt.block_on(ensure_bench_env());
 
-    // Create a test user ID for benchmarks
     let test_user_id = rt.block_on(async {
         let client = app_state
             .db
@@ -432,7 +428,6 @@ fn benchmark_user(c: &mut Criterion) {
             .await
             .expect("Failed to get client");
 
-        // Insert a test user directly
         let query = "INSERT INTO bench_users (id, name, email, image)
             VALUES (gen_random_uuid(), $1, $2, $3)
             RETURNING id::text";
@@ -559,8 +554,6 @@ fn benchmark_user(c: &mut Criterion) {
 
     group.finish();
 
-    // We no longer clean up tables to preserve the database state
-    // and avoid recreating data for each benchmark run
     println!("Benchmark completed. Database state preserved for future runs.");
 }
 

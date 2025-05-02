@@ -408,7 +408,6 @@ async fn measure_throughput(
 
     let mut handles = Vec::new();
 
-    // Pre-fetch some random IDs to use in the tests
     let random_device_ids = get_random_device_ids(&app_state, 100).await?;
     let random_kind_ids = get_random_device_kind_ids(&app_state, 20).await?;
 
@@ -483,7 +482,6 @@ async fn measure_throughput(
                     Err(e) => {
                         let mut err_count = errors_clone.lock().unwrap();
                         *err_count += 1;
-                        // Print the first few errors to help diagnose issues
                         if *err_count <= 3 {
                             println!("Error in operation {}: {}", operation_clone, e);
                         }
@@ -535,17 +533,8 @@ async fn measure_throughput(
 async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
     println!("\n=== STARTING DEVICE PERFORMANCE STRESS TEST ===\n");
 
-    let (
-        _,
-        _,
-        _,
-        _,
-        concurrent_requests,
-        test_duration_secs,
-        _,
-    ) = get_config();
+    let (_, _, _, _, concurrent_requests, test_duration_secs, _) = get_config();
 
-    // We use ensure_bench_env to set up the database
     println!("Using existing database state...");
 
     println!("\n=== RUNNING DEVICE LOAD TESTS ===\n");
@@ -594,7 +583,6 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
         .await?;
     }
 
-    // Database state is preserved for future runs
     println!("Database state preserved for future runs.");
 
     println!("\n=== DEVICE STRESS TEST COMPLETED ===\n");
