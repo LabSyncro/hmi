@@ -6,7 +6,7 @@ use uuid::Uuid;
 use hmi_lib::commands::db_commands::{InsertParams, QueryParams};
 
 mod common;
-use common::{cleanup_test_tables, populate_large_test_data, setup_bench_env, AppState};
+use common::{ensure_bench_env, AppState};
 
 async fn fetch_assessments(
     app_state: &AppState,
@@ -400,14 +400,7 @@ async fn finish_assessment(
 fn benchmark_audit(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for audit benchmarks");
 
-    let app_state = rt.block_on(async {
-        let state = setup_bench_env().await;
-        let _ = cleanup_test_tables(&state.db).await;
-        populate_large_test_data(&state.db, 1000, 2000, 50000, 10)
-            .await
-            .expect("Failed to populate large test data");
-        state
-    });
+    let app_state = rt.block_on(ensure_bench_env());
 
     let real_device_ids = rt.block_on(async {
         let client = app_state
@@ -676,8 +669,9 @@ fn benchmark_audit(c: &mut Criterion) {
 
     group.finish();
 
-    rt.block_on(cleanup_test_tables(&app_state.db))
-        .expect("Failed to clean up test tables");
+    // We no longer clean up tables to preserve the database state
+    // and avoid recreating data for each benchmark run
+    println!("Benchmark completed. Database state preserved for future runs.");
 }
 
 criterion_group!(benches, benchmark_audit);

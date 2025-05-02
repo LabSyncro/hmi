@@ -12,7 +12,7 @@ use uuid::Uuid;
 use hmi_lib::commands::db_commands::{InsertParams, QueryParams};
 
 mod common;
-use common::{cleanup_test_tables, populate_large_test_data, setup_bench_env, AppState};
+use common::{ensure_bench_env, AppState};
 
 const DEFAULT_NUM_USERS: usize = 1_000;
 const DEFAULT_NUM_DEVICE_KINDS: usize = 2_000;
@@ -1143,30 +1143,10 @@ async fn measure_throughput(
 async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
     println!("\n=== STARTING PERFORMANCE STRESS TEST ===\n");
 
-    let (
-        num_users,
-        num_device_kinds,
-        num_devices,
-        num_labs,
-        concurrent_requests,
-        test_duration_secs,
-        _,
-    ) = get_config();
+    let (_, _, _, _, concurrent_requests, test_duration_secs, _) = get_config();
 
-    println!("Cleaning up existing data...");
-    match cleanup_test_tables(&app_state.db).await {
-        Ok(_) => println!("Data cleanup complete"),
-        Err(e) => return Err(format!("Error cleaning up test tables: {}", e).into()),
-    }
-
-    populate_large_test_data(
-        &app_state.db,
-        num_users,
-        num_device_kinds,
-        num_devices,
-        num_labs,
-    )
-    .await?;
+    // We use ensure_bench_env to set up the database
+    println!("Using existing database state...");
 
     println!("\n=== RUNNING LOAD TESTS ===\n");
 
@@ -1241,11 +1221,8 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
         .await?;
     }
 
-    println!("Cleaning up test data...");
-    match cleanup_test_tables(&app_state.db).await {
-        Ok(_) => println!("Test data cleanup complete"),
-        Err(e) => return Err(format!("Error cleaning up test tables: {}", e).into()),
-    }
+    // We no longer clean up tables to preserve the database state
+    println!("Database state preserved for future runs.");
 
     println!("\n=== STRESS TEST COMPLETED ===\n");
     Ok(())
@@ -1253,7 +1230,7 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
 
 fn benchmark_stress(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for stress test");
-    let app_state = rt.block_on(setup_bench_env());
+    let app_state = rt.block_on(ensure_bench_env());
     let app_state_arc = Arc::new(app_state);
 
     let mut group = c.benchmark_group("Stress-Test");

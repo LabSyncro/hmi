@@ -12,7 +12,7 @@ use uuid::Uuid;
 use hmi_lib::commands::db_commands::QueryParams;
 
 mod common;
-use common::{cleanup_test_tables, populate_large_test_data, setup_bench_env, AppState};
+use common::{ensure_bench_env, AppState};
 
 const DEFAULT_NUM_USERS: usize = 1_000;
 const DEFAULT_NUM_DEVICE_KINDS: usize = 2_000;
@@ -536,28 +536,17 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
     println!("\n=== STARTING DEVICE PERFORMANCE STRESS TEST ===\n");
 
     let (
-        num_users,
-        num_device_kinds,
-        num_devices,
-        num_labs,
+        _,
+        _,
+        _,
+        _,
         concurrent_requests,
         test_duration_secs,
         _,
     ) = get_config();
 
-    // Clean up test data
-    // Clean up existing data and populate with large dataset
-    let _ = cleanup_test_tables(&app_state.db).await;
-
-    // Use the populate_large_test_data function from common.rs
-    populate_large_test_data(
-        &app_state.db,
-        num_users,
-        num_device_kinds,
-        num_devices,
-        num_labs,
-    )
-    .await?;
+    // We use ensure_bench_env to set up the database
+    println!("Using existing database state...");
 
     println!("\n=== RUNNING DEVICE LOAD TESTS ===\n");
 
@@ -605,8 +594,8 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
         .await?;
     }
 
-    // Clean up test tables after benchmarks
-    let _ = cleanup_test_tables(&app_state.db).await;
+    // Database state is preserved for future runs
+    println!("Database state preserved for future runs.");
 
     println!("\n=== DEVICE STRESS TEST COMPLETED ===\n");
     Ok(())
@@ -614,7 +603,7 @@ async fn run_stress_test(app_state: Arc<AppState>) -> Result<(), StdError> {
 
 fn benchmark_stress(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for stress test");
-    let app_state = rt.block_on(setup_bench_env());
+    let app_state = rt.block_on(ensure_bench_env());
     let app_state_arc = Arc::new(app_state);
 
     let mut group = c.benchmark_group("Device-Stress-Test");

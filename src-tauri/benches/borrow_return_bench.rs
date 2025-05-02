@@ -6,7 +6,7 @@ use uuid::Uuid;
 use hmi_lib::commands::db_commands::{InsertParams, QueryParams};
 
 mod common;
-use common::{cleanup_test_tables, populate_large_test_data, setup_bench_env, AppState};
+use common::{ensure_bench_env, AppState};
 
 async fn fetch_ready_borrow_devices(
     app_state: &AppState,
@@ -25,7 +25,7 @@ async fn fetch_ready_borrow_devices(
                 if *is_asc { "ASC" } else { "DESC" }
             )
         }
-        _ => "ORDER BY bench_device_kinds.name ASC".to_string(),
+        _ => "ORDER BY di.name ASC".to_string(),
     };
 
     let sql = format!(
@@ -372,7 +372,7 @@ async fn create_receipt(
             )
             SELECT
                 '{}',
-                dd.device_id,
+                dd.device_id::uuid,
                 (SELECT id FROM new_activity),
                 dd.expected_returned_at::timestamptz,
                 dd.expected_returned_lab_id::uuid,
@@ -490,7 +490,7 @@ async fn return_receipt(
                 return_id = (SELECT id FROM new_activity),
                 after_quality = dd.after_quality
             FROM device_data dd
-            WHERE bench_receipts_devices.device_id = dd.device_id
+            WHERE bench_receipts_devices.device_id = dd.device_id::uuid
                 AND bench_receipts_devices.returned_receipt_id IS NULL
             RETURNING bench_receipts_devices.device_id
         ),
@@ -498,7 +498,7 @@ async fn return_receipt(
             UPDATE bench_devices
             SET status = dd.after_quality
             FROM device_data dd
-            WHERE bench_devices.id = dd.device_id
+            WHERE bench_devices.id = dd.device_id::uuid
             RETURNING id
         )
         SELECT '{}' as id",
@@ -524,12 +524,8 @@ fn benchmark_borrow_return(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for borrow-return benchmarks");
 
     let app_state = rt.block_on(async {
-        let state = setup_bench_env().await;
-        let _ = cleanup_test_tables(&state.db).await;
-        populate_large_test_data(&state.db, 1000, 2000, 50000, 10)
-            .await
-            .expect("Failed to populate large test data");
-        state
+        // Use the ensure_bench_env function which handles setup and data population
+        ensure_bench_env().await
     });
 
     let real_device_ids = rt.block_on(async {
@@ -561,7 +557,7 @@ fn benchmark_borrow_return(c: &mut Criterion) {
         table: "bench_devices".to_string(),
         columns: None,
         conditions: None,
-        order_by: Some(vec![("bench_device_kinds.name".to_string(), true)]),
+        order_by: Some(vec![("name".to_string(), true)]),
         limit: Some(10),
         offset: Some(0),
         joins: None,
@@ -590,7 +586,7 @@ fn benchmark_borrow_return(c: &mut Criterion) {
         table: "bench_receipts_devices".to_string(),
         columns: None,
         conditions: None,
-        order_by: Some(vec![("bench_activities.created_at".to_string(), false)]),
+        order_by: Some(vec![("borrowed_at".to_string(), false)]),
         limit: Some(10),
         offset: Some(0),
         joins: None,
@@ -619,7 +615,7 @@ fn benchmark_borrow_return(c: &mut Criterion) {
         table: "bench_receipts_devices".to_string(),
         columns: None,
         conditions: None,
-        order_by: Some(vec![("bench_activities.created_at".to_string(), false)]),
+        order_by: Some(vec![("returned_at".to_string(), false)]),
         limit: Some(10),
         offset: Some(0),
         joins: None,
@@ -816,8 +812,9 @@ fn benchmark_borrow_return(c: &mut Criterion) {
 
     group.finish();
 
-    rt.block_on(cleanup_test_tables(&app_state.db))
-        .expect("Failed to clean up test tables");
+    // We no longer clean up tables to preserve the database state
+    // and avoid recreating data for each benchmark run
+    println!("Benchmark completed. Database state preserved for future runs.");
 }
 
 criterion_group!(benches, benchmark_borrow_return);

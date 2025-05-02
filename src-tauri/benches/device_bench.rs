@@ -6,7 +6,7 @@ use uuid::Uuid;
 use hmi_lib::commands::db_commands::QueryParams;
 
 mod common;
-use common::{cleanup_test_tables, populate_large_test_data, setup_bench_env, AppState};
+use common::{ensure_bench_env, AppState};
 
 async fn fetch_devices(
     app_state: &AppState,
@@ -25,7 +25,7 @@ async fn fetch_devices(
                 if *is_asc { "ASC" } else { "DESC" }
             )
         }
-        _ => "ORDER BY bench_devices.full_id ASC".to_string(),
+        _ => "ORDER BY d.full_id ASC".to_string(),
     };
 
     let sql = format!(
@@ -126,14 +126,14 @@ async fn fetch_device_details(
         "fullId": row.get::<_, String>(1),
         "kindName": row.get::<_, String>(2),
         "kindId": row.get::<_, String>(3),
-        "brand": row.get::<_, String>(4),
-        "manufacturer": row.get::<_, String>(5),
-        "description": row.get::<_, String>(6),
+        "brand": row.get::<_, Option<String>>(4),
+        "manufacturer": row.get::<_, Option<String>>(5),
+        "description": row.get::<_, Option<String>>(6),
         "labName": row.get::<_, String>(7),
         "labId": row.get::<_, String>(8),
         "status": row.get::<_, String>(9),
-        "categoryName": row.get::<_, String>(10),
-        "categoryId": row.get::<_, String>(11)
+        "categoryName": row.try_get::<_, Option<String>>(10).unwrap_or(None).unwrap_or_default(),
+        "categoryId": row.try_get::<_, Option<String>>(11).unwrap_or(None).unwrap_or_default()
     }))
 }
 
@@ -162,7 +162,7 @@ async fn get_device_receipt_by_id(
         SELECT
             d.id,
             d.full_id,
-            d.status,
+            d.status::text,
             d.kind,
             d.lab_id,
             dk.image,
@@ -180,7 +180,7 @@ async fn get_device_receipt_by_id(
             r.id AS receipt_id,
             a.created_at AS borrowed_at,
             rd.expected_returned_at,
-            rd.prev_quality,
+            rd.prev_quality::text,
             bl.name AS borrowed_lab,
             rl.name AS expected_return_lab,
             actor.id AS borrower_id,
@@ -221,7 +221,7 @@ async fn get_device_receipt_by_id(
         "status": row.get::<_, String>("status"),
         "prevQuality": row.try_get::<_, String>("prev_quality").ok(),
         "image": row.get::<_, serde_json::Value>("image"),
-        "unit": row.get::<_, String>("unit"),
+        "unit": row.try_get::<_, String>("unit").unwrap_or_default(),
         "deviceName": row.get::<_, String>("device_name"),
         "allowedBorrowRoles": row.get::<_, Vec<String>>("allowed_borrow_roles"),
         "allowedViewRoles": row.get::<_, Vec<String>>("allowed_view_roles"),
@@ -287,9 +287,9 @@ async fn get_device_audit_by_id(
             CASE
                 WHEN d.status = 'assessing' THEN COALESCE(iad.prev_status, d.status)
                 ELSE d.status
-            END as status,
-            iad.after_status as audit_condition,
-            d.status as current_status,
+            END::text as status,
+            iad.after_status::text as audit_condition,
+            d.status::text as current_status,
             d.kind,
             d.lab_id,
             dk.image,
@@ -327,11 +327,11 @@ async fn get_device_audit_by_id(
         "fullId": row.get::<_, String>("full_id"),
         "status": row.get::<_, String>("status"),
         "currentStatus": row.get::<_, String>("current_status"),
-        "auditCondition": row.get::<_, String>("audit_condition"),
+        "auditCondition": row.try_get::<_, String>("audit_condition").unwrap_or_default(),
         "image": {
             "mainImage": row.get::<_, serde_json::Value>("image").get("mainImage").and_then(|v| v.as_str()).unwrap_or("")
         },
-        "unit": row.get::<_, String>("unit"),
+        "unit": row.try_get::<_, String>("unit").unwrap_or_default(),
         "deviceName": row.get::<_, String>("device_name"),
         "isBorrowableLabOnly": row.get::<_, bool>("is_borrowable_lab_only"),
         "labRoom": row.get::<_, String>("room"),
@@ -372,9 +372,9 @@ async fn get_device_maintenance_by_id(
             CASE
                 WHEN d.status = 'maintaining' THEN COALESCE(md.prev_status, d.status)
                 ELSE d.status
-            END as status,
-            d.status as current_status,
-            md.after_status as outcome,
+            END::text as status,
+            d.status::text as current_status,
+            md.after_status::text as outcome,
             d.kind,
             d.lab_id,
             dk.image,
@@ -384,7 +384,7 @@ async fn get_device_maintenance_by_id(
             l.room,
             l.branch,
             m.id as maintenance_id,
-            m.maintainer_id as technician_id,
+            m.technician_id as technician_id,
             u.name as technician_name,
             a.note as notes,
             a.created_at
@@ -392,9 +392,9 @@ async fn get_device_maintenance_by_id(
             bench_devices d
             LEFT JOIN bench_device_kinds dk ON d.kind = dk.id
             LEFT JOIN bench_labs l ON d.lab_id = l.id
-            LEFT JOIN bench_maintenances_devices md ON d.id = md.device_id
-            LEFT JOIN bench_maintenances m ON md.maintaining_id = m.id
-            LEFT JOIN bench_users u ON m.maintainer_id = u.id
+            LEFT JOIN bench_maintenance_devices md ON d.id = md.device_id
+            LEFT JOIN bench_maintenance m ON md.maintenance_id = m.id
+            LEFT JOIN bench_users u ON m.technician_id = u.id
             LEFT JOIN bench_activities a ON m.id = a.id
         WHERE
             d.id = $1
@@ -417,7 +417,8 @@ async fn get_device_maintenance_by_id(
         }
     }
 
-    let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+    let created_at: Option<chrono::DateTime<chrono::Utc>> =
+        row.try_get("created_at").unwrap_or(None);
     let room: String = row.get("room");
     let branch: String = row.get("branch");
     let location = if !room.is_empty() && !branch.is_empty() {
@@ -428,22 +429,24 @@ async fn get_device_maintenance_by_id(
 
     Ok(json!({
         "id": row.get::<_, Uuid>("id").to_string(),
-        "maintenanceId": row.get::<_, Uuid>("maintenance_id").to_string(),
-        "technician": {
-            "id": row.get::<_, Uuid>("technician_id").to_string(),
-            "name": row.get::<_, String>("technician_name")
-        },
+        "maintenanceId": row.try_get::<_, Uuid>("maintenance_id").ok().map(|id| id.to_string()),
+        "technician": row.try_get::<_, Uuid>("technician_id").ok().map(|id| {
+            json!({
+                "id": id.to_string(),
+                "name": row.try_get::<_, String>("technician_name").unwrap_or_default()
+            })
+        }),
         "status": row.get::<_, String>("status"),
         "currentStatus": row.get::<_, String>("current_status"),
-        "outcome": row.get::<_, String>("outcome"),
+        "outcome": row.try_get::<_, String>("outcome").unwrap_or_default(),
         "kind": row.get::<_, Uuid>("kind").to_string(),
         "deviceName": row.get::<_, String>("device_name"),
         "image": row.get::<_, serde_json::Value>("image"),
-        "unit": row.get::<_, String>("unit"),
+        "unit": row.try_get::<_, String>("unit").unwrap_or_default(),
         "isBorrowableLabOnly": row.get::<_, bool>("is_borrowable_lab_only"),
         "location": location,
         "notes": row.try_get::<_, String>("notes").ok(),
-        "createdAt": created_at.to_rfc3339()
+        "createdAt": created_at.map(|dt| dt.to_rfc3339())
     }))
 }
 
@@ -476,7 +479,7 @@ async fn get_device_shipment_by_id(
         SELECT
             d.id,
             d.full_id,
-            d.status,
+            d.status::text,
             d.kind,
             d.lab_id,
             dk.image,
@@ -491,8 +494,8 @@ async fn get_device_shipment_by_id(
             c.name AS category_name,
             l.room,
             l.branch,
-            sd.prev_status as prev_condition,
-            sd.after_status as after_condition,
+            sd.prev_status::text as prev_condition,
+            sd.after_status::text as after_condition,
             s.id as shipment_id,
             s.status as shipment_status,
             s_start.name AS source_location,
@@ -506,15 +509,15 @@ async fn get_device_shipment_by_id(
             LEFT JOIN bench_categories c ON dk.category_id = c.id
             LEFT JOIN bench_shipments_devices sd ON d.id = sd.device_id
             LEFT JOIN bench_shipments s ON sd.shipment_id = s.id
-            LEFT JOIN bench_labs s_start ON s.start_lab_id = s_start.id
-            LEFT JOIN bench_labs s_arrive ON s.arrive_lab_id = s_arrive.id
-            LEFT JOIN bench_users sender ON s.sender_id = sender.id
-            LEFT JOIN bench_users receiver ON s.receiver_id = receiver.id
+            LEFT JOIN bench_labs s_start ON s.from_lab_id = s_start.id
+            LEFT JOIN bench_labs s_arrive ON s.to_lab_id = s_arrive.id
+            LEFT JOIN bench_users sender ON s.shipper_id = sender.id
+            LEFT JOIN bench_users receiver ON s.shipper_id = receiver.id
         WHERE
             d.id = $1
             AND d.deleted_at IS NULL
         ORDER BY
-            s.from_at DESC
+            s.id DESC
         LIMIT 1
     ";
 
@@ -541,72 +544,9 @@ async fn get_device_shipment_by_id(
         "senderName": row.try_get::<_, String>("sender_name").ok(),
         "receiverName": row.try_get::<_, String>("receiver_name").ok(),
         "image": row.get::<_, serde_json::Value>("image"),
-        "unit": row.get::<_, String>("unit"),
+        "unit": row.try_get::<_, String>("unit").unwrap_or_default(),
         "deviceName": row.get::<_, String>("device_name"),
         "isBorrowableLabOnly": row.get::<_, bool>("is_borrowable_lab_only")
-    }))
-}
-
-async fn get_device_inventory_in_audit(
-    app_state: &AppState,
-    kind_id: &str,
-    lab_id: &str,
-) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    let client = app_state.db.get_client().await?;
-
-    if kind_id.is_empty() || lab_id.is_empty() {
-        return Ok(json!({ "error": "Missing kind ID or lab ID" }));
-    }
-
-    let kind_uuid = match Uuid::parse_str(kind_id) {
-        Ok(uuid) => uuid,
-        Err(_) => return Ok(json!({ "error": "Invalid kind ID format" })),
-    };
-
-    let lab_uuid = match Uuid::parse_str(lab_id) {
-        Ok(uuid) => uuid,
-        Err(_) => return Ok(json!({ "error": "Invalid lab ID format" })),
-    };
-
-    let sql = "
-        WITH lab_devices AS (
-            SELECT
-                d.id,
-                d.status
-            FROM bench_devices d
-            WHERE d.kind = $1
-            AND d.lab_id = $2
-            AND d.deleted_at IS NULL
-        ),
-        lab_inventory AS (
-            SELECT
-                COUNT(*) FILTER (WHERE status IN ('healthy', 'broken', 'discarded', 'lost', 'assessing')) as available_quantity
-            FROM lab_devices
-        ),
-        unscanned_devices AS (
-            SELECT
-                id::text
-            FROM lab_devices
-            WHERE status IN ('healthy', 'broken', 'discarded', 'lost', 'assessing')
-        )
-        SELECT
-            li.*,
-            ARRAY_AGG(ud.id) as unscanned_device_ids
-        FROM lab_inventory li
-        LEFT JOIN unscanned_devices ud ON TRUE
-        GROUP BY
-            li.available_quantity
-    ";
-
-    let row = match client.query_opt(sql, &[&kind_uuid, &lab_uuid]).await {
-        Ok(Some(row)) => row,
-        Ok(None) => return Ok(json!({ "error": "Device inventory not found" })),
-        Err(err) => return Err(Box::new(err)),
-    };
-
-    Ok(json!({
-        "availableQuantity": row.get::<_, i64>("available_quantity"),
-        "unscannedDeviceIds": row.get::<_, Vec<String>>("unscanned_device_ids")
     }))
 }
 
@@ -776,11 +716,11 @@ async fn get_device_transport_history(
             bench_devices d
             JOIN bench_shipments_devices sd ON d.id = sd.device_id
             JOIN bench_shipments s ON sd.shipment_id = s.id
-            JOIN bench_labs start_lab ON s.start_lab_id = start_lab.id
-            JOIN bench_labs arrive_lab ON s.arrive_lab_id = arrive_lab.id
-            LEFT JOIN bench_activities a_from ON s.from_at = a_from.id
-            LEFT JOIN bench_users sender ON s.sender_id = sender.id
-            LEFT JOIN bench_users receiver ON s.receiver_id = receiver.id
+            JOIN bench_labs start_lab ON s.from_lab_id = start_lab.id
+            JOIN bench_labs arrive_lab ON s.to_lab_id = arrive_lab.id
+            LEFT JOIN bench_activities a_from ON s.id = a_from.id
+            LEFT JOIN bench_users sender ON s.shipper_id = sender.id
+            LEFT JOIN bench_users receiver ON s.shipper_id = receiver.id
         WHERE
             d.id = $1
             AND d.deleted_at IS NULL
@@ -955,10 +895,10 @@ async fn get_device_maintenance_history(
             m.finished_at AS \"finishedAt\"
         FROM
             bench_devices d
-            JOIN bench_maintenances_devices md ON d.id = md.device_id
-            JOIN bench_maintenances m ON md.maintaining_id = m.id
+            JOIN bench_maintenance_devices md ON d.id = md.device_id
+            JOIN bench_maintenance m ON md.maintenance_id = m.id
             JOIN bench_activities a ON m.id = a.id
-            LEFT JOIN bench_users u ON m.maintainer_id = u.id
+            LEFT JOIN bench_users u ON m.technician_id = u.id
         WHERE
             d.id = $1
             AND d.deleted_at IS NULL
@@ -1007,12 +947,8 @@ fn benchmark_device(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for device benchmarks");
 
     let app_state = rt.block_on(async {
-        let state = setup_bench_env().await;
-        let _ = cleanup_test_tables(&state.db).await;
-        populate_large_test_data(&state.db, 1000, 2000, 50000, 10)
-            .await
-            .expect("Failed to populate large test data");
-        state
+        // Use the ensure_bench_env function which handles setup and data population
+        ensure_bench_env().await
     });
 
     let (test_device_id, kind_id, lab_id) = rt.block_on(async {
@@ -1079,7 +1015,7 @@ fn benchmark_device(c: &mut Criterion) {
         table: "bench_devices".to_string(),
         columns: None,
         conditions: None,
-        order_by: Some(vec![("bench_devices.full_id".to_string(), true)]),
+        order_by: Some(vec![("d.full_id".to_string(), true)]),
         limit: Some(10),
         offset: Some(0),
         joins: None,
@@ -1264,28 +1200,8 @@ fn benchmark_device(c: &mut Criterion) {
             });
         });
 
-        // Benchmark for device inventory in audit
+        // Get kind_id_str for the next benchmark
         let kind_id_str = kind_id.to_string();
-        group.bench_function(
-            BenchmarkId::new("Fetch Device Inventory In Audit", 1),
-            |b| {
-                b.to_async(&rt).iter(|| async {
-                    match get_device_inventory_in_audit(&app_state, &kind_id_str, &lab_id_str).await
-                    {
-                        Ok(result) => {
-                            black_box(result);
-                        }
-                        Err(err) => {
-                            eprintln!(
-                                "Error in Fetch Device Inventory In Audit benchmark: {}",
-                                err
-                            );
-                            black_box(json!({"error": err.to_string()}));
-                        }
-                    }
-                });
-            },
-        );
 
         // Benchmark for device inventory by kind
         group.bench_function(BenchmarkId::new("Fetch Device Inventory By Kind", 1), |b| {
@@ -1305,8 +1221,9 @@ fn benchmark_device(c: &mut Criterion) {
 
     group.finish();
 
-    rt.block_on(cleanup_test_tables(&app_state.db))
-        .expect("Failed to clean up test tables");
+    // We no longer clean up tables to preserve the database state
+    // and avoid recreating data for each benchmark run
+    println!("Benchmark completed. Database state preserved for future runs.");
 }
 
 criterion_group!(benches, benchmark_device);

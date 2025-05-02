@@ -6,7 +6,7 @@ use uuid::Uuid;
 use hmi_lib::commands::db_commands::QueryParams;
 
 mod common;
-use common::{cleanup_test_tables, populate_large_test_data, setup_bench_env, AppState};
+use common::{ensure_bench_env, AppState};
 
 async fn fetch_users(
     app_state: &AppState,
@@ -420,17 +420,9 @@ async fn get_user_activities_history(
 fn benchmark_user(c: &mut Criterion) {
     let rt = Runtime::new().expect("Failed to create Tokio runtime for user benchmarks");
 
-    // Set up large dataset for benchmarking
-    // 1000 users, 2000 device kinds, 50000 devices, 10 labs
-    let app_state = rt.block_on(async {
-        let state = setup_bench_env().await;
-        // Clean up existing data and populate with large dataset
-        let _ = cleanup_test_tables(&state.db).await;
-        populate_large_test_data(&state.db, 1000, 2000, 50000, 10)
-            .await
-            .expect("Failed to populate large test data");
-        state
-    });
+    // Use ensure_bench_env which will check if we have the correct number of records
+    // and only recreate the data if needed
+    let app_state = rt.block_on(ensure_bench_env());
 
     // Create a test user ID for benchmarks
     let test_user_id = rt.block_on(async {
@@ -567,9 +559,9 @@ fn benchmark_user(c: &mut Criterion) {
 
     group.finish();
 
-    // Clean up test tables after benchmarks
-    rt.block_on(cleanup_test_tables(&app_state.db))
-        .expect("Failed to clean up test tables");
+    // We no longer clean up tables to preserve the database state
+    // and avoid recreating data for each benchmark run
+    println!("Benchmark completed. Database state preserved for future runs.");
 }
 
 criterion_group!(benches, benchmark_user);

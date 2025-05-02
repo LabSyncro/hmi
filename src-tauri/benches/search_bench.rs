@@ -5,7 +5,7 @@ use tokio::runtime::Runtime;
 use hmi_lib::commands::db_commands::QueryParams;
 
 mod common;
-use common::{setup_bench_env, cleanup_test_tables, populate_large_test_data, AppState};
+use common::{ensure_bench_env, AppState};
 
 async fn search_devices(
     app_state: &AppState,
@@ -277,10 +277,8 @@ fn benchmark_search(c: &mut Criterion) {
     // Set up large dataset for benchmarking
     // 1000 users, 2000 device kinds, 50000 devices, 10 labs
     let app_state = rt.block_on(async {
-        let state = setup_bench_env().await;
-        // Clean up existing data and populate with large dataset
-        let _ = cleanup_test_tables(&state.db).await;
-        populate_large_test_data(&state.db, 1000, 2000, 50000, 10).await.expect("Failed to populate large test data");
+        // ensure_bench_env already handles populating the database
+        let state = ensure_bench_env().await;
         state
     });
 
@@ -377,9 +375,8 @@ fn benchmark_search(c: &mut Criterion) {
 
     group.finish();
 
-    // Clean up test tables after benchmarks
-    rt.block_on(cleanup_test_tables(&app_state.db))
-        .expect("Failed to clean up test tables");
+    // Database state is preserved for future runs
+    println!("Benchmark completed. Database state preserved for future runs.");
 }
 
 criterion_group!(benches, benchmark_search);

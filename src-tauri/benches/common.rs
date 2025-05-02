@@ -11,15 +11,89 @@ pub struct AppState {
     pub schema: Arc<Mutex<Option<DatabaseSchema>>>,
 }
 
-pub async fn setup_bench_env() -> AppState {
+#[allow(dead_code)]
+pub async fn ensure_bench_env() -> AppState {
     dotenv().ok();
     let db = Database::new()
         .await
         .expect("Failed to connect to test database for benchmark");
 
-    setup_test_tables(&db)
+    // Verify that tables exist by querying them
+    let client = db.get_client().await.expect("Failed to get client");
+
+    // Check if tables exist
+    let tables_exist = client
+        .query_one(
+            "SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_name = 'bench_users'
+            )",
+            &[],
+        )
         .await
-        .expect("Failed to set up test tables");
+        .map(|row| row.get::<_, bool>(0))
+        .unwrap_or(false);
+
+    if !tables_exist {
+        println!("Tables don't exist. Setting up test tables...");
+        setup_test_tables(&db)
+            .await
+            .expect("Failed to set up test tables");
+    }
+
+    // Check if we have the correct number of records
+    let users_count = client
+        .query_one("SELECT COUNT(*) FROM bench_users", &[])
+        .await
+        .map(|row| row.get::<_, i64>(0))
+        .unwrap_or(0);
+
+    let device_kinds_count = client
+        .query_one("SELECT COUNT(*) FROM bench_device_kinds", &[])
+        .await
+        .map(|row| row.get::<_, i64>(0))
+        .unwrap_or(0);
+
+    let devices_count = client
+        .query_one("SELECT COUNT(*) FROM bench_devices", &[])
+        .await
+        .map(|row| row.get::<_, i64>(0))
+        .unwrap_or(0);
+
+    // Check if we have exactly the required number of records
+    if users_count != 1000 || device_kinds_count != 2000 || devices_count != 50000 {
+        println!("Database doesn't have the correct number of records:");
+        println!("  - Users: {} (should be 1000)", users_count);
+        println!("  - Device kinds: {} (should be 2000)", device_kinds_count);
+        println!("  - Devices: {} (should be 50000)", devices_count);
+        println!("Recreating test data...");
+
+        // We'll recreate the data without dropping tables
+        // First, truncate the tables to clear existing data
+        client
+            .batch_execute(
+                "TRUNCATE bench_shipments_devices, bench_shipments,
+                bench_maintenance_devices, bench_maintenance,
+                bench_receipts_devices, bench_receipts,
+                bench_inventory_assessments_devices, bench_inventory_assessments,
+                bench_activities, bench_devices, bench_device_kinds,
+                bench_categories, bench_labs, bench_users CASCADE;",
+            )
+            .await
+            .expect("Failed to truncate tables");
+
+        // Then populate with the correct amount of data
+        populate_large_test_data(&db, 1000, 2000, 50000, 10)
+            .await
+            .expect("Failed to populate large test data");
+    } else {
+        println!("Successfully connected to PostgreSQL!");
+        println!("Database already contains the correct test data:");
+        println!("  - 1000 users");
+        println!("  - 2000 device kinds");
+        println!("  - 50000 devices");
+        println!("  - 10 labs");
+    }
 
     let schema = DatabaseSchema::fetch(&db)
         .await
@@ -201,7 +275,7 @@ pub async fn setup_test_tables(db: &Database) -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
-pub async fn populate_large_test_data(
+async fn populate_large_test_data(
     db: &Database,
     num_users: usize,
     num_device_kinds: usize,
@@ -344,6 +418,44 @@ pub async fn populate_large_test_data(
 
     client.execute(&query, &[]).await?;
     println!("Created {} categories", categories.len());
+
+    // Assign categories to device kinds
+    println!("Assigning categories to device kinds...");
+    let category_ids: Vec<uuid::Uuid> = categories.iter().map(|(_, id)| *id).collect();
+
+    // Get all device kind IDs
+    let kind_rows = client
+        .query("SELECT id FROM bench_device_kinds", &[])
+        .await?;
+    let kind_ids: Vec<uuid::Uuid> = kind_rows
+        .iter()
+        .map(|row| row.get::<_, uuid::Uuid>(0))
+        .collect();
+
+    // Assign categories in batches (distribute evenly)
+    let batch_size = 500;
+    for (i, chunk) in kind_ids.chunks(batch_size).enumerate() {
+        let mut updates = Vec::new();
+
+        for (j, kind_id) in chunk.iter().enumerate() {
+            let category_idx = (i * batch_size + j) % 3;
+            updates.push(format!("('{}', '{}')", kind_id, category_ids[category_idx]));
+        }
+
+        if !updates.is_empty() {
+            let update_query = format!(
+                "UPDATE bench_device_kinds AS dk
+                 SET category_id = u.category_id::uuid
+                 FROM (VALUES {}) AS u(id, category_id)
+                 WHERE dk.id = u.id::uuid",
+                updates.join(", ")
+            );
+
+            client.execute(&update_query, &[]).await?;
+        }
+    }
+
+    println!("Assigned categories to device kinds");
 
     // Get all lab and device kind IDs for device creation
     let lab_rows = client.query("SELECT id::text FROM bench_labs", &[]).await?;
