@@ -55,7 +55,7 @@ async fn fetch_users(
             "id": row.get::<_, String>(0),
             "name": row.get::<_, String>(1),
             "email": row.get::<_, String>(2),
-            "image": row.get::<_, serde_json::Value>(3)
+            "image": row.get::<_, String>(3)
         }));
     }
 
@@ -175,7 +175,7 @@ async fn fetch_user_details(
         "id": row.get::<_, String>(0),
         "name": row.get::<_, String>(1),
         "email": row.get::<_, String>(2),
-        "image": row.get::<_, serde_json::Value>(3),
+        "image": row.get::<_, String>(3),
         "recentActivities": activities
     }))
 }
@@ -312,14 +312,14 @@ async fn get_user_activities_history(
             NULL as prev_quality,
             NULL as after_quality
           FROM
-            bench_maintenances m
-            JOIN bench_maintenances_devices md ON m.id = md.maintaining_id
+            bench_maintenance m
+            JOIN bench_maintenance_devices md ON m.id = md.maintenance_id
             JOIN bench_devices d ON md.device_id = d.id
             JOIN bench_device_kinds dk ON d.kind = dk.id
             JOIN bench_labs l ON d.lab_id = l.id
             JOIN bench_activities a ON m.id = a.id
           WHERE
-            m.maintainer_id = $1
+            m.technician_id = $1
             AND d.deleted_at IS NULL
         ),
         transport_activities AS (
@@ -329,7 +329,7 @@ async fn get_user_activities_history(
             d.kind AS device_kind_id,
             dk.name AS device_name,
             dk.image AS device_image,
-            start_lab.room || ', ' || start_lab.branch || ' → ' || arrive_lab.room || ', ' || arrive_lab.branch AS location,
+            from_lab.room || ', ' || from_lab.branch || ' → ' || to_lab.room || ', ' || to_lab.branch AS location,
             a.created_at AS activity_date,
             s.status::text,
             a.note,
@@ -341,11 +341,11 @@ async fn get_user_activities_history(
             JOIN bench_shipments_devices sd ON s.id = sd.shipment_id
             JOIN bench_devices d ON sd.device_id = d.id
             JOIN bench_device_kinds dk ON d.kind = dk.id
-            JOIN bench_labs start_lab ON s.start_lab_id = start_lab.id
-            JOIN bench_labs arrive_lab ON s.arrive_lab_id = arrive_lab.id
-            JOIN bench_activities a ON s.from_at = a.id
+            JOIN bench_labs from_lab ON s.from_lab_id = from_lab.id
+            JOIN bench_labs to_lab ON s.to_lab_id = to_lab.id
+            JOIN bench_activities a ON s.id = a.id
           WHERE
-            (s.sender_id = $1 OR s.receiver_id = $1)
+            s.shipper_id = $1
             AND d.deleted_at IS NULL
         ),
         returned_devices_activities AS (
@@ -428,21 +428,13 @@ fn benchmark_user(c: &mut Criterion) {
             .await
             .expect("Failed to get client");
 
-        let query = "INSERT INTO bench_users (id, name, email, image)
-            VALUES (gen_random_uuid(), $1, $2, $3)
-            RETURNING id::text";
+        // Get an existing user instead of creating a new one
+        let query = "SELECT id::text FROM bench_users LIMIT 1";
 
-        let name = "Benchmark Test User";
-        let email = format!(
-            "benchmark.test.{}@example.com",
-            Uuid::new_v4().to_string().split('-').next().unwrap()
-        );
-        let image = json!({"url": "https://example.com/avatar_test.jpg"});
-
-        match client.query_one(query, &[&name, &email, &image]).await {
+        match client.query_one(query, &[]).await {
             Ok(row) => row.get::<_, String>(0),
             Err(err) => {
-                eprintln!("Error creating test user: {}", err);
+                eprintln!("Error getting test user: {}", err);
                 "".to_string()
             }
         }

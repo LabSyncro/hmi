@@ -25,7 +25,7 @@ async fn fetch_assessments(
                 if *is_asc { "ASC" } else { "DESC" }
             )
         }
-        _ => "ORDER BY bench_activities.created_at DESC".to_string(),
+        _ => "ORDER BY ad.created_at DESC".to_string(),
     };
 
     let sql = format!(
@@ -284,7 +284,7 @@ async fn create_assessment(
             (assessing_id, device_id, prev_status, after_status)
             SELECT
                 (SELECT id FROM new_assessment),
-                dd.device_id,
+                dd.device_id::uuid,
                 dd.prev_status,
                 dd.after_status
             FROM device_data dd
@@ -373,15 +373,15 @@ async fn finish_assessment(
             UPDATE bench_inventory_assessments_devices
             SET after_status = dd.after_status
             FROM device_data dd
-            WHERE bench_inventory_assessments_devices.device_id = dd.device_id
-                AND bench_inventory_assessments_devices.assessing_id = '{}'
+            WHERE bench_inventory_assessments_devices.device_id = dd.device_id::uuid
+                AND bench_inventory_assessments_devices.assessing_id = '{}'::uuid
             RETURNING bench_inventory_assessments_devices.device_id
         ),
         update_devices AS (
             UPDATE bench_devices
             SET status = dd.after_status
             FROM device_data dd
-            WHERE bench_devices.id = dd.device_id
+            WHERE bench_devices.id = dd.device_id::uuid
             RETURNING id
         )
         SELECT id FROM update_assessment",
@@ -496,7 +496,7 @@ fn benchmark_audit(c: &mut Criterion) {
         table: "bench_inventory_assessments".to_string(),
         columns: None,
         conditions: None,
-        order_by: Some(vec![("bench_activities.created_at".to_string(), false)]),
+        order_by: Some(vec![("created_at".to_string(), false)]),
         limit: Some(10),
         offset: Some(0),
         joins: None,

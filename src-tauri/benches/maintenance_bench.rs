@@ -295,7 +295,7 @@ async fn create_maintenance(
             (maintenance_id, device_id, prev_status, after_status)
             SELECT
                 (SELECT id FROM new_maintenance),
-                dd.device_id,
+                dd.device_id::uuid,
                 dd.prev_status,
                 dd.after_status
             FROM device_data dd
@@ -384,15 +384,15 @@ async fn finish_maintenance(
             UPDATE bench_maintenance_devices
             SET after_status = dd.after_status
             FROM device_data dd
-            WHERE bench_maintenance_devices.device_id = dd.device_id
-                AND bench_maintenance_devices.maintenance_id = '{}'
+            WHERE bench_maintenance_devices.device_id = dd.device_id::uuid
+                AND bench_maintenance_devices.maintenance_id = '{}'::uuid
             RETURNING bench_maintenance_devices.device_id
         ),
         update_devices AS (
             UPDATE bench_devices
             SET status = dd.after_status
             FROM device_data dd
-            WHERE bench_devices.id = dd.device_id
+            WHERE bench_devices.id = dd.device_id::uuid
             RETURNING id
         )
         SELECT id FROM update_maintenance",
@@ -478,12 +478,38 @@ fn benchmark_maintenance(c: &mut Criterion) {
         }
     });
 
+    let (lab_id, technician_id) = rt.block_on(async {
+        let client = app_state
+            .db
+            .get_client()
+            .await
+            .expect("Failed to get client");
+
+        let lab_id = client
+            .query_one("SELECT id::text FROM bench_labs LIMIT 1", &[])
+            .await
+            .map(|row| row.get::<_, String>(0))
+            .unwrap_or_else(|_| "".to_string());
+
+        let technician_id = client
+            .query_one("SELECT id::text FROM bench_users LIMIT 1", &[])
+            .await
+            .map(|row| row.get::<_, String>(0))
+            .unwrap_or_else(|_| "".to_string());
+
+        (lab_id, technician_id)
+    });
+
+    if lab_id.is_empty() || technician_id.is_empty() {
+        println!("Warning: Could not find lab or technician for benchmarking");
+    }
+
     let maintenance_id = rt.block_on(async {
         let create_params = InsertParams {
             table: "bench_maintenance".to_string(),
             value: json!({
-                "labId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-                "technicianId": "11111111-1111-1111-1111-111111111111",
+                "labId": lab_id,
+                "technicianId": technician_id,
                 "note": "Test maintenance for benchmarking",
                 "devices": [
                     {
@@ -513,7 +539,7 @@ fn benchmark_maintenance(c: &mut Criterion) {
         table: "bench_maintenance".to_string(),
         columns: None,
         conditions: None,
-        order_by: Some(vec![("a.created_at".to_string(), false)]),
+        order_by: Some(vec![("created_at".to_string(), false)]),
         limit: Some(10),
         offset: Some(0),
         joins: None,
@@ -572,8 +598,8 @@ fn benchmark_maintenance(c: &mut Criterion) {
     let create_params = InsertParams {
         table: "bench_maintenance".to_string(),
         value: json!({
-            "labId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "technicianId": "11111111-1111-1111-1111-111111111111",
+            "labId": lab_id,
+            "technicianId": technician_id,
             "note": "Benchmark test maintenance",
             "devices": [
                 {

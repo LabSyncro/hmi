@@ -1,0 +1,112 @@
+   Compiling hmi v0.1.0 (/Users/nguyenngocphu/Documents/hmi/src-tauri)
+    Finished `bench` profile [optimized] target(s) in 5.61s
+     Running benches/device_bench.rs (target/release/deps/device_bench-60318a09e5dd7e42)
+Successfully connected to PostgreSQL!
+Successfully connected to PostgreSQL!
+Database already contains the correct test data:
+  - 1000 users
+  - 2000 device kinds
+  - 50000 devices
+  - 10 labs
+Benchmarking Device Operations/Fetch Devices/10
+Benchmarking Device Operations/Fetch Devices/10: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 18.6s, or reduce sample count to 20.
+Benchmarking Device Operations/Fetch Devices/10: Collecting 100 samples in estimated 18.631 s (100 iterations)
+Benchmarking Device Operations/Fetch Devices/10: Analyzing
+Device Operations/Fetch Devices/10
+                        time:   [167.32 ms 173.90 ms 181.12 ms]
+Found 5 outliers among 100 measurements (5.00%)
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+Benchmarking Device Operations/Fetch Device Details/1
+Benchmarking Device Operations/Fetch Device Details/1: Warming up for 3.0000 s
+Benchmarking Device Operations/Fetch Device Details/1: Collecting 100 samples in estimated 5.0242 s (300 iterations)
+Benchmarking Device Operations/Fetch Device Details/1: Analyzing
+Device Operations/Fetch Device Details/1
+                        time:   [16.686 ms 17.002 ms 17.343 ms]
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+Benchmarking Device Operations/Fetch Device Borrow History/1
+Benchmarking Device Operations/Fetch Device Borrow History/1: Warming up for 3.0000 s
+Benchmarking Device Operations/Fetch Device Borrow History/1: Collecting 100 samples in estimated 6.0785 s (300 iterations)
+Benchmarking Device Operations/Fetch Device Borrow History/1: Analyzing
+Device Operations/Fetch Device Borrow History/1
+                        time:   [18.673 ms 19.666 ms 21.337 ms]
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+Benchmarking Device Operations/Fetch Device Maintenance History/1
+Benchmarking Device Operations/Fetch Device Maintenance History/1: Warming up for 3.0000 s
+Benchmarking Device Operations/Fetch Device Maintenance History/1: Collecting 100 samples in estimated 5.5130 s (300 iterations)
+Benchmarking Device Operations/Fetch Device Maintenance History/1: Analyzing
+Device Operations/Fetch Device Maintenance History/1
+                        time:   [17.351 ms 17.643 ms 17.946 ms]
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low mild
+  3 (3.00%) high mild
+Benchmarking Device Operations/Fetch Device Receipt/1
+Benchmarking Device Operations/Fetch Device Receipt/1: Warming up for 3.0000 s
+Benchmarking Device Operations/Fetch Device Receipt/1: Collecting 100 samples in estimated 5.9578 s (300 iterations)
+Benchmarking Device Operations/Fetch Device Receipt/1: Analyzing
+Device Operations/Fetch Device Receipt/1
+                        time:   [18.534 ms 18.928 ms 19.343 ms]
+Found 7 outliers among 100 measurements (7.00%)
+  6 (6.00%) high mild
+  1 (1.00%) high severe
+Benchmarking Device Operations/Fetch Device Audit/1
+Benchmarking Device Operations/Fetch Device Audit/1: Warming up for 3.0000 s
+Benchmarking Device Operations/Fetch Device Audit/1: Collecting 100 samples in estimated 6.7141 s (300 iterations)
+Benchmarking Device Operations/Fetch Device Audit/1: Analyzing
+Device Operations/Fetch Device Audit/1
+                        time:   [17.602 ms 17.957 ms 18.337 ms]
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) low mild
+  1 (1.00%) high severe
+Benchmarking Device Operations/Fetch Device Shipment/1
+Benchmarking Device Operations/Fetch Device Shipment/1: Warming up for 3.0000 s
+Benchmarking Device Operations/Fetch Device Shipment/1: Collecting 100 samples in estimated 6.0670 s (300 iterations)
+Benchmarking Device Operations/Fetch Device Shipment/1: Analyzing
+Device Operations/Fetch Device Shipment/1
+                        time:   [19.543 ms 19.986 ms 20.461 ms]
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+Benchmarking Device Operations/Fetch Device Maintenance/1
+Benchmarking Device Operations/Fetch Device Maintenance/1: Warming up for 3.0000 s
+Benchmarking Device Operations/Fetch Device Maintenance/1: Collecting 100 samples in estimated 5.6729 s (300 iterations)
+Benchmarking Device Operations/Fetch Device Maintenance/1: Analyzing
+Device Operations/Fetch Device Maintenance/1
+                        time:   [19.171 ms 20.289 ms 22.082 ms]
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+Benchmarking Device Operations/Fetch Device Audit History/1
+Benchmarking Device Operations/Fetch Device Audit History/1: Warming up for 3.0000 s
+Benchmarking Device Operations/Fetch Device Audit History/1: Collecting 100 samples in estimated 5.5795 s (300 iterations)
+Benchmarking Device Operations/Fetch Device Audit History/1: Analyzing
+Device Operations/Fetch Device Audit History/1
+                        time:   [17.809 ms 18.263 ms 18.771 ms]
+Found 9 outliers among 100 measurements (9.00%)
+  5 (5.00%) high mild
+  4 (4.00%) high severe
+Benchmarking Device Operations/Fetch Device Transport History/1
+Benchmarking Device Operations/Fetch Device Transport History/1: Warming up for 3.0000 s
+Benchmarking Device Operations/Fetch Device Transport History/1: Collecting 100 samples in estimated 6.0989 s (300 iterations)
+Benchmarking Device Operations/Fetch Device Transport History/1: Analyzing
+Device Operations/Fetch Device Transport History/1
+                        time:   [20.244 ms 21.200 ms 22.782 ms]
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+Benchmarking Device Operations/Fetch Device Inventory By Kind/1
+Benchmarking Device Operations/Fetch Device Inventory By Kind/1: Warming up for 3.0000 s
+Benchmarking Device Operations/Fetch Device Inventory By Kind/1: Collecting 100 samples in estimated 5.4963 s (200 iterations)
+Benchmarking Device Operations/Fetch Device Inventory By Kind/1: Analyzing
+Device Operations/Fetch Device Inventory By Kind/1
+                        time:   [25.415 ms 26.364 ms 27.412 ms]
+Found 5 outliers among 100 measurements (5.00%)
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+
+Benchmark completed. Database state preserved for future runs.

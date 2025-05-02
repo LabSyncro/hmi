@@ -330,7 +330,7 @@ async fn create_shipment(
             (shipment_id, device_id, prev_status, after_status)
             SELECT
                 (SELECT id FROM new_shipment),
-                dd.device_id,
+                dd.device_id::uuid,
                 dd.prev_status,
                 dd.after_status
             FROM device_data dd
@@ -455,8 +455,8 @@ async fn complete_shipment(
                 UPDATE bench_shipments_devices
                 SET after_status = dd.after_status
                 FROM device_data dd
-                WHERE bench_shipments_devices.device_id = dd.device_id
-                    AND bench_shipments_devices.shipment_id = '{}'
+                WHERE bench_shipments_devices.device_id = dd.device_id::uuid
+                    AND bench_shipments_devices.shipment_id = '{}'::uuid
                 RETURNING bench_shipments_devices.device_id
             ),
             update_devices AS (
@@ -464,13 +464,13 @@ async fn complete_shipment(
                 SET status = dd.after_status,
                     lab_id = (SELECT to_lab_id FROM shipment_info)
                 FROM device_data dd
-                WHERE bench_devices.id = dd.device_id
+                WHERE bench_devices.id = dd.device_id::uuid
                 RETURNING id
             ),
             update_shipment AS (
                 UPDATE bench_shipments
                 SET status = 'completed', finished_at = CURRENT_TIMESTAMP
-                WHERE id = '{}'
+                WHERE id = '{}'::uuid
                 RETURNING id
             )
             SELECT id::text FROM update_shipment",
@@ -561,13 +561,60 @@ fn benchmark_shipment(c: &mut Criterion) {
         }
     });
 
+    // Get real lab and user IDs from the database
+    let (from_lab_id, to_lab_id, shipper_id) = rt.block_on(async {
+        let client = app_state
+            .db
+            .get_client()
+            .await
+            .expect("Failed to get client");
+
+        // Get two different lab IDs
+        let labs = client
+            .query("SELECT id::text FROM bench_labs ORDER BY id LIMIT 2", &[])
+            .await
+            .unwrap_or_default();
+
+        let from_lab_id = if labs.len() > 0 {
+            labs[0].get::<_, String>(0)
+        } else {
+            "".to_string()
+        };
+
+        let to_lab_id = if labs.len() > 1 {
+            labs[1].get::<_, String>(0)
+        } else if labs.len() > 0 {
+            // If we only have one lab, create a new one
+            let new_lab_id = Uuid::new_v4();
+            let _ = client.execute(
+                "INSERT INTO bench_labs (id, name, room, branch) VALUES ($1, 'Benchmark Lab', 'Room 101', 'Branch 1')",
+                &[&new_lab_id]
+            ).await;
+            new_lab_id.to_string()
+        } else {
+            "".to_string()
+        };
+
+        let shipper_id = client
+            .query_one("SELECT id::text FROM bench_users LIMIT 1", &[])
+            .await
+            .map(|row| row.get::<_, String>(0))
+            .unwrap_or_else(|_| "".to_string());
+
+        (from_lab_id, to_lab_id, shipper_id)
+    });
+
+    if from_lab_id.is_empty() || to_lab_id.is_empty() || shipper_id.is_empty() {
+        println!("Warning: Could not find labs or shipper for benchmarking");
+    }
+
     let shipment_id = rt.block_on(async {
         let create_params = InsertParams {
             table: "bench_shipments".to_string(),
             value: json!({
-                "fromLabId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-                "toLabId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                "shipperId": "11111111-1111-1111-1111-111111111111",
+                "fromLabId": from_lab_id,
+                "toLabId": to_lab_id,
+                "shipperId": shipper_id,
                 "note": "Test shipment for benchmarking",
                 "devices": [
                     {
@@ -597,7 +644,7 @@ fn benchmark_shipment(c: &mut Criterion) {
         table: "bench_shipments".to_string(),
         columns: None,
         conditions: None,
-        order_by: Some(vec![("a.created_at".to_string(), false)]),
+        order_by: Some(vec![("created_at".to_string(), false)]),
         limit: Some(10),
         offset: Some(0),
         joins: None,
@@ -656,9 +703,9 @@ fn benchmark_shipment(c: &mut Criterion) {
     let create_params = InsertParams {
         table: "bench_shipments".to_string(),
         value: json!({
-            "fromLabId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "toLabId": "cccccccc-cccc-cccc-cccc-cccccccccccc",
-            "shipperId": "11111111-1111-1111-1111-111111111111",
+            "fromLabId": from_lab_id,
+            "toLabId": to_lab_id,
+            "shipperId": shipper_id,
             "note": "Benchmark test shipment",
             "devices": [
                 {

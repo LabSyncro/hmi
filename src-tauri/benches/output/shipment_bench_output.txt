@@ -1,0 +1,47 @@
+   Compiling hmi v0.1.0 (/Users/nguyenngocphu/Documents/hmi/src-tauri)
+    Finished `bench` profile [optimized] target(s) in 5.64s
+     Running benches/shipment_bench.rs (target/release/deps/shipment_bench-cc1e42548b868408)
+Successfully connected to PostgreSQL!
+Successfully connected to PostgreSQL!
+Database already contains the correct test data:
+  - 1000 users
+  - 2000 device kinds
+  - 50000 devices
+  - 10 labs
+Benchmarking Shipment Operations/Fetch Shipments/10
+Benchmarking Shipment Operations/Fetch Shipments/10: Warming up for 3.0000 s
+Benchmarking Shipment Operations/Fetch Shipments/10: Collecting 100 samples in estimated 5.2463 s (200 iterations)
+Benchmarking Shipment Operations/Fetch Shipments/10: Analyzing
+Shipment Operations/Fetch Shipments/10
+                        time:   [24.350 ms 26.869 ms 29.753 ms]
+Found 12 outliers among 100 measurements (12.00%)
+  1 (1.00%) high mild
+  11 (11.00%) high severe
+Benchmarking Shipment Operations/Fetch Shipment Details/1
+Benchmarking Shipment Operations/Fetch Shipment Details/1: Warming up for 3.0000 s
+Benchmarking Shipment Operations/Fetch Shipment Details/1: Collecting 100 samples in estimated 7.3195 s (300 iterations)
+Benchmarking Shipment Operations/Fetch Shipment Details/1: Analyzing
+Shipment Operations/Fetch Shipment Details/1
+                        time:   [23.169 ms 25.091 ms 27.194 ms]
+Found 16 outliers among 100 measurements (16.00%)
+  1 (1.00%) high mild
+  15 (15.00%) high severe
+Benchmarking Shipment Operations/Create Shipment/3
+Benchmarking Shipment Operations/Create Shipment/3: Warming up for 3.0000 s
+Benchmarking Shipment Operations/Create Shipment/3: Collecting 100 samples in estimated 5.1982 s (200 iterations)
+Benchmarking Shipment Operations/Create Shipment/3: Analyzing
+Shipment Operations/Create Shipment/3
+                        time:   [21.836 ms 24.901 ms 28.800 ms]
+Found 10 outliers among 100 measurements (10.00%)
+  1 (1.00%) high mild
+  9 (9.00%) high severe
+Benchmarking Shipment Operations/Complete Shipment/2
+Benchmarking Shipment Operations/Complete Shipment/2: Warming up for 3.0000 s
+Benchmarking Shipment Operations/Complete Shipment/2: Collecting 100 samples in estimated 7.4770 s (300 iterations)
+Benchmarking Shipment Operations/Complete Shipment/2: Analyzing
+Shipment Operations/Complete Shipment/2
+                        time:   [22.730 ms 24.986 ms 27.583 ms]
+Found 14 outliers among 100 measurements (14.00%)
+  14 (14.00%) high severe
+
+Benchmark completed. Database state preserved for future runs.

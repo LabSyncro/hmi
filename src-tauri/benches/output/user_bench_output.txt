@@ -1,0 +1,81 @@
+   Compiling hmi v0.1.0 (/Users/nguyenngocphu/Documents/hmi/src-tauri)
+    Finished `bench` profile [optimized] target(s) in 5.33s
+     Running benches/user_bench.rs (target/release/deps/user_bench-826057e7902ef355)
+Successfully connected to PostgreSQL!
+Database doesn't have the correct number of records:
+  - Users: 1001 (should be 1000)
+  - Device kinds: 2000 (should be 2000)
+  - Devices: 50000 (should be 50000)
+Recreating test data...
+Generating test data with:
+  - 1000 users
+  - 2000 device kinds
+  - 50000 devices
+  - 10 labs
+Creating users...
+Created 1000/1000 users
+Creating labs...
+Created 10 labs
+Creating device kinds...
+Created 2000/2000 device kinds
+Creating categories...
+Created 3 categories
+Assigning categories to device kinds...
+Assigned categories to device kinds
+Creating devices...
+Created 50000/50000 devices (100.00%)
+Creating optimized indexes to speed up queries...
+Indexes created successfully
+
+--- Current Database State ---
+bench_labs: 10 rows
+bench_users: 1000 rows
+bench_device_kinds: 2000 rows
+bench_devices: 50000 rows
+-----------------------------
+
+Benchmarking User Operations/Fetch Users/10
+Benchmarking User Operations/Fetch Users/10: Warming up for 3.0000 s
+Benchmarking User Operations/Fetch Users/10: Collecting 100 samples in estimated 7.4732 s (300 iterations)
+Benchmarking User Operations/Fetch Users/10: Analyzing
+User Operations/Fetch Users/10
+                        time:   [22.235 ms 24.319 ms 26.593 ms]
+                        change: [+10.356% +22.509% +35.495%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 15 outliers among 100 measurements (15.00%)
+  1 (1.00%) high mild
+  14 (14.00%) high severe
+Benchmarking User Operations/Fetch User Details/1
+Benchmarking User Operations/Fetch User Details/1: Warming up for 3.0000 s
+Benchmarking User Operations/Fetch User Details/1: Collecting 100 samples in estimated 8.6510 s (200 iterations)
+Benchmarking User Operations/Fetch User Details/1: Analyzing
+User Operations/Fetch User Details/1
+                        time:   [42.223 ms 45.932 ms 50.047 ms]
+                        change: [-36.797% -26.314% -14.275%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 19 outliers among 100 measurements (19.00%)
+  1 (1.00%) high mild
+  18 (18.00%) high severe
+Benchmarking User Operations/Get Borrowed History By User/1
+Benchmarking User Operations/Get Borrowed History By User/1: Warming up for 3.0000 s
+Benchmarking User Operations/Get Borrowed History By User/1: Collecting 100 samples in estimated 5.0128 s (200 iterations)
+Benchmarking User Operations/Get Borrowed History By User/1: Analyzing
+User Operations/Get Borrowed History By User/1
+                        time:   [29.321 ms 33.773 ms 38.618 ms]
+                        change: [-9.7434% +9.5006% +34.450%] (p = 0.38 > 0.05)
+                        No change in performance detected.
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) high mild
+Benchmarking User Operations/Get User Activities History/1
+Benchmarking User Operations/Get User Activities History/1: Warming up for 3.0000 s
+Benchmarking User Operations/Get User Activities History/1: Collecting 100 samples in estimated 6.4090 s (200 iterations)
+Benchmarking User Operations/Get User Activities History/1: Analyzing
+User Operations/Get User Activities History/1
+                        time:   [28.354 ms 31.011 ms 33.995 ms]
+                        change: [-38.158% -27.806% -15.500%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 13 outliers among 100 measurements (13.00%)
+  1 (1.00%) high mild
+  12 (12.00%) high severe
+
+Benchmark completed. Database state preserved for future runs.

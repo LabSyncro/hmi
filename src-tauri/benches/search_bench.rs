@@ -100,7 +100,7 @@ async fn search_users(
                 "id": row.get::<_, String>(0),
                 "name": row.get::<_, String>(1),
                 "email": row.get::<_, String>(2),
-                "image": row.get::<_, serde_json::Value>(3),
+                "image": row.get::<_, String>(3),
                 "resultType": row.get::<_, String>(4)
             })
         })
