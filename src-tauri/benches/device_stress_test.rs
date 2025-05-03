@@ -103,7 +103,7 @@ async fn fetch_devices(
                 if *is_asc { "ASC" } else { "DESC" }
             )
         }
-        _ => "ORDER BY bench_devices.full_id ASC".to_string(),
+        _ => "ORDER BY d.full_id ASC".to_string(),
     };
 
     let sql = format!(
@@ -197,14 +197,14 @@ async fn fetch_device_details(
         "fullId": row.get::<_, String>(1),
         "kindName": row.get::<_, String>(2),
         "kindId": row.get::<_, String>(3),
-        "brand": row.get::<_, String>(4),
-        "manufacturer": row.get::<_, String>(5),
-        "description": row.get::<_, String>(6),
+        "brand": row.get::<_, Option<String>>(4).unwrap_or_default(),
+        "manufacturer": row.get::<_, Option<String>>(5).unwrap_or_default(),
+        "description": row.get::<_, Option<String>>(6).unwrap_or_default(),
         "labName": row.get::<_, String>(7),
         "labId": row.get::<_, String>(8),
         "status": row.get::<_, String>(9),
-        "categoryName": row.get::<_, String>(10),
-        "categoryId": row.get::<_, String>(11)
+        "categoryName": row.get::<_, Option<String>>(10).unwrap_or_default(),
+        "categoryId": row.get::<_, Option<String>>(11).unwrap_or_default()
     }))
 }
 
@@ -287,7 +287,7 @@ async fn get_device_borrow_history(
                     "id": row.get::<_, Uuid>("borrower_id").to_string(),
                     "name": row.get::<_, String>("borrower_name"),
                     "email": row.get::<_, String>("borrower_email"),
-                    "avatar": row.get::<_, serde_json::Value>("borrower_avatar")
+                    "avatar": serde_json::from_str::<serde_json::Value>(&row.get::<_, String>("borrower_avatar")).unwrap_or(serde_json::json!(null))
                 },
                 "borrowDate": borrow_date.to_rfc3339(),
                 "expectedReturnedAt": expected_returned_at.to_rfc3339(),
@@ -429,7 +429,7 @@ async fn measure_throughput(
                             table: "bench_devices".to_string(),
                             columns: None,
                             conditions: None,
-                            order_by: Some(vec![("bench_devices.full_id".to_string(), true)]),
+                            order_by: Some(vec![("d.full_id".to_string(), true)]),
                             limit: Some(10),
                             offset: Some(0),
                             joins: None,

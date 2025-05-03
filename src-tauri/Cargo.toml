@@ -67,3 +67,11 @@ harness = false
 [[bench]]
 name = "borrow_return_stress_test"
 harness = false
+
+[[bench]]
+name = "device_stress_test"
+harness = false
+
+[[bench]]
+name = "search_stress_test"
+harness = false

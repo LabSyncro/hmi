@@ -1,0 +1,988 @@
+    Finished `bench` profile [optimized] target(s) in 0.63s
+     Running benches/borrow_return_stress_test.rs (target/release/deps/borrow_return_stress_test-2cb25802fa224c1e)
+Successfully connected to PostgreSQL!
+Tables don't exist. Setting up test tables...
+Database doesn't have the correct number of records:
+  - Users: 0 (should be 1000)
+  - Device kinds: 0 (should be 2000)
+  - Devices: 0 (should be 50000)
+Recreating test data...
+Generating test data with:
+  - 1000 users
+  - 2000 device kinds
+  - 50000 devices
+  - 10 labs
+Creating users...
+Created 1000/1000 users
+Creating labs...
+Created 10 labs
+Creating device kinds...
+Created 2000/2000 device kinds
+Creating categories...
+Created 3 categories
+Assigning categories to device kinds...
+Assigned categories to device kinds
+Creating devices...
+Created 50000/50000 devices (100.00%)
+Creating optimized indexes to speed up queries...
+Indexes created successfully
+
+--- Current Database State ---
+bench_labs: 10 rows
+bench_users: 1000 rows
+bench_device_kinds: 2000 rows
+bench_devices: 50000 rows
+-----------------------------
+
+Benchmarking Stress-Test/Full Stress Test
+Benchmarking Stress-Test/Full Stress Test: Warming up for 3.0000 s
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 18.02 req/s, Avg Latency: 53.04 ms, P95 Latency: 83.07 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 45.03 req/s, Avg Latency: 108.35 ms, P95 Latency: 218.50 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 78.16 req/s, Avg Latency: 124.73 ms, P95 Latency: 248.60 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 79.59 req/s, Avg Latency: 608.39 ms, P95 Latency: 1074.78 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 78.50 req/s, Avg Latency: 1206.69 ms, P95 Latency: 1443.92 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 16666 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 0 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 12.25 req/s, Avg Latency: 79.20 ms, P95 Latency: 93.96 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 37.58 req/s, Avg Latency: 129.75 ms, P95 Latency: 200.19 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 38.39 req/s, Avg Latency: 255.83 ms, P95 Latency: 343.20 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 37.52 req/s, Avg Latency: 1246.85 ms, P95 Latency: 1461.88 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 38.73 req/s, Avg Latency: 2286.34 ms, P95 Latency: 2677.40 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 39.88 req/s, Avg Latency: 22.74 ms, P95 Latency: 28.93 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 132.04 req/s, Avg Latency: 35.45 ms, P95 Latency: 61.20 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 130.72 req/s, Avg Latency: 73.67 ms, P95 Latency: 111.95 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 130.80 req/s, Avg Latency: 368.58 ms, P95 Latency: 558.16 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 126.96 req/s, Avg Latency: 754.00 ms, P95 Latency: 1082.32 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 2741
+Operation: return_devices, Concurrency: 1, Throughput: 24.94 req/s, Avg Latency: 37.64 ms, P95 Latency: 44.76 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 93.90 req/s, Avg Latency: 50.72 ms, P95 Latency: 72.08 ms, Errors: 0
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Operation: return_devices, Concurrency: 10, Throughput: 90.82 req/s, Avg Latency: 107.19 ms, P95 Latency: 168.54 ms, Errors: 0
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Operation: return_devices, Concurrency: 50, Throughput: 92.49 req/s, Avg Latency: 529.46 ms, P95 Latency: 686.92 ms, Errors: 0
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+No borrowing devices available. Creating borrow receipts in bulk...
+Successfully created 10 borrowing devices
+Operation: return_devices, Concurrency: 100, Throughput: 96.85 req/s, Avg Latency: 989.88 ms, P95 Latency: 1131.84 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 25.91 req/s, Avg Latency: 36.15 ms, P95 Latency: 54.12 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 76.86 req/s, Avg Latency: 62.47 ms, P95 Latency: 112.29 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 82.54 req/s, Avg Latency: 117.72 ms, P95 Latency: 186.25 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 79.26 req/s, Avg Latency: 612.20 ms, P95 Latency: 866.18 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 79.63 req/s, Avg Latency: 1180.09 ms, P95 Latency: 1641.51 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+
+Warning: Unable to complete 10 samples in 60.0s. You may wish to increase target time to 2498.7s.
+Benchmarking Stress-Test/Full Stress Test: Collecting 10 samples in estimated 2498.7 s (10 iterations)
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 22.05 req/s, Avg Latency: 42.94 ms, P95 Latency: 63.61 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 70.55 req/s, Avg Latency: 68.39 ms, P95 Latency: 123.79 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 70.94 req/s, Avg Latency: 137.52 ms, P95 Latency: 221.32 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 71.08 req/s, Avg Latency: 677.00 ms, P95 Latency: 825.98 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 65.60 req/s, Avg Latency: 1420.84 ms, P95 Latency: 1942.60 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 1999 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 4031 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 12.17 req/s, Avg Latency: 79.58 ms, P95 Latency: 95.90 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 38.22 req/s, Avg Latency: 127.72 ms, P95 Latency: 196.98 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 40.27 req/s, Avg Latency: 243.58 ms, P95 Latency: 316.05 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 36.40 req/s, Avg Latency: 1290.53 ms, P95 Latency: 1527.62 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 39.41 req/s, Avg Latency: 2375.81 ms, P95 Latency: 2700.25 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 25.55 req/s, Avg Latency: 36.69 ms, P95 Latency: 52.04 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 74.11 req/s, Avg Latency: 64.82 ms, P95 Latency: 112.38 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 75.62 req/s, Avg Latency: 129.07 ms, P95 Latency: 189.42 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 72.90 req/s, Avg Latency: 662.42 ms, P95 Latency: 874.43 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 76.47 req/s, Avg Latency: 1228.55 ms, P95 Latency: 1687.48 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 6868
+Operation: return_devices, Concurrency: 1, Throughput: 22.92 req/s, Avg Latency: 41.25 ms, P95 Latency: 49.00 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 82.34 req/s, Avg Latency: 58.27 ms, P95 Latency: 83.64 ms, Errors: 0
+Operation: return_devices, Concurrency: 10, Throughput: 84.31 req/s, Avg Latency: 115.55 ms, P95 Latency: 148.57 ms, Errors: 0
+Operation: return_devices, Concurrency: 50, Throughput: 88.72 req/s, Avg Latency: 548.61 ms, P95 Latency: 635.99 ms, Errors: 0
+Operation: return_devices, Concurrency: 100, Throughput: 86.90 req/s, Avg Latency: 1104.16 ms, P95 Latency: 1324.96 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 28.25 req/s, Avg Latency: 33.02 ms, P95 Latency: 45.73 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 81.47 req/s, Avg Latency: 58.76 ms, P95 Latency: 106.02 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 84.07 req/s, Avg Latency: 115.72 ms, P95 Latency: 168.07 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 82.22 req/s, Avg Latency: 589.27 ms, P95 Latency: 727.10 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 81.31 req/s, Avg Latency: 1161.24 ms, P95 Latency: 1532.47 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 22.16 req/s, Avg Latency: 42.62 ms, P95 Latency: 62.77 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 68.08 req/s, Avg Latency: 70.89 ms, P95 Latency: 125.97 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 69.39 req/s, Avg Latency: 140.77 ms, P95 Latency: 220.97 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 70.08 req/s, Avg Latency: 689.77 ms, P95 Latency: 962.32 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 69.41 req/s, Avg Latency: 1346.15 ms, P95 Latency: 1657.21 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 1692 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 2404 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 12.60 req/s, Avg Latency: 76.86 ms, P95 Latency: 94.30 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 41.16 req/s, Avg Latency: 118.19 ms, P95 Latency: 175.81 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 40.90 req/s, Avg Latency: 240.30 ms, P95 Latency: 311.39 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 38.39 req/s, Avg Latency: 1198.41 ms, P95 Latency: 1443.49 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 38.24 req/s, Avg Latency: 2300.74 ms, P95 Latency: 2751.68 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 20.52 req/s, Avg Latency: 46.31 ms, P95 Latency: 66.58 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 52.95 req/s, Avg Latency: 91.61 ms, P95 Latency: 158.20 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 54.97 req/s, Avg Latency: 178.22 ms, P95 Latency: 277.82 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 52.21 req/s, Avg Latency: 906.15 ms, P95 Latency: 1146.45 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 53.94 req/s, Avg Latency: 1700.76 ms, P95 Latency: 2195.58 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 9769
+Operation: return_devices, Concurrency: 1, Throughput: 21.42 req/s, Avg Latency: 44.27 ms, P95 Latency: 52.03 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 78.44 req/s, Avg Latency: 61.18 ms, P95 Latency: 87.36 ms, Errors: 0
+Operation: return_devices, Concurrency: 10, Throughput: 74.64 req/s, Avg Latency: 130.82 ms, P95 Latency: 203.62 ms, Errors: 0
+Operation: return_devices, Concurrency: 50, Throughput: 78.05 req/s, Avg Latency: 626.06 ms, P95 Latency: 716.79 ms, Errors: 0
+Operation: return_devices, Concurrency: 100, Throughput: 77.36 req/s, Avg Latency: 1237.23 ms, P95 Latency: 1403.44 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 24.62 req/s, Avg Latency: 38.24 ms, P95 Latency: 54.35 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 70.91 req/s, Avg Latency: 67.93 ms, P95 Latency: 123.76 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 70.98 req/s, Avg Latency: 137.25 ms, P95 Latency: 225.01 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 70.73 req/s, Avg Latency: 675.68 ms, P95 Latency: 822.23 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 69.84 req/s, Avg Latency: 1321.50 ms, P95 Latency: 1587.50 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 22.85 req/s, Avg Latency: 41.28 ms, P95 Latency: 56.24 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 65.76 req/s, Avg Latency: 73.32 ms, P95 Latency: 124.68 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 67.68 req/s, Avg Latency: 144.33 ms, P95 Latency: 279.92 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 65.32 req/s, Avg Latency: 734.82 ms, P95 Latency: 1131.91 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 69.92 req/s, Avg Latency: 1347.08 ms, P95 Latency: 1797.76 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 2012 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 2165 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 11.88 req/s, Avg Latency: 81.67 ms, P95 Latency: 111.39 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 40.50 req/s, Avg Latency: 120.13 ms, P95 Latency: 181.59 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 40.42 req/s, Avg Latency: 242.43 ms, P95 Latency: 357.12 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 38.02 req/s, Avg Latency: 1205.22 ms, P95 Latency: 1284.02 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 37.29 req/s, Avg Latency: 2367.83 ms, P95 Latency: 2561.74 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 15.87 req/s, Avg Latency: 60.52 ms, P95 Latency: 86.59 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 40.33 req/s, Avg Latency: 120.87 ms, P95 Latency: 210.81 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 38.46 req/s, Avg Latency: 254.37 ms, P95 Latency: 377.46 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 39.92 req/s, Avg Latency: 1182.37 ms, P95 Latency: 1423.97 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 41.04 req/s, Avg Latency: 2197.88 ms, P95 Latency: 2787.40 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 12681
+Operation: return_devices, Concurrency: 1, Throughput: 20.51 req/s, Avg Latency: 46.30 ms, P95 Latency: 55.32 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 68.16 req/s, Avg Latency: 70.54 ms, P95 Latency: 107.07 ms, Errors: 0
+Operation: return_devices, Concurrency: 10, Throughput: 70.76 req/s, Avg Latency: 138.09 ms, P95 Latency: 183.97 ms, Errors: 0
+Operation: return_devices, Concurrency: 50, Throughput: 69.12 req/s, Avg Latency: 703.51 ms, P95 Latency: 834.05 ms, Errors: 0
+Operation: return_devices, Concurrency: 100, Throughput: 68.80 req/s, Avg Latency: 1393.32 ms, P95 Latency: 1572.24 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 23.89 req/s, Avg Latency: 39.42 ms, P95 Latency: 51.63 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 74.06 req/s, Avg Latency: 64.92 ms, P95 Latency: 113.81 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 61.11 req/s, Avg Latency: 159.54 ms, P95 Latency: 239.17 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 64.93 req/s, Avg Latency: 737.01 ms, P95 Latency: 964.80 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 61.53 req/s, Avg Latency: 1525.78 ms, P95 Latency: 2050.61 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 22.96 req/s, Avg Latency: 41.16 ms, P95 Latency: 54.32 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 66.12 req/s, Avg Latency: 73.01 ms, P95 Latency: 123.29 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 65.59 req/s, Avg Latency: 149.00 ms, P95 Latency: 284.13 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 65.26 req/s, Avg Latency: 730.51 ms, P95 Latency: 1112.95 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 65.60 req/s, Avg Latency: 1408.18 ms, P95 Latency: 1756.00 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 2239 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 1778 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 9.79 req/s, Avg Latency: 99.21 ms, P95 Latency: 125.72 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 27.38 req/s, Avg Latency: 179.54 ms, P95 Latency: 261.75 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 27.63 req/s, Avg Latency: 356.21 ms, P95 Latency: 505.08 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 24.19 req/s, Avg Latency: 1940.99 ms, P95 Latency: 2199.58 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 22.95 req/s, Avg Latency: 3962.25 ms, P95 Latency: 4713.97 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 9.70 req/s, Avg Latency: 100.42 ms, P95 Latency: 189.31 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 22.98 req/s, Avg Latency: 212.98 ms, P95 Latency: 369.28 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 25.24 req/s, Avg Latency: 386.39 ms, P95 Latency: 524.38 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 25.97 req/s, Avg Latency: 1770.17 ms, P95 Latency: 2108.04 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 32.86 req/s, Avg Latency: 2684.86 ms, P95 Latency: 3309.51 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 14695
+Operation: return_devices, Concurrency: 1, Throughput: 20.87 req/s, Avg Latency: 45.30 ms, P95 Latency: 55.79 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 74.84 req/s, Avg Latency: 64.22 ms, P95 Latency: 96.71 ms, Errors: 0
+Operation: return_devices, Concurrency: 10, Throughput: 70.81 req/s, Avg Latency: 137.94 ms, P95 Latency: 209.10 ms, Errors: 0
+Operation: return_devices, Concurrency: 50, Throughput: 67.29 req/s, Avg Latency: 729.14 ms, P95 Latency: 1008.16 ms, Errors: 0
+Operation: return_devices, Concurrency: 100, Throughput: 74.87 req/s, Avg Latency: 1296.31 ms, P95 Latency: 1567.30 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 24.43 req/s, Avg Latency: 38.50 ms, P95 Latency: 62.44 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 59.30 req/s, Avg Latency: 81.48 ms, P95 Latency: 144.95 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 53.15 req/s, Avg Latency: 183.64 ms, P95 Latency: 316.96 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 53.15 req/s, Avg Latency: 899.14 ms, P95 Latency: 1311.27 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 60.02 req/s, Avg Latency: 1549.45 ms, P95 Latency: 2164.59 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 21.48 req/s, Avg Latency: 44.14 ms, P95 Latency: 58.14 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 58.63 req/s, Avg Latency: 82.59 ms, P95 Latency: 146.05 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 65.23 req/s, Avg Latency: 148.79 ms, P95 Latency: 257.34 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 65.11 req/s, Avg Latency: 738.60 ms, P95 Latency: 1035.00 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 64.52 req/s, Avg Latency: 1444.03 ms, P95 Latency: 1825.37 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 1547 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 1301 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 12.09 req/s, Avg Latency: 80.08 ms, P95 Latency: 100.91 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 39.29 req/s, Avg Latency: 124.32 ms, P95 Latency: 187.52 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 39.02 req/s, Avg Latency: 251.86 ms, P95 Latency: 391.88 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 35.04 req/s, Avg Latency: 1355.63 ms, P95 Latency: 1590.40 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 37.20 req/s, Avg Latency: 2362.24 ms, P95 Latency: 2662.53 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 11.25 req/s, Avg Latency: 86.28 ms, P95 Latency: 120.02 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 25.64 req/s, Avg Latency: 191.04 ms, P95 Latency: 339.28 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 26.08 req/s, Avg Latency: 367.76 ms, P95 Latency: 681.36 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 26.10 req/s, Avg Latency: 1771.19 ms, P95 Latency: 2239.47 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 26.76 req/s, Avg Latency: 3220.49 ms, P95 Latency: 3997.24 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 17468
+Operation: return_devices, Concurrency: 1, Throughput: 20.22 req/s, Avg Latency: 47.04 ms, P95 Latency: 60.54 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 70.24 req/s, Avg Latency: 68.48 ms, P95 Latency: 109.44 ms, Errors: 0
+Operation: return_devices, Concurrency: 10, Throughput: 66.73 req/s, Avg Latency: 146.57 ms, P95 Latency: 211.19 ms, Errors: 0
+Operation: return_devices, Concurrency: 50, Throughput: 68.63 req/s, Avg Latency: 710.84 ms, P95 Latency: 855.49 ms, Errors: 0
+Operation: return_devices, Concurrency: 100, Throughput: 69.84 req/s, Avg Latency: 1390.60 ms, P95 Latency: 1599.71 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 23.99 req/s, Avg Latency: 39.27 ms, P95 Latency: 56.77 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 70.29 req/s, Avg Latency: 68.49 ms, P95 Latency: 111.27 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 68.28 req/s, Avg Latency: 142.70 ms, P95 Latency: 215.14 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 66.88 req/s, Avg Latency: 720.00 ms, P95 Latency: 900.49 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 63.35 req/s, Avg Latency: 1471.70 ms, P95 Latency: 1983.20 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 21.34 req/s, Avg Latency: 44.42 ms, P95 Latency: 65.40 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 62.51 req/s, Avg Latency: 77.23 ms, P95 Latency: 139.03 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 66.60 req/s, Avg Latency: 146.49 ms, P95 Latency: 261.98 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 65.30 req/s, Avg Latency: 734.18 ms, P95 Latency: 963.92 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 65.45 req/s, Avg Latency: 1419.30 ms, P95 Latency: 1875.70 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 2230 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 1633 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 9.74 req/s, Avg Latency: 100.05 ms, P95 Latency: 128.40 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 28.43 req/s, Avg Latency: 172.80 ms, P95 Latency: 290.75 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 26.20 req/s, Avg Latency: 376.07 ms, P95 Latency: 754.86 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 26.91 req/s, Avg Latency: 1774.65 ms, P95 Latency: 2079.50 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 25.83 req/s, Avg Latency: 3624.25 ms, P95 Latency: 3871.67 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 11.45 req/s, Avg Latency: 84.86 ms, P95 Latency: 121.53 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 24.54 req/s, Avg Latency: 199.67 ms, P95 Latency: 374.88 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 24.49 req/s, Avg Latency: 399.70 ms, P95 Latency: 638.33 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 25.70 req/s, Avg Latency: 1795.03 ms, P95 Latency: 2204.35 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 23.45 req/s, Avg Latency: 3621.82 ms, P95 Latency: 4960.71 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 19473
+Operation: return_devices, Concurrency: 1, Throughput: 17.16 req/s, Avg Latency: 55.58 ms, P95 Latency: 76.10 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 67.32 req/s, Avg Latency: 71.55 ms, P95 Latency: 108.96 ms, Errors: 0
+Operation: return_devices, Concurrency: 10, Throughput: 68.77 req/s, Avg Latency: 142.17 ms, P95 Latency: 194.90 ms, Errors: 0
+Operation: return_devices, Concurrency: 50, Throughput: 65.48 req/s, Avg Latency: 748.78 ms, P95 Latency: 957.53 ms, Errors: 0
+Operation: return_devices, Concurrency: 100, Throughput: 64.36 req/s, Avg Latency: 1508.32 ms, P95 Latency: 1759.42 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 27.20 req/s, Avg Latency: 34.15 ms, P95 Latency: 46.48 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 91.18 req/s, Avg Latency: 52.38 ms, P95 Latency: 88.58 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 84.90 req/s, Avg Latency: 114.64 ms, P95 Latency: 182.00 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 87.51 req/s, Avg Latency: 554.16 ms, P95 Latency: 752.78 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 88.28 req/s, Avg Latency: 1078.36 ms, P95 Latency: 1450.64 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 22.89 req/s, Avg Latency: 41.25 ms, P95 Latency: 56.54 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 66.59 req/s, Avg Latency: 72.56 ms, P95 Latency: 125.11 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 73.52 req/s, Avg Latency: 132.54 ms, P95 Latency: 196.63 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 65.65 req/s, Avg Latency: 734.14 ms, P95 Latency: 986.32 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 69.19 req/s, Avg Latency: 1357.81 ms, P95 Latency: 1813.09 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 1667 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 1079 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 12.14 req/s, Avg Latency: 79.75 ms, P95 Latency: 98.67 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 40.31 req/s, Avg Latency: 121.12 ms, P95 Latency: 188.79 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 38.47 req/s, Avg Latency: 255.36 ms, P95 Latency: 348.58 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 36.64 req/s, Avg Latency: 1297.01 ms, P95 Latency: 1529.97 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 35.62 req/s, Avg Latency: 2420.99 ms, P95 Latency: 2662.45 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 9.61 req/s, Avg Latency: 101.54 ms, P95 Latency: 137.77 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 21.07 req/s, Avg Latency: 230.57 ms, P95 Latency: 377.62 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 21.01 req/s, Avg Latency: 464.34 ms, P95 Latency: 645.74 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 21.33 req/s, Avg Latency: 2138.50 ms, P95 Latency: 2702.81 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 22.28 req/s, Avg Latency: 3799.63 ms, P95 Latency: 4698.24 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 22239
+Operation: return_devices, Concurrency: 1, Throughput: 19.07 req/s, Avg Latency: 50.02 ms, P95 Latency: 58.73 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 62.78 req/s, Avg Latency: 77.02 ms, P95 Latency: 126.52 ms, Errors: 0
+Operation: return_devices, Concurrency: 10, Throughput: 66.65 req/s, Avg Latency: 146.80 ms, P95 Latency: 207.16 ms, Errors: 0
+Operation: return_devices, Concurrency: 50, Throughput: 65.26 req/s, Avg Latency: 750.50 ms, P95 Latency: 933.99 ms, Errors: 0
+Operation: return_devices, Concurrency: 100, Throughput: 59.03 req/s, Avg Latency: 1619.38 ms, P95 Latency: 1966.29 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 22.36 req/s, Avg Latency: 42.22 ms, P95 Latency: 66.04 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 72.97 req/s, Avg Latency: 65.84 ms, P95 Latency: 110.93 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 75.88 req/s, Avg Latency: 128.61 ms, P95 Latency: 197.91 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 74.19 req/s, Avg Latency: 651.68 ms, P95 Latency: 814.22 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 73.15 req/s, Avg Latency: 1277.64 ms, P95 Latency: 1543.92 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 22.29 req/s, Avg Latency: 42.47 ms, P95 Latency: 59.22 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 67.23 req/s, Avg Latency: 71.84 ms, P95 Latency: 122.61 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 66.48 req/s, Avg Latency: 146.89 ms, P95 Latency: 252.70 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 66.80 req/s, Avg Latency: 720.04 ms, P95 Latency: 1000.26 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 67.65 req/s, Avg Latency: 1374.02 ms, P95 Latency: 1786.93 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 2349 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 1498 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 9.96 req/s, Avg Latency: 97.85 ms, P95 Latency: 132.84 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 28.26 req/s, Avg Latency: 173.49 ms, P95 Latency: 266.20 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 27.37 req/s, Avg Latency: 358.83 ms, P95 Latency: 536.08 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 25.44 req/s, Avg Latency: 1871.83 ms, P95 Latency: 2140.20 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 26.03 req/s, Avg Latency: 3594.57 ms, P95 Latency: 3863.55 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 8.49 req/s, Avg Latency: 115.10 ms, P95 Latency: 172.80 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 19.19 req/s, Avg Latency: 256.32 ms, P95 Latency: 411.67 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 19.02 req/s, Avg Latency: 513.32 ms, P95 Latency: 849.52 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 20.48 req/s, Avg Latency: 2230.59 ms, P95 Latency: 2833.13 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 20.03 req/s, Avg Latency: 4165.78 ms, P95 Latency: 5139.39 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 24272
+Operation: return_devices, Concurrency: 1, Throughput: 18.92 req/s, Avg Latency: 50.44 ms, P95 Latency: 63.62 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 65.49 req/s, Avg Latency: 73.78 ms, P95 Latency: 110.39 ms, Errors: 0
+Operation: return_devices, Concurrency: 10, Throughput: 62.96 req/s, Avg Latency: 155.65 ms, P95 Latency: 216.36 ms, Errors: 0
+Operation: return_devices, Concurrency: 50, Throughput: 61.92 req/s, Avg Latency: 792.92 ms, P95 Latency: 956.47 ms, Errors: 0
+Operation: return_devices, Concurrency: 100, Throughput: 57.11 req/s, Avg Latency: 1648.83 ms, P95 Latency: 1913.16 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 23.56 req/s, Avg Latency: 39.94 ms, P95 Latency: 57.46 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 78.80 req/s, Avg Latency: 60.94 ms, P95 Latency: 129.52 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 74.45 req/s, Avg Latency: 130.92 ms, P95 Latency: 305.28 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 88.35 req/s, Avg Latency: 548.47 ms, P95 Latency: 779.76 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 81.78 req/s, Avg Latency: 1153.34 ms, P95 Latency: 1457.80 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 21.52 req/s, Avg Latency: 44.09 ms, P95 Latency: 67.10 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 64.93 req/s, Avg Latency: 74.48 ms, P95 Latency: 124.81 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 68.89 req/s, Avg Latency: 141.76 ms, P95 Latency: 213.37 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 65.59 req/s, Avg Latency: 730.14 ms, P95 Latency: 986.77 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 64.70 req/s, Avg Latency: 1449.24 ms, P95 Latency: 1796.44 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 1720 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 1099 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 12.08 req/s, Avg Latency: 80.29 ms, P95 Latency: 105.14 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 39.37 req/s, Avg Latency: 123.95 ms, P95 Latency: 198.58 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 39.06 req/s, Avg Latency: 251.66 ms, P95 Latency: 334.71 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 37.96 req/s, Avg Latency: 1220.84 ms, P95 Latency: 1512.83 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 39.07 req/s, Avg Latency: 2264.67 ms, P95 Latency: 2581.13 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 8.42 req/s, Avg Latency: 116.02 ms, P95 Latency: 165.08 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 16.07 req/s, Avg Latency: 305.64 ms, P95 Latency: 475.80 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 16.11 req/s, Avg Latency: 604.76 ms, P95 Latency: 882.11 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 16.68 req/s, Avg Latency: 2679.93 ms, P95 Latency: 3330.03 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 17.17 req/s, Avg Latency: 4750.62 ms, P95 Latency: 6009.57 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 27064
+Operation: return_devices, Concurrency: 1, Throughput: 17.74 req/s, Avg Latency: 53.87 ms, P95 Latency: 75.74 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 61.25 req/s, Avg Latency: 78.94 ms, P95 Latency: 121.90 ms, Errors: 0
+Operation: return_devices, Concurrency: 10, Throughput: 59.63 req/s, Avg Latency: 164.51 ms, P95 Latency: 260.62 ms, Errors: 0
+Operation: return_devices, Concurrency: 50, Throughput: 59.10 req/s, Avg Latency: 820.75 ms, P95 Latency: 956.68 ms, Errors: 0
+Operation: return_devices, Concurrency: 100, Throughput: 59.22 req/s, Avg Latency: 1603.78 ms, P95 Latency: 1816.60 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 18.94 req/s, Avg Latency: 50.25 ms, P95 Latency: 70.05 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 47.77 req/s, Avg Latency: 101.82 ms, P95 Latency: 182.76 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 47.08 req/s, Avg Latency: 208.14 ms, P95 Latency: 342.14 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 45.51 req/s, Avg Latency: 1043.46 ms, P95 Latency: 1388.46 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 48.30 req/s, Avg Latency: 1899.79 ms, P95 Latency: 2344.34 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+
+=== STARTING PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING LOAD TESTS ===
+
+Testing fetch_ready_borrow_devices operation...
+Operation: fetch_ready, Concurrency: 1, Throughput: 18.94 req/s, Avg Latency: 50.34 ms, P95 Latency: 64.27 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 5, Throughput: 61.72 req/s, Avg Latency: 78.31 ms, P95 Latency: 150.88 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 10, Throughput: 59.27 req/s, Avg Latency: 159.49 ms, P95 Latency: 263.11 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 50, Throughput: 62.83 req/s, Avg Latency: 770.26 ms, P95 Latency: 1121.08 ms, Errors: 0
+Operation: fetch_ready, Concurrency: 100, Throughput: 61.93 req/s, Avg Latency: 1467.99 ms, P95 Latency: 1949.23 ms, Errors: 0
+
+Testing create_receipt (borrow) operation...
+Resetting device statuses to ensure enough healthy devices...
+Reset 2437 devices to healthy status
+Resetting receipt_devices to allow re-borrowing...
+Reset 1371 receipt_devices entries
+Healthy devices available: 41667
+Operation: create_borrow, Concurrency: 1, Throughput: 7.47 req/s, Avg Latency: 131.13 ms, P95 Latency: 218.62 ms, Errors: 0
+Operation: create_borrow, Concurrency: 5, Throughput: 23.88 req/s, Avg Latency: 205.83 ms, P95 Latency: 353.01 ms, Errors: 0
+Operation: create_borrow, Concurrency: 10, Throughput: 22.32 req/s, Avg Latency: 441.26 ms, P95 Latency: 701.15 ms, Errors: 0
+Operation: create_borrow, Concurrency: 50, Throughput: 23.79 req/s, Avg Latency: 2002.14 ms, P95 Latency: 2201.09 ms, Errors: 0
+Operation: create_borrow, Concurrency: 100, Throughput: 26.96 req/s, Avg Latency: 3448.08 ms, P95 Latency: 3699.03 ms, Errors: 0
+
+Testing fetch_borrowing_devices operation...
+Operation: fetch_borrowing, Concurrency: 1, Throughput: 7.95 req/s, Avg Latency: 122.99 ms, P95 Latency: 175.49 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 5, Throughput: 15.65 req/s, Avg Latency: 313.07 ms, P95 Latency: 476.20 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 10, Throughput: 16.28 req/s, Avg Latency: 599.75 ms, P95 Latency: 841.25 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 50, Throughput: 15.19 req/s, Avg Latency: 2911.16 ms, P95 Latency: 3719.91 ms, Errors: 0
+Operation: fetch_borrowing, Concurrency: 100, Throughput: 15.62 req/s, Avg Latency: 5144.38 ms, P95 Latency: 6657.80 ms, Errors: 0
+
+Testing return_receipt operation...
+Borrowing devices available for return: 28857
+Operation: return_devices, Concurrency: 1, Throughput: 17.15 req/s, Avg Latency: 55.77 ms, P95 Latency: 74.63 ms, Errors: 0
+Operation: return_devices, Concurrency: 5, Throughput: 57.87 req/s, Avg Latency: 83.70 ms, P95 Latency: 131.84 ms, Errors: 0
+Operation: return_devices, Concurrency: 10, Throughput: 53.83 req/s, Avg Latency: 182.16 ms, P95 Latency: 307.99 ms, Errors: 0
+Operation: return_devices, Concurrency: 50, Throughput: 57.79 req/s, Avg Latency: 831.75 ms, P95 Latency: 1014.80 ms, Errors: 0
+Operation: return_devices, Concurrency: 100, Throughput: 56.42 req/s, Avg Latency: 1656.92 ms, P95 Latency: 1947.20 ms, Errors: 0
+
+Testing fetch_returned_devices operation...
+Operation: fetch_returned, Concurrency: 1, Throughput: 29.26 req/s, Avg Latency: 31.76 ms, P95 Latency: 46.35 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 5, Throughput: 95.15 req/s, Avg Latency: 50.05 ms, P95 Latency: 89.36 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 10, Throughput: 91.14 req/s, Avg Latency: 106.57 ms, P95 Latency: 187.07 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 50, Throughput: 89.48 req/s, Avg Latency: 535.06 ms, P95 Latency: 790.87 ms, Errors: 0
+Operation: fetch_returned, Concurrency: 100, Throughput: 79.81 req/s, Avg Latency: 1142.01 ms, P95 Latency: 1717.38 ms, Errors: 0
+Database state preserved for future runs.
+
+=== STRESS TEST COMPLETED ===
+
+Benchmarking Stress-Test/Full Stress Test: Analyzing
+Stress-Test/Full Stress Test
+                        time:   [254.82 s 256.68 s 258.47 s]
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) low mild
+  1 (10.00%) high mild
+

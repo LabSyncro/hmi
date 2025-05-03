@@ -1,0 +1,560 @@
+    Finished `bench` profile [optimized] target(s) in 0.70s
+     Running benches/device_stress_test.rs (target/release/deps/device_stress_test-268f1f0fd0d6624a)
+Successfully connected to PostgreSQL!
+Successfully connected to PostgreSQL!
+Database already contains the correct test data:
+  - 1000 users
+  - 2000 device kinds
+  - 50000 devices
+  - 10 labs
+Benchmarking Device-Stress-Test/Full Device Stress Test
+Benchmarking Device-Stress-Test/Full Device Stress Test: Warming up for 3.0000 s
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 7.57 req/s, Avg Latency: 128.67 ms, P95 Latency: 187.45 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 14.29 req/s, Avg Latency: 342.23 ms, P95 Latency: 605.25 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 13.45 req/s, Avg Latency: 715.11 ms, P95 Latency: 1018.89 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 14.79 req/s, Avg Latency: 2995.75 ms, P95 Latency: 3935.38 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 11.39 req/s, Avg Latency: 6651.54 ms, P95 Latency: 9642.69 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 45.83 req/s, Avg Latency: 19.38 ms, P95 Latency: 29.29 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 206.33 req/s, Avg Latency: 21.84 ms, P95 Latency: 32.30 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 199.75 req/s, Avg Latency: 47.18 ms, P95 Latency: 93.86 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 227.56 req/s, Avg Latency: 212.39 ms, P95 Latency: 295.46 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 203.50 req/s, Avg Latency: 476.81 ms, P95 Latency: 852.71 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 40.74 req/s, Avg Latency: 22.02 ms, P95 Latency: 34.43 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 180.62 req/s, Avg Latency: 25.24 ms, P95 Latency: 45.43 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 226.18 req/s, Avg Latency: 41.61 ms, P95 Latency: 55.93 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 208.19 req/s, Avg Latency: 233.25 ms, P95 Latency: 292.57 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 212.78 req/s, Avg Latency: 455.23 ms, P95 Latency: 666.24 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 50.90 req/s, Avg Latency: 17.24 ms, P95 Latency: 23.11 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 229.55 req/s, Avg Latency: 19.40 ms, P95 Latency: 28.20 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 232.74 req/s, Avg Latency: 40.11 ms, P95 Latency: 56.99 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 225.55 req/s, Avg Latency: 215.45 ms, P95 Latency: 360.80 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 246.07 req/s, Avg Latency: 393.22 ms, P95 Latency: 463.05 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+
+Warning: Unable to complete 10 samples in 60.0s. You may wish to increase target time to 2151.7s.
+Benchmarking Device-Stress-Test/Full Device Stress Test: Collecting 10 samples in estimated 2151.7 s (10 iterations)
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 6.78 req/s, Avg Latency: 144.25 ms, P95 Latency: 201.90 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 14.45 req/s, Avg Latency: 338.30 ms, P95 Latency: 527.98 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 14.86 req/s, Avg Latency: 655.07 ms, P95 Latency: 833.64 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 13.26 req/s, Avg Latency: 3196.17 ms, P95 Latency: 3925.82 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 13.70 req/s, Avg Latency: 5791.50 ms, P95 Latency: 7582.10 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 46.88 req/s, Avg Latency: 18.93 ms, P95 Latency: 33.09 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 191.96 req/s, Avg Latency: 23.61 ms, P95 Latency: 43.13 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 253.12 req/s, Avg Latency: 36.90 ms, P95 Latency: 46.65 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 249.98 req/s, Avg Latency: 194.44 ms, P95 Latency: 232.58 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 252.38 req/s, Avg Latency: 384.58 ms, P95 Latency: 463.85 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 45.33 req/s, Avg Latency: 19.63 ms, P95 Latency: 27.88 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 196.98 req/s, Avg Latency: 23.01 ms, P95 Latency: 35.93 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 205.55 req/s, Avg Latency: 45.90 ms, P95 Latency: 79.82 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 200.60 req/s, Avg Latency: 242.47 ms, P95 Latency: 402.07 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 192.71 req/s, Avg Latency: 490.52 ms, P95 Latency: 709.24 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 49.62 req/s, Avg Latency: 17.73 ms, P95 Latency: 25.92 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 223.46 req/s, Avg Latency: 19.95 ms, P95 Latency: 27.87 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 226.63 req/s, Avg Latency: 41.38 ms, P95 Latency: 68.14 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 228.16 req/s, Avg Latency: 212.14 ms, P95 Latency: 355.52 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 234.62 req/s, Avg Latency: 413.44 ms, P95 Latency: 647.23 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 6.35 req/s, Avg Latency: 153.36 ms, P95 Latency: 227.36 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 13.41 req/s, Avg Latency: 366.87 ms, P95 Latency: 527.98 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 14.63 req/s, Avg Latency: 661.18 ms, P95 Latency: 904.23 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 15.00 req/s, Avg Latency: 2950.36 ms, P95 Latency: 3759.35 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 15.08 req/s, Avg Latency: 5331.45 ms, P95 Latency: 6868.26 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 53.64 req/s, Avg Latency: 16.25 ms, P95 Latency: 19.36 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 207.09 req/s, Avg Latency: 21.77 ms, P95 Latency: 35.81 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 239.49 req/s, Avg Latency: 39.14 ms, P95 Latency: 54.82 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 203.20 req/s, Avg Latency: 239.30 ms, P95 Latency: 416.81 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 199.55 req/s, Avg Latency: 483.11 ms, P95 Latency: 836.23 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 38.72 req/s, Avg Latency: 23.35 ms, P95 Latency: 38.98 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 168.10 req/s, Avg Latency: 27.22 ms, P95 Latency: 54.57 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 210.91 req/s, Avg Latency: 44.62 ms, P95 Latency: 64.60 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 198.15 req/s, Avg Latency: 245.28 ms, P95 Latency: 350.38 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 161.44 req/s, Avg Latency: 591.98 ms, P95 Latency: 974.51 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 45.87 req/s, Avg Latency: 19.36 ms, P95 Latency: 29.48 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 197.44 req/s, Avg Latency: 22.93 ms, P95 Latency: 35.22 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 232.76 req/s, Avg Latency: 40.23 ms, P95 Latency: 58.16 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 232.65 req/s, Avg Latency: 209.49 ms, P95 Latency: 283.44 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 249.88 req/s, Avg Latency: 386.96 ms, P95 Latency: 479.18 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 7.29 req/s, Avg Latency: 133.44 ms, P95 Latency: 194.73 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 15.32 req/s, Avg Latency: 319.82 ms, P95 Latency: 472.05 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 14.40 req/s, Avg Latency: 677.54 ms, P95 Latency: 929.67 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 15.06 req/s, Avg Latency: 2947.99 ms, P95 Latency: 3673.46 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 15.43 req/s, Avg Latency: 5184.09 ms, P95 Latency: 6700.81 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 36.97 req/s, Avg Latency: 24.47 ms, P95 Latency: 39.96 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 125.28 req/s, Avg Latency: 37.40 ms, P95 Latency: 80.19 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 114.79 req/s, Avg Latency: 83.77 ms, P95 Latency: 212.97 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 178.09 req/s, Avg Latency: 271.26 ms, P95 Latency: 559.48 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 165.42 req/s, Avg Latency: 578.64 ms, P95 Latency: 1127.88 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 27.79 req/s, Avg Latency: 33.35 ms, P95 Latency: 106.70 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 112.06 req/s, Avg Latency: 41.38 ms, P95 Latency: 120.11 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 168.16 req/s, Avg Latency: 56.52 ms, P95 Latency: 94.93 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 185.99 req/s, Avg Latency: 260.47 ms, P95 Latency: 476.16 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 125.67 req/s, Avg Latency: 746.39 ms, P95 Latency: 2122.88 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 31.25 req/s, Avg Latency: 29.49 ms, P95 Latency: 67.17 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 130.32 req/s, Avg Latency: 35.47 ms, P95 Latency: 114.26 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 196.30 req/s, Avg Latency: 48.25 ms, P95 Latency: 91.38 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 207.77 req/s, Avg Latency: 233.97 ms, P95 Latency: 331.12 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 183.48 req/s, Avg Latency: 524.47 ms, P95 Latency: 766.89 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 7.18 req/s, Avg Latency: 136.19 ms, P95 Latency: 192.40 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 14.79 req/s, Avg Latency: 332.35 ms, P95 Latency: 548.98 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 16.14 req/s, Avg Latency: 596.16 ms, P95 Latency: 742.39 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 14.78 req/s, Avg Latency: 2973.69 ms, P95 Latency: 3680.48 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 14.80 req/s, Avg Latency: 5410.89 ms, P95 Latency: 7433.43 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 35.05 req/s, Avg Latency: 26.05 ms, P95 Latency: 73.47 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 203.72 req/s, Avg Latency: 22.12 ms, P95 Latency: 36.99 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 207.20 req/s, Avg Latency: 45.60 ms, P95 Latency: 67.97 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 171.05 req/s, Avg Latency: 283.51 ms, P95 Latency: 678.82 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 187.21 req/s, Avg Latency: 517.60 ms, P95 Latency: 1043.93 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 44.68 req/s, Avg Latency: 19.94 ms, P95 Latency: 25.87 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 178.72 req/s, Avg Latency: 25.57 ms, P95 Latency: 44.10 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 140.29 req/s, Avg Latency: 68.27 ms, P95 Latency: 132.63 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 146.60 req/s, Avg Latency: 330.54 ms, P95 Latency: 753.80 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 188.42 req/s, Avg Latency: 510.73 ms, P95 Latency: 761.05 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 47.74 req/s, Avg Latency: 18.55 ms, P95 Latency: 24.98 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 225.29 req/s, Avg Latency: 19.67 ms, P95 Latency: 28.60 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 250.57 req/s, Avg Latency: 37.36 ms, P95 Latency: 46.35 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 230.82 req/s, Avg Latency: 210.14 ms, P95 Latency: 343.17 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 256.90 req/s, Avg Latency: 375.72 ms, P95 Latency: 448.38 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 7.12 req/s, Avg Latency: 136.99 ms, P95 Latency: 236.52 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 15.65 req/s, Avg Latency: 313.15 ms, P95 Latency: 509.14 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 14.77 req/s, Avg Latency: 658.41 ms, P95 Latency: 1019.72 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 15.54 req/s, Avg Latency: 2881.60 ms, P95 Latency: 3511.45 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 14.69 req/s, Avg Latency: 5468.31 ms, P95 Latency: 6936.87 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 32.84 req/s, Avg Latency: 27.99 ms, P95 Latency: 65.26 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 151.43 req/s, Avg Latency: 29.88 ms, P95 Latency: 87.85 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 239.97 req/s, Avg Latency: 38.72 ms, P95 Latency: 49.14 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 221.04 req/s, Avg Latency: 208.94 ms, P95 Latency: 292.46 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 240.83 req/s, Avg Latency: 397.63 ms, P95 Latency: 482.48 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 39.73 req/s, Avg Latency: 22.61 ms, P95 Latency: 53.58 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 50.24 req/s, Avg Latency: 95.82 ms, P95 Latency: 213.06 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 53.22 req/s, Avg Latency: 179.61 ms, P95 Latency: 419.72 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 53.85 req/s, Avg Latency: 881.92 ms, P95 Latency: 1368.40 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 56.46 req/s, Avg Latency: 1634.00 ms, P95 Latency: 2368.85 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 10.50 req/s, Avg Latency: 91.30 ms, P95 Latency: 234.87 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 31.32 req/s, Avg Latency: 151.46 ms, P95 Latency: 645.80 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 48.38 req/s, Avg Latency: 182.64 ms, P95 Latency: 375.49 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 54.84 req/s, Avg Latency: 843.98 ms, P95 Latency: 1513.17 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 63.05 req/s, Avg Latency: 1456.68 ms, P95 Latency: 2068.20 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 4.53 req/s, Avg Latency: 214.02 ms, P95 Latency: 319.12 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 12.18 req/s, Avg Latency: 398.81 ms, P95 Latency: 602.25 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 11.61 req/s, Avg Latency: 829.27 ms, P95 Latency: 1420.83 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 13.07 req/s, Avg Latency: 3314.59 ms, P95 Latency: 4238.35 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 14.57 req/s, Avg Latency: 5594.95 ms, P95 Latency: 7431.27 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 11.18 req/s, Avg Latency: 85.89 ms, P95 Latency: 163.50 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 66.12 req/s, Avg Latency: 72.28 ms, P95 Latency: 150.32 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 66.58 req/s, Avg Latency: 143.60 ms, P95 Latency: 254.33 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 81.72 req/s, Avg Latency: 585.22 ms, P95 Latency: 928.17 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 65.60 req/s, Avg Latency: 1421.80 ms, P95 Latency: 1848.71 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 14.00 req/s, Avg Latency: 67.62 ms, P95 Latency: 170.39 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 64.68 req/s, Avg Latency: 73.49 ms, P95 Latency: 128.62 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 64.95 req/s, Avg Latency: 145.16 ms, P95 Latency: 299.87 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 59.16 req/s, Avg Latency: 805.80 ms, P95 Latency: 1396.78 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 63.22 req/s, Avg Latency: 1462.38 ms, P95 Latency: 2776.45 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 14.50 req/s, Avg Latency: 65.52 ms, P95 Latency: 138.28 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 55.92 req/s, Avg Latency: 85.57 ms, P95 Latency: 199.11 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 64.97 req/s, Avg Latency: 147.50 ms, P95 Latency: 233.00 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 78.78 req/s, Avg Latency: 610.10 ms, P95 Latency: 844.95 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 74.68 req/s, Avg Latency: 1230.11 ms, P95 Latency: 1647.44 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 4.58 req/s, Avg Latency: 209.68 ms, P95 Latency: 322.67 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 12.86 req/s, Avg Latency: 376.94 ms, P95 Latency: 623.53 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 13.81 req/s, Avg Latency: 694.15 ms, P95 Latency: 1226.09 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 12.31 req/s, Avg Latency: 3501.57 ms, P95 Latency: 4463.66 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 14.56 req/s, Avg Latency: 5382.99 ms, P95 Latency: 6994.86 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 35.86 req/s, Avg Latency: 25.45 ms, P95 Latency: 46.38 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 181.63 req/s, Avg Latency: 24.98 ms, P95 Latency: 40.79 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 199.21 req/s, Avg Latency: 47.23 ms, P95 Latency: 85.25 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 182.44 req/s, Avg Latency: 265.86 ms, P95 Latency: 455.78 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 199.44 req/s, Avg Latency: 483.40 ms, P95 Latency: 987.30 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 37.94 req/s, Avg Latency: 23.88 ms, P95 Latency: 40.19 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 181.48 req/s, Avg Latency: 25.06 ms, P95 Latency: 40.96 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 191.47 req/s, Avg Latency: 49.36 ms, P95 Latency: 70.78 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 183.20 req/s, Avg Latency: 266.14 ms, P95 Latency: 461.79 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 197.50 req/s, Avg Latency: 490.29 ms, P95 Latency: 703.60 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 42.88 req/s, Avg Latency: 20.83 ms, P95 Latency: 35.22 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 238.42 req/s, Avg Latency: 18.61 ms, P95 Latency: 24.40 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 229.61 req/s, Avg Latency: 40.87 ms, P95 Latency: 62.61 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 230.77 req/s, Avg Latency: 210.31 ms, P95 Latency: 309.07 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 224.79 req/s, Avg Latency: 431.61 ms, P95 Latency: 567.49 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 6.74 req/s, Avg Latency: 144.92 ms, P95 Latency: 209.28 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 14.95 req/s, Avg Latency: 327.86 ms, P95 Latency: 510.18 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 16.21 req/s, Avg Latency: 593.59 ms, P95 Latency: 806.57 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 15.52 req/s, Avg Latency: 2826.78 ms, P95 Latency: 3480.06 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 16.23 req/s, Avg Latency: 4990.36 ms, P95 Latency: 6256.94 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 44.65 req/s, Avg Latency: 19.91 ms, P95 Latency: 28.15 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 221.12 req/s, Avg Latency: 20.16 ms, P95 Latency: 27.63 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 209.26 req/s, Avg Latency: 45.06 ms, P95 Latency: 70.13 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 221.34 req/s, Avg Latency: 218.60 ms, P95 Latency: 288.87 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 206.32 req/s, Avg Latency: 465.06 ms, P95 Latency: 607.21 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 43.82 req/s, Avg Latency: 20.33 ms, P95 Latency: 28.32 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 191.35 req/s, Avg Latency: 23.64 ms, P95 Latency: 38.63 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 192.28 req/s, Avg Latency: 48.38 ms, P95 Latency: 82.51 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 224.85 req/s, Avg Latency: 215.02 ms, P95 Latency: 253.98 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 220.00 req/s, Avg Latency: 439.46 ms, P95 Latency: 494.02 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 50.70 req/s, Avg Latency: 17.36 ms, P95 Latency: 21.31 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 218.44 req/s, Avg Latency: 20.53 ms, P95 Latency: 30.60 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 237.55 req/s, Avg Latency: 39.35 ms, P95 Latency: 51.68 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 247.69 req/s, Avg Latency: 196.61 ms, P95 Latency: 234.25 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 257.02 req/s, Avg Latency: 376.47 ms, P95 Latency: 411.18 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 6.45 req/s, Avg Latency: 151.26 ms, P95 Latency: 204.29 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 14.61 req/s, Avg Latency: 334.10 ms, P95 Latency: 578.95 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 15.47 req/s, Avg Latency: 620.55 ms, P95 Latency: 929.12 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 15.27 req/s, Avg Latency: 2919.63 ms, P95 Latency: 3728.05 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 15.63 req/s, Avg Latency: 5172.81 ms, P95 Latency: 6866.63 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 50.36 req/s, Avg Latency: 17.41 ms, P95 Latency: 23.13 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 233.20 req/s, Avg Latency: 19.07 ms, P95 Latency: 25.72 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 239.48 req/s, Avg Latency: 39.14 ms, P95 Latency: 55.54 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 195.04 req/s, Avg Latency: 248.29 ms, P95 Latency: 512.80 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 194.39 req/s, Avg Latency: 495.70 ms, P95 Latency: 813.24 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 46.07 req/s, Avg Latency: 19.25 ms, P95 Latency: 26.23 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 194.35 req/s, Avg Latency: 23.33 ms, P95 Latency: 34.87 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 210.27 req/s, Avg Latency: 44.91 ms, P95 Latency: 63.20 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 208.02 req/s, Avg Latency: 233.59 ms, P95 Latency: 305.93 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 222.48 req/s, Avg Latency: 434.12 ms, P95 Latency: 518.64 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 47.66 req/s, Avg Latency: 18.54 ms, P95 Latency: 28.70 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 159.23 req/s, Avg Latency: 28.72 ms, P95 Latency: 49.88 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 171.99 req/s, Avg Latency: 55.29 ms, P95 Latency: 98.32 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 165.06 req/s, Avg Latency: 292.38 ms, P95 Latency: 471.10 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 179.17 req/s, Avg Latency: 536.45 ms, P95 Latency: 992.44 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+
+=== STARTING DEVICE PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING DEVICE LOAD TESTS ===
+
+Testing fetch_devices operation...
+Operation: fetch_devices, Concurrency: 1, Throughput: 7.84 req/s, Avg Latency: 124.10 ms, P95 Latency: 159.94 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 5, Throughput: 15.04 req/s, Avg Latency: 326.65 ms, P95 Latency: 573.78 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 10, Throughput: 15.62 req/s, Avg Latency: 622.39 ms, P95 Latency: 790.39 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 50, Throughput: 16.08 req/s, Avg Latency: 2754.90 ms, P95 Latency: 3484.74 ms, Errors: 0
+Operation: fetch_devices, Concurrency: 100, Throughput: 15.74 req/s, Avg Latency: 5129.88 ms, P95 Latency: 6492.48 ms, Errors: 0
+
+Testing fetch_device_details operation...
+Operation: fetch_device_details, Concurrency: 1, Throughput: 43.07 req/s, Avg Latency: 20.75 ms, P95 Latency: 29.63 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 5, Throughput: 215.86 req/s, Avg Latency: 20.74 ms, P95 Latency: 31.57 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 10, Throughput: 247.18 req/s, Avg Latency: 37.84 ms, P95 Latency: 51.82 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 50, Throughput: 230.61 req/s, Avg Latency: 211.31 ms, P95 Latency: 304.52 ms, Errors: 0
+Operation: fetch_device_details, Concurrency: 100, Throughput: 242.36 req/s, Avg Latency: 392.26 ms, P95 Latency: 501.58 ms, Errors: 0
+
+Testing get_device_borrow_history operation...
+Operation: get_device_borrow_history, Concurrency: 1, Throughput: 46.44 req/s, Avg Latency: 19.13 ms, P95 Latency: 23.66 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 5, Throughput: 201.72 req/s, Avg Latency: 22.44 ms, P95 Latency: 33.73 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 10, Throughput: 201.62 req/s, Avg Latency: 46.93 ms, P95 Latency: 77.46 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 50, Throughput: 212.74 req/s, Avg Latency: 223.66 ms, P95 Latency: 339.33 ms, Errors: 0
+Operation: get_device_borrow_history, Concurrency: 100, Throughput: 211.78 req/s, Avg Latency: 451.52 ms, P95 Latency: 608.66 ms, Errors: 0
+
+Testing get_device_inventory_by_kind operation...
+Operation: get_device_inventory_by_kind, Concurrency: 1, Throughput: 43.21 req/s, Avg Latency: 20.61 ms, P95 Latency: 37.26 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 5, Throughput: 223.93 req/s, Avg Latency: 19.96 ms, P95 Latency: 30.87 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 10, Throughput: 247.54 req/s, Avg Latency: 37.86 ms, P95 Latency: 48.91 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 50, Throughput: 241.64 req/s, Avg Latency: 201.07 ms, P95 Latency: 265.95 ms, Errors: 0
+Operation: get_device_inventory_by_kind, Concurrency: 100, Throughput: 232.94 req/s, Avg Latency: 415.81 ms, P95 Latency: 565.95 ms, Errors: 0
+Database state preserved for future runs.
+
+=== DEVICE STRESS TEST COMPLETED ===
+
+Benchmarking Device-Stress-Test/Full Device Stress Test: Analyzing
+Device-Stress-Test/Full Device Stress Test
+                        time:   [212.86 s 213.80 s 214.98 s]
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) high mild
+  1 (10.00%) high severe
+
