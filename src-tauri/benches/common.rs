@@ -514,6 +514,9 @@ async fn populate_large_test_data(
     client
         .batch_execute(
             "
+        -- Enable the pg_trgm extension for text search
+        CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
         -- Optimized index strategy for bench_devices
         -- Use a single covering index for the most common query patterns
         CREATE INDEX IF NOT EXISTS idx_bench_devices_status_id_kind_lab
@@ -547,6 +550,130 @@ async fn populate_large_test_data(
             ON bench_receipts_devices(device_id)
             INCLUDE (borrow_id, expected_returned_at)
             WHERE return_id IS NULL;
+
+        -- Additional indexes for device_stress_test.rs queries
+
+        -- Index on deleted_at for all tables that use this filter
+        CREATE INDEX IF NOT EXISTS idx_bench_devices_deleted_at
+            ON bench_devices(deleted_at)
+            WHERE deleted_at IS NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_device_kinds_deleted_at
+            ON bench_device_kinds(deleted_at)
+            WHERE deleted_at IS NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_users_deleted_at
+            ON bench_users(deleted_at)
+            WHERE deleted_at IS NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_labs_deleted_at
+            ON bench_labs(deleted_at)
+            WHERE deleted_at IS NULL;
+
+        -- Index on full_id for sorting and filtering in fetch_devices
+        CREATE INDEX IF NOT EXISTS idx_bench_devices_full_id
+            ON bench_devices(full_id);
+
+        -- Composite index for inventory queries by kind
+        CREATE INDEX IF NOT EXISTS idx_bench_devices_kind_lab_id
+            ON bench_devices(kind, lab_id)
+            INCLUDE (status)
+            WHERE deleted_at IS NULL;
+
+        -- Index for device_kinds name for sorting and filtering
+        CREATE INDEX IF NOT EXISTS idx_bench_device_kinds_name
+            ON bench_device_kinds(name)
+            WHERE deleted_at IS NULL;
+
+        -- Index for labs name and branch for grouping in inventory queries
+        CREATE INDEX IF NOT EXISTS idx_bench_labs_name_branch
+            ON bench_labs(name, branch);
+
+        -- Covering index for device borrow history
+        CREATE INDEX IF NOT EXISTS idx_bench_receipts_devices_device_id
+            ON bench_receipts_devices(device_id)
+            INCLUDE (borrowed_receipt_id, returned_receipt_id, borrow_id, return_id, expected_returned_at);
+
+        -- Index for joining activities in borrow history
+        CREATE INDEX IF NOT EXISTS idx_bench_activities_id_created_at
+            ON bench_activities(id, created_at);
+
+        -- Index for fetch_device_details query
+        CREATE INDEX IF NOT EXISTS idx_bench_devices_id_deleted_at
+            ON bench_devices(id)
+            WHERE deleted_at IS NULL;
+
+        -- Index for device_kinds category_id for joining
+        CREATE INDEX IF NOT EXISTS idx_bench_device_kinds_category_id
+            ON bench_device_kinds(category_id);
+
+        -- Additional indexes for search_stress_test.rs queries
+
+        -- Trigram indexes for text search in devices
+        CREATE INDEX IF NOT EXISTS idx_bench_devices_full_id_trgm
+            ON bench_devices USING gin (lower(full_id) gin_trgm_ops)
+            WHERE deleted_at IS NULL;
+
+        -- Trigram indexes for text search in device kinds
+        CREATE INDEX IF NOT EXISTS idx_bench_device_kinds_name_trgm
+            ON bench_device_kinds USING gin (lower(name) gin_trgm_ops)
+            WHERE deleted_at IS NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_device_kinds_brand_trgm
+            ON bench_device_kinds USING gin (lower(brand) gin_trgm_ops)
+            WHERE deleted_at IS NULL AND brand IS NOT NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_device_kinds_manufacturer_trgm
+            ON bench_device_kinds USING gin (lower(manufacturer) gin_trgm_ops)
+            WHERE deleted_at IS NULL AND manufacturer IS NOT NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_device_kinds_description_trgm
+            ON bench_device_kinds USING gin (lower(description) gin_trgm_ops)
+            WHERE deleted_at IS NULL AND description IS NOT NULL;
+
+        -- Trigram indexes for text search in labs
+        CREATE INDEX IF NOT EXISTS idx_bench_labs_name_trgm
+            ON bench_labs USING gin (lower(name) gin_trgm_ops)
+            WHERE deleted_at IS NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_labs_room_trgm
+            ON bench_labs USING gin (lower(room) gin_trgm_ops)
+            WHERE deleted_at IS NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_labs_branch_trgm
+            ON bench_labs USING gin (lower(branch) gin_trgm_ops)
+            WHERE deleted_at IS NULL;
+
+        -- Trigram indexes for text search in users
+        CREATE INDEX IF NOT EXISTS idx_bench_users_name_trgm
+            ON bench_users USING gin (lower(name) gin_trgm_ops)
+            WHERE deleted_at IS NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_users_email_trgm
+            ON bench_users USING gin (lower(email) gin_trgm_ops)
+            WHERE deleted_at IS NULL;
+
+        -- Trigram indexes for text search in categories
+        CREATE INDEX IF NOT EXISTS idx_bench_categories_name_trgm
+            ON bench_categories USING gin (lower(name) gin_trgm_ops)
+            WHERE deleted_at IS NULL;
+
+        -- Covering indexes for search queries
+        CREATE INDEX IF NOT EXISTS idx_bench_devices_search_covering
+            ON bench_devices (id, full_id, kind, lab_id, status)
+            WHERE deleted_at IS NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_device_kinds_search_covering
+            ON bench_device_kinds (id, name, brand, manufacturer, description, image, category_id)
+            WHERE deleted_at IS NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_labs_search_covering
+            ON bench_labs (id, name, room, branch)
+            WHERE deleted_at IS NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_bench_users_search_covering
+            ON bench_users (id, name, email, image)
+            WHERE deleted_at IS NULL;
     ",
         )
         .await?;

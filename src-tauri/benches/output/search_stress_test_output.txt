@@ -1,0 +1,636 @@
+    Finished `bench` profile [optimized] target(s) in 0.82s
+     Running benches/search_stress_test.rs (target/release/deps/search_stress_test-2aafd9101de15de3)
+Successfully connected to PostgreSQL!
+Successfully connected to PostgreSQL!
+Database already contains the correct test data:
+  - 1000 users
+  - 2000 device kinds
+  - 50000 devices
+  - 10 labs
+Benchmarking Search-Stress-Test/Full Search Stress Test
+Benchmarking Search-Stress-Test/Full Search Stress Test: Warming up for 3.0000 s
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 6.08 req/s, Avg Latency: 162.00 ms, P95 Latency: 264.54 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 11.90 req/s, Avg Latency: 405.56 ms, P95 Latency: 757.49 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 12.62 req/s, Avg Latency: 769.77 ms, P95 Latency: 1136.50 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 13.55 req/s, Avg Latency: 3272.35 ms, P95 Latency: 4104.01 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 12.84 req/s, Avg Latency: 6206.13 ms, P95 Latency: 8234.78 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 47.20 req/s, Avg Latency: 18.94 ms, P95 Latency: 27.15 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 198.59 req/s, Avg Latency: 22.97 ms, P95 Latency: 44.02 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 241.27 req/s, Avg Latency: 39.19 ms, P95 Latency: 52.58 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 212.97 req/s, Avg Latency: 230.33 ms, P95 Latency: 344.14 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 244.21 req/s, Avg Latency: 399.44 ms, P95 Latency: 451.78 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 47.54 req/s, Avg Latency: 18.77 ms, P95 Latency: 33.37 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 248.55 req/s, Avg Latency: 17.87 ms, P95 Latency: 23.42 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 228.58 req/s, Avg Latency: 41.47 ms, P95 Latency: 59.52 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 247.58 req/s, Avg Latency: 197.94 ms, P95 Latency: 256.04 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 236.10 req/s, Avg Latency: 413.14 ms, P95 Latency: 513.39 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 31.08 req/s, Avg Latency: 29.89 ms, P95 Latency: 65.23 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 79.54 req/s, Avg Latency: 60.51 ms, P95 Latency: 135.66 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 51.47 req/s, Avg Latency: 188.68 ms, P95 Latency: 341.37 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 71.45 req/s, Avg Latency: 677.16 ms, P95 Latency: 1445.18 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 65.91 req/s, Avg Latency: 1429.89 ms, P95 Latency: 2072.29 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 4.15 req/s, Avg Latency: 238.83 ms, P95 Latency: 390.46 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 10.05 req/s, Avg Latency: 486.42 ms, P95 Latency: 733.50 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 9.87 req/s, Avg Latency: 980.30 ms, P95 Latency: 1333.94 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 10.02 req/s, Avg Latency: 4159.54 ms, P95 Latency: 6260.60 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 11.38 req/s, Avg Latency: 6853.43 ms, P95 Latency: 9200.82 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+
+Warning: Unable to complete 10 samples in 60.0s. You may wish to increase target time to 2813.9s.
+Benchmarking Search-Stress-Test/Full Search Stress Test: Collecting 10 samples in estimated 2813.9 s (10 iterations)
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 5.56 req/s, Avg Latency: 177.59 ms, P95 Latency: 278.47 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 12.87 req/s, Avg Latency: 381.90 ms, P95 Latency: 647.39 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 12.08 req/s, Avg Latency: 812.97 ms, P95 Latency: 1321.56 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 11.96 req/s, Avg Latency: 3590.94 ms, P95 Latency: 4648.33 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 12.84 req/s, Avg Latency: 6148.43 ms, P95 Latency: 8026.39 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 32.81 req/s, Avg Latency: 28.19 ms, P95 Latency: 79.03 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 117.22 req/s, Avg Latency: 40.35 ms, P95 Latency: 82.76 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 189.05 req/s, Avg Latency: 50.58 ms, P95 Latency: 78.94 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 132.49 req/s, Avg Latency: 370.09 ms, P95 Latency: 686.29 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 167.37 req/s, Avg Latency: 581.58 ms, P95 Latency: 1045.12 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 33.05 req/s, Avg Latency: 27.95 ms, P95 Latency: 52.92 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 146.08 req/s, Avg Latency: 31.96 ms, P95 Latency: 64.54 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 151.32 req/s, Avg Latency: 63.58 ms, P95 Latency: 123.83 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 149.51 req/s, Avg Latency: 317.59 ms, P95 Latency: 412.28 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 158.00 req/s, Avg Latency: 614.69 ms, P95 Latency: 998.52 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 26.48 req/s, Avg Latency: 35.49 ms, P95 Latency: 66.78 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 115.40 req/s, Avg Latency: 41.05 ms, P95 Latency: 85.04 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 95.15 req/s, Avg Latency: 102.28 ms, P95 Latency: 251.80 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 117.71 req/s, Avg Latency: 407.41 ms, P95 Latency: 620.13 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 110.45 req/s, Avg Latency: 872.64 ms, P95 Latency: 1393.59 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 5.87 req/s, Avg Latency: 168.00 ms, P95 Latency: 290.54 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 11.13 req/s, Avg Latency: 443.15 ms, P95 Latency: 931.96 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 11.40 req/s, Avg Latency: 847.62 ms, P95 Latency: 1248.10 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 12.23 req/s, Avg Latency: 3481.86 ms, P95 Latency: 4458.06 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 12.09 req/s, Avg Latency: 6395.14 ms, P95 Latency: 8621.56 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 5.65 req/s, Avg Latency: 174.54 ms, P95 Latency: 358.29 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 13.09 req/s, Avg Latency: 373.31 ms, P95 Latency: 660.12 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 12.78 req/s, Avg Latency: 749.72 ms, P95 Latency: 1140.91 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 11.77 req/s, Avg Latency: 3693.20 ms, P95 Latency: 4718.43 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 11.92 req/s, Avg Latency: 6675.02 ms, P95 Latency: 9098.29 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 39.31 req/s, Avg Latency: 23.18 ms, P95 Latency: 47.74 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 143.64 req/s, Avg Latency: 32.57 ms, P95 Latency: 76.81 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 176.65 req/s, Avg Latency: 54.24 ms, P95 Latency: 107.47 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 121.24 req/s, Avg Latency: 404.62 ms, P95 Latency: 832.65 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 161.63 req/s, Avg Latency: 604.58 ms, P95 Latency: 963.74 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 40.29 req/s, Avg Latency: 22.56 ms, P95 Latency: 42.53 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 200.56 req/s, Avg Latency: 22.70 ms, P95 Latency: 42.36 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 228.21 req/s, Avg Latency: 41.41 ms, P95 Latency: 55.41 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 219.17 req/s, Avg Latency: 223.85 ms, P95 Latency: 402.12 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 192.25 req/s, Avg Latency: 496.72 ms, P95 Latency: 912.95 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 35.79 req/s, Avg Latency: 25.66 ms, P95 Latency: 55.59 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 152.50 req/s, Avg Latency: 30.55 ms, P95 Latency: 45.57 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 154.63 req/s, Avg Latency: 62.34 ms, P95 Latency: 95.76 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 159.35 req/s, Avg Latency: 307.20 ms, P95 Latency: 532.72 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 168.95 req/s, Avg Latency: 573.65 ms, P95 Latency: 1089.04 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 5.77 req/s, Avg Latency: 170.91 ms, P95 Latency: 269.12 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 12.37 req/s, Avg Latency: 398.96 ms, P95 Latency: 707.59 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 12.62 req/s, Avg Latency: 772.24 ms, P95 Latency: 1202.67 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 11.28 req/s, Avg Latency: 3708.33 ms, P95 Latency: 5282.25 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 11.57 req/s, Avg Latency: 6770.33 ms, P95 Latency: 9860.55 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 5.11 req/s, Avg Latency: 193.68 ms, P95 Latency: 377.43 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 12.21 req/s, Avg Latency: 403.84 ms, P95 Latency: 835.36 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 12.17 req/s, Avg Latency: 799.25 ms, P95 Latency: 1199.87 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 10.99 req/s, Avg Latency: 3922.76 ms, P95 Latency: 4900.32 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 11.55 req/s, Avg Latency: 6773.93 ms, P95 Latency: 9270.22 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 39.14 req/s, Avg Latency: 23.29 ms, P95 Latency: 38.04 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 189.11 req/s, Avg Latency: 24.21 ms, P95 Latency: 40.97 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 205.29 req/s, Avg Latency: 46.46 ms, P95 Latency: 77.16 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 205.68 req/s, Avg Latency: 238.54 ms, P95 Latency: 344.08 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 229.04 req/s, Avg Latency: 425.79 ms, P95 Latency: 543.71 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 48.98 req/s, Avg Latency: 18.18 ms, P95 Latency: 26.76 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 224.69 req/s, Avg Latency: 20.02 ms, P95 Latency: 27.63 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 176.96 req/s, Avg Latency: 54.21 ms, P95 Latency: 87.09 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 236.56 req/s, Avg Latency: 207.09 ms, P95 Latency: 274.49 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 220.26 req/s, Avg Latency: 438.47 ms, P95 Latency: 682.50 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 35.36 req/s, Avg Latency: 26.02 ms, P95 Latency: 40.89 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 168.10 req/s, Avg Latency: 27.51 ms, P95 Latency: 47.46 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 184.78 req/s, Avg Latency: 51.83 ms, P95 Latency: 75.74 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 144.61 req/s, Avg Latency: 335.89 ms, P95 Latency: 496.41 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 157.59 req/s, Avg Latency: 616.47 ms, P95 Latency: 917.94 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 5.78 req/s, Avg Latency: 170.83 ms, P95 Latency: 283.39 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 10.97 req/s, Avg Latency: 443.11 ms, P95 Latency: 766.42 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 11.66 req/s, Avg Latency: 830.16 ms, P95 Latency: 1268.60 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 11.75 req/s, Avg Latency: 3683.29 ms, P95 Latency: 4959.76 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 11.99 req/s, Avg Latency: 6495.82 ms, P95 Latency: 8979.63 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 5.75 req/s, Avg Latency: 171.67 ms, P95 Latency: 290.64 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 12.38 req/s, Avg Latency: 399.42 ms, P95 Latency: 732.20 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 12.39 req/s, Avg Latency: 784.00 ms, P95 Latency: 1200.94 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 11.88 req/s, Avg Latency: 3646.86 ms, P95 Latency: 4725.59 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 12.35 req/s, Avg Latency: 6301.54 ms, P95 Latency: 8452.73 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 35.62 req/s, Avg Latency: 25.81 ms, P95 Latency: 49.30 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 147.18 req/s, Avg Latency: 31.19 ms, P95 Latency: 70.85 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 152.85 req/s, Avg Latency: 63.08 ms, P95 Latency: 134.91 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 198.98 req/s, Avg Latency: 245.50 ms, P95 Latency: 349.85 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 145.00 req/s, Avg Latency: 672.67 ms, P95 Latency: 1442.08 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 45.27 req/s, Avg Latency: 19.81 ms, P95 Latency: 28.66 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 227.44 req/s, Avg Latency: 19.76 ms, P95 Latency: 29.74 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 238.55 req/s, Avg Latency: 39.64 ms, P95 Latency: 51.15 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 245.48 req/s, Avg Latency: 199.42 ms, P95 Latency: 248.06 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 233.86 req/s, Avg Latency: 414.17 ms, P95 Latency: 526.84 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 38.63 req/s, Avg Latency: 23.65 ms, P95 Latency: 33.25 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 112.58 req/s, Avg Latency: 42.12 ms, P95 Latency: 116.79 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 55.55 req/s, Avg Latency: 176.51 ms, P95 Latency: 352.04 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 91.42 req/s, Avg Latency: 532.41 ms, P95 Latency: 921.08 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 92.57 req/s, Avg Latency: 1037.88 ms, P95 Latency: 1413.16 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 5.88 req/s, Avg Latency: 167.93 ms, P95 Latency: 284.50 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 11.84 req/s, Avg Latency: 415.26 ms, P95 Latency: 717.98 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 10.85 req/s, Avg Latency: 886.11 ms, P95 Latency: 1474.78 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 11.25 req/s, Avg Latency: 3764.94 ms, P95 Latency: 4955.49 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 10.03 req/s, Avg Latency: 7849.51 ms, P95 Latency: 10980.36 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 6.86 req/s, Avg Latency: 143.45 ms, P95 Latency: 241.81 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 11.83 req/s, Avg Latency: 416.02 ms, P95 Latency: 741.57 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 12.11 req/s, Avg Latency: 803.45 ms, P95 Latency: 1271.73 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 12.22 req/s, Avg Latency: 3568.17 ms, P95 Latency: 4815.84 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 11.96 req/s, Avg Latency: 6480.87 ms, P95 Latency: 8538.48 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 45.38 req/s, Avg Latency: 19.78 ms, P95 Latency: 29.54 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 224.17 req/s, Avg Latency: 20.11 ms, P95 Latency: 27.41 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 186.58 req/s, Avg Latency: 51.33 ms, P95 Latency: 102.18 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 226.28 req/s, Avg Latency: 216.26 ms, P95 Latency: 272.87 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 223.91 req/s, Avg Latency: 435.69 ms, P95 Latency: 538.24 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 51.56 req/s, Avg Latency: 17.11 ms, P95 Latency: 25.11 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 225.04 req/s, Avg Latency: 19.95 ms, P95 Latency: 31.36 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 231.76 req/s, Avg Latency: 40.85 ms, P95 Latency: 54.17 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 248.32 req/s, Avg Latency: 197.18 ms, P95 Latency: 227.66 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 236.18 req/s, Avg Latency: 411.95 ms, P95 Latency: 497.81 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 41.09 req/s, Avg Latency: 22.09 ms, P95 Latency: 29.60 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 170.44 req/s, Avg Latency: 27.12 ms, P95 Latency: 43.39 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 173.94 req/s, Avg Latency: 55.21 ms, P95 Latency: 87.24 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 190.64 req/s, Avg Latency: 257.02 ms, P95 Latency: 367.87 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 176.23 req/s, Avg Latency: 553.33 ms, P95 Latency: 836.56 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 6.59 req/s, Avg Latency: 149.44 ms, P95 Latency: 224.82 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 11.96 req/s, Avg Latency: 408.76 ms, P95 Latency: 751.92 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 11.44 req/s, Avg Latency: 847.75 ms, P95 Latency: 1244.33 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 12.13 req/s, Avg Latency: 3531.84 ms, P95 Latency: 4390.76 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 11.74 req/s, Avg Latency: 6498.10 ms, P95 Latency: 8870.25 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 5.35 req/s, Avg Latency: 184.76 ms, P95 Latency: 309.94 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 12.24 req/s, Avg Latency: 406.17 ms, P95 Latency: 751.72 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 13.20 req/s, Avg Latency: 717.98 ms, P95 Latency: 1057.06 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 13.64 req/s, Avg Latency: 3235.07 ms, P95 Latency: 4114.08 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 13.17 req/s, Avg Latency: 6001.30 ms, P95 Latency: 8131.13 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 35.89 req/s, Avg Latency: 25.63 ms, P95 Latency: 58.07 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 160.00 req/s, Avg Latency: 29.07 ms, P95 Latency: 57.57 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 201.15 req/s, Avg Latency: 47.38 ms, P95 Latency: 78.77 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 160.63 req/s, Avg Latency: 302.07 ms, P95 Latency: 739.59 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 195.53 req/s, Avg Latency: 495.71 ms, P95 Latency: 819.13 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 47.40 req/s, Avg Latency: 18.82 ms, P95 Latency: 32.19 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 177.32 req/s, Avg Latency: 25.94 ms, P95 Latency: 62.87 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 204.55 req/s, Avg Latency: 46.46 ms, P95 Latency: 81.25 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 215.26 req/s, Avg Latency: 227.02 ms, P95 Latency: 348.50 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 198.88 req/s, Avg Latency: 487.72 ms, P95 Latency: 706.20 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 41.20 req/s, Avg Latency: 21.78 ms, P95 Latency: 29.39 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 157.75 req/s, Avg Latency: 29.33 ms, P95 Latency: 52.28 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 157.93 req/s, Avg Latency: 60.92 ms, P95 Latency: 109.97 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 146.70 req/s, Avg Latency: 331.22 ms, P95 Latency: 571.18 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 167.00 req/s, Avg Latency: 582.99 ms, P95 Latency: 894.07 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 6.11 req/s, Avg Latency: 161.54 ms, P95 Latency: 260.43 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 11.93 req/s, Avg Latency: 410.50 ms, P95 Latency: 736.84 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 10.48 req/s, Avg Latency: 899.19 ms, P95 Latency: 1388.28 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 11.20 req/s, Avg Latency: 3860.61 ms, P95 Latency: 5223.36 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 11.56 req/s, Avg Latency: 6808.79 ms, P95 Latency: 9330.01 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 5.82 req/s, Avg Latency: 169.47 ms, P95 Latency: 307.08 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 11.45 req/s, Avg Latency: 428.13 ms, P95 Latency: 756.55 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 11.27 req/s, Avg Latency: 850.72 ms, P95 Latency: 1380.22 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 12.02 req/s, Avg Latency: 3551.34 ms, P95 Latency: 4531.18 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 12.55 req/s, Avg Latency: 6283.80 ms, P95 Latency: 8270.56 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 40.34 req/s, Avg Latency: 22.51 ms, P95 Latency: 43.46 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 165.44 req/s, Avg Latency: 27.93 ms, P95 Latency: 60.96 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 170.08 req/s, Avg Latency: 56.45 ms, P95 Latency: 121.17 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 124.46 req/s, Avg Latency: 393.34 ms, P95 Latency: 868.00 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 116.94 req/s, Avg Latency: 823.65 ms, P95 Latency: 1486.36 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 37.63 req/s, Avg Latency: 24.33 ms, P95 Latency: 46.88 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 157.78 req/s, Avg Latency: 29.42 ms, P95 Latency: 58.72 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 192.51 req/s, Avg Latency: 49.53 ms, P95 Latency: 98.10 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 216.41 req/s, Avg Latency: 225.59 ms, P95 Latency: 335.97 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 226.00 req/s, Avg Latency: 426.54 ms, P95 Latency: 632.64 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 37.88 req/s, Avg Latency: 24.17 ms, P95 Latency: 39.21 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 137.84 req/s, Avg Latency: 34.06 ms, P95 Latency: 64.44 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 173.11 req/s, Avg Latency: 55.43 ms, P95 Latency: 84.17 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 167.48 req/s, Avg Latency: 292.83 ms, P95 Latency: 610.59 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 178.56 req/s, Avg Latency: 544.36 ms, P95 Latency: 680.02 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 5.98 req/s, Avg Latency: 164.71 ms, P95 Latency: 288.60 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 10.75 req/s, Avg Latency: 457.59 ms, P95 Latency: 950.67 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 11.84 req/s, Avg Latency: 820.70 ms, P95 Latency: 1341.20 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 11.35 req/s, Avg Latency: 3735.54 ms, P95 Latency: 4900.10 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 11.72 req/s, Avg Latency: 6658.70 ms, P95 Latency: 9247.22 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 6.05 req/s, Avg Latency: 162.73 ms, P95 Latency: 262.37 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 11.23 req/s, Avg Latency: 442.03 ms, P95 Latency: 830.93 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 11.65 req/s, Avg Latency: 842.70 ms, P95 Latency: 1431.03 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 11.80 req/s, Avg Latency: 3594.49 ms, P95 Latency: 4641.16 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 12.45 req/s, Avg Latency: 6465.33 ms, P95 Latency: 8913.09 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 48.26 req/s, Avg Latency: 18.23 ms, P95 Latency: 24.84 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 213.89 req/s, Avg Latency: 21.05 ms, P95 Latency: 32.25 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 233.24 req/s, Avg Latency: 40.42 ms, P95 Latency: 54.72 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 237.41 req/s, Avg Latency: 206.24 ms, P95 Latency: 250.38 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 183.63 req/s, Avg Latency: 531.15 ms, P95 Latency: 927.56 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 46.49 req/s, Avg Latency: 19.05 ms, P95 Latency: 30.91 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 198.22 req/s, Avg Latency: 22.79 ms, P95 Latency: 48.25 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 197.84 req/s, Avg Latency: 48.04 ms, P95 Latency: 91.53 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 231.96 req/s, Avg Latency: 210.31 ms, P95 Latency: 269.39 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 219.57 req/s, Avg Latency: 444.57 ms, P95 Latency: 539.58 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 38.80 req/s, Avg Latency: 23.31 ms, P95 Latency: 39.26 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 114.66 req/s, Avg Latency: 41.14 ms, P95 Latency: 87.45 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 169.69 req/s, Avg Latency: 56.44 ms, P95 Latency: 89.04 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 159.88 req/s, Avg Latency: 306.76 ms, P95 Latency: 447.59 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 168.50 req/s, Avg Latency: 576.42 ms, P95 Latency: 901.95 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 6.34 req/s, Avg Latency: 155.09 ms, P95 Latency: 248.80 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 11.82 req/s, Avg Latency: 415.03 ms, P95 Latency: 744.43 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 11.05 req/s, Avg Latency: 874.31 ms, P95 Latency: 1319.37 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 11.44 req/s, Avg Latency: 3714.44 ms, P95 Latency: 4774.43 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 11.80 req/s, Avg Latency: 6528.94 ms, P95 Latency: 9275.00 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 5.66 req/s, Avg Latency: 174.33 ms, P95 Latency: 330.83 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 11.09 req/s, Avg Latency: 445.59 ms, P95 Latency: 828.53 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 12.15 req/s, Avg Latency: 802.29 ms, P95 Latency: 1176.43 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 12.43 req/s, Avg Latency: 3484.95 ms, P95 Latency: 4573.19 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 12.53 req/s, Avg Latency: 6234.18 ms, P95 Latency: 8701.65 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 33.09 req/s, Avg Latency: 27.75 ms, P95 Latency: 52.08 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 114.23 req/s, Avg Latency: 41.04 ms, P95 Latency: 81.52 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 128.54 req/s, Avg Latency: 75.20 ms, P95 Latency: 131.66 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 131.19 req/s, Avg Latency: 367.48 ms, P95 Latency: 592.35 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 143.12 req/s, Avg Latency: 677.45 ms, P95 Latency: 1107.79 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 36.43 req/s, Avg Latency: 24.97 ms, P95 Latency: 37.28 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 99.27 req/s, Avg Latency: 47.82 ms, P95 Latency: 101.28 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 152.63 req/s, Avg Latency: 62.76 ms, P95 Latency: 109.25 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 127.92 req/s, Avg Latency: 378.74 ms, P95 Latency: 555.94 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 116.71 req/s, Avg Latency: 830.65 ms, P95 Latency: 1472.69 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 17.93 req/s, Avg Latency: 53.30 ms, P95 Latency: 116.13 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 100.04 req/s, Avg Latency: 47.51 ms, P95 Latency: 100.62 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 101.33 req/s, Avg Latency: 95.80 ms, P95 Latency: 180.98 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 117.08 req/s, Avg Latency: 414.20 ms, P95 Latency: 640.90 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 80.58 req/s, Avg Latency: 1183.89 ms, P95 Latency: 1653.68 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 4.28 req/s, Avg Latency: 231.45 ms, P95 Latency: 396.59 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 10.56 req/s, Avg Latency: 466.05 ms, P95 Latency: 717.63 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 9.06 req/s, Avg Latency: 1071.71 ms, P95 Latency: 1496.14 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 9.76 req/s, Avg Latency: 4252.64 ms, P95 Latency: 5733.58 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 10.56 req/s, Avg Latency: 7370.91 ms, P95 Latency: 10176.96 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+
+=== STARTING SEARCH PERFORMANCE STRESS TEST ===
+
+
+=== STRESS TEST CONFIGURATION ===
+Users: 1000
+Device Kinds: 2000
+Devices: 50000
+Labs: 10
+Concurrency Levels: [1, 5, 10, 50, 100]
+Test Duration: 10s per concurrency level
+Full Test: No
+================================
+
+Using existing database state...
+
+=== RUNNING SEARCH LOAD TESTS ===
+
+Testing search_devices operation...
+Operation: search_devices, Concurrency: 1, Throughput: 5.23 req/s, Avg Latency: 188.69 ms, P95 Latency: 364.36 ms, Errors: 0
+Operation: search_devices, Concurrency: 5, Throughput: 11.93 req/s, Avg Latency: 410.71 ms, P95 Latency: 747.36 ms, Errors: 0
+Operation: search_devices, Concurrency: 10, Throughput: 9.81 req/s, Avg Latency: 975.65 ms, P95 Latency: 1552.95 ms, Errors: 0
+Operation: search_devices, Concurrency: 50, Throughput: 10.22 req/s, Avg Latency: 4124.96 ms, P95 Latency: 5685.43 ms, Errors: 0
+Operation: search_devices, Concurrency: 100, Throughput: 11.26 req/s, Avg Latency: 6814.63 ms, P95 Latency: 9319.18 ms, Errors: 0
+
+Testing search_users operation...
+Operation: search_users, Concurrency: 1, Throughput: 21.85 req/s, Avg Latency: 43.29 ms, P95 Latency: 88.20 ms, Errors: 0
+Operation: search_users, Concurrency: 5, Throughput: 86.67 req/s, Avg Latency: 55.05 ms, P95 Latency: 119.49 ms, Errors: 0
+Operation: search_users, Concurrency: 10, Throughput: 64.39 req/s, Avg Latency: 151.82 ms, P95 Latency: 348.81 ms, Errors: 0
+Operation: search_users, Concurrency: 50, Throughput: 65.37 req/s, Avg Latency: 728.06 ms, P95 Latency: 1276.14 ms, Errors: 0
+Operation: search_users, Concurrency: 100, Throughput: 55.69 req/s, Avg Latency: 1702.97 ms, P95 Latency: 2566.46 ms, Errors: 0
+
+Testing search_labs operation...
+Operation: search_labs, Concurrency: 1, Throughput: 18.94 req/s, Avg Latency: 50.33 ms, P95 Latency: 105.53 ms, Errors: 0
+Operation: search_labs, Concurrency: 5, Throughput: 66.50 req/s, Avg Latency: 72.67 ms, P95 Latency: 188.55 ms, Errors: 0
+Operation: search_labs, Concurrency: 10, Throughput: 88.54 req/s, Avg Latency: 109.94 ms, P95 Latency: 239.15 ms, Errors: 0
+Operation: search_labs, Concurrency: 50, Throughput: 98.69 req/s, Avg Latency: 493.89 ms, P95 Latency: 881.73 ms, Errors: 0
+Operation: search_labs, Concurrency: 100, Throughput: 79.23 req/s, Avg Latency: 1189.54 ms, P95 Latency: 1485.85 ms, Errors: 0
+
+Testing search_device_kind operation...
+Operation: search_device_kind, Concurrency: 1, Throughput: 17.40 req/s, Avg Latency: 55.01 ms, P95 Latency: 103.20 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 5, Throughput: 90.53 req/s, Avg Latency: 52.66 ms, P95 Latency: 106.56 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 10, Throughput: 67.98 req/s, Avg Latency: 144.06 ms, P95 Latency: 253.36 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 50, Throughput: 56.30 req/s, Avg Latency: 859.67 ms, P95 Latency: 2384.28 ms, Errors: 0
+Operation: search_device_kind, Concurrency: 100, Throughput: 54.81 req/s, Avg Latency: 1667.47 ms, P95 Latency: 2274.89 ms, Errors: 0
+
+Testing search_all operation...
+Operation: search_all, Concurrency: 1, Throughput: 4.46 req/s, Avg Latency: 221.86 ms, P95 Latency: 447.10 ms, Errors: 0
+Operation: search_all, Concurrency: 5, Throughput: 11.13 req/s, Avg Latency: 442.33 ms, P95 Latency: 755.86 ms, Errors: 0
+Operation: search_all, Concurrency: 10, Throughput: 10.98 req/s, Avg Latency: 881.64 ms, P95 Latency: 1333.99 ms, Errors: 0
+Operation: search_all, Concurrency: 50, Throughput: 11.13 req/s, Avg Latency: 3794.13 ms, P95 Latency: 4854.15 ms, Errors: 0
+Operation: search_all, Concurrency: 100, Throughput: 10.59 req/s, Avg Latency: 7290.86 ms, P95 Latency: 10151.58 ms, Errors: 0
+Database state preserved for future runs.
+
+=== SEARCH STRESS TEST COMPLETED ===
+
+Benchmarking Search-Stress-Test/Full Search Stress Test: Analyzing
+Search-Stress-Test/Full Search Stress Test
+                        time:   [279.71 s 280.87 s 282.54 s]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+

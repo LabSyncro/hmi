@@ -1,0 +1,48 @@
+   Compiling hmi v0.1.0 (/Users/nguyenngocphu/Documents/hmi/src-tauri)
+    Finished `bench` profile [optimized] target(s) in 5.19s
+     Running benches/audit_bench.rs (target/release/deps/audit_bench-04b679fecac17306)
+Successfully connected to PostgreSQL!
+Successfully connected to PostgreSQL!
+Database already contains the correct test data:
+  - 1000 users
+  - 2000 device kinds
+  - 50000 devices
+  - 10 labs
+Benchmarking Audit Operations/Fetch Assessments/10
+Benchmarking Audit Operations/Fetch Assessments/10: Warming up for 3.0000 s
+Benchmarking Audit Operations/Fetch Assessments/10: Collecting 100 samples in estimated 7.0890 s (300 iterations)
+Benchmarking Audit Operations/Fetch Assessments/10: Analyzing
+Audit Operations/Fetch Assessments/10
+                        time:   [20.087 ms 21.724 ms 24.043 ms]
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+Benchmarking Audit Operations/Fetch Assessment Details/1
+Benchmarking Audit Operations/Fetch Assessment Details/1: Warming up for 3.0000 s
+Benchmarking Audit Operations/Fetch Assessment Details/1: Collecting 100 samples in estimated 6.5975 s (300 iterations)
+Benchmarking Audit Operations/Fetch Assessment Details/1: Analyzing
+Audit Operations/Fetch Assessment Details/1
+                        time:   [21.898 ms 23.969 ms 26.653 ms]
+Found 7 outliers among 100 measurements (7.00%)
+  3 (3.00%) high mild
+  4 (4.00%) high severe
+Benchmarking Audit Operations/Create Assessment/3
+Benchmarking Audit Operations/Create Assessment/3: Warming up for 3.0000 s
+Benchmarking Audit Operations/Create Assessment/3: Collecting 100 samples in estimated 6.6864 s (300 iterations)
+Benchmarking Audit Operations/Create Assessment/3: Analyzing
+Audit Operations/Create Assessment/3
+                        time:   [20.909 ms 22.559 ms 24.854 ms]
+Found 6 outliers among 100 measurements (6.00%)
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+Benchmarking Audit Operations/Finish Assessment/2
+Benchmarking Audit Operations/Finish Assessment/2: Warming up for 3.0000 s
+Benchmarking Audit Operations/Finish Assessment/2: Collecting 100 samples in estimated 7.3609 s (300 iterations)
+Benchmarking Audit Operations/Finish Assessment/2: Analyzing
+Audit Operations/Finish Assessment/2
+                        time:   [19.850 ms 21.164 ms 22.989 ms]
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) high mild
+  3 (3.00%) high severe
+
+Benchmark completed. Database state preserved for future runs.

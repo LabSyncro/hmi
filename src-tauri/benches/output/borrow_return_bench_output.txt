@@ -1,0 +1,93 @@
+   Compiling hmi v0.1.0 (/Users/nguyenngocphu/Documents/hmi/src-tauri)
+    Finished `bench` profile [optimized] target(s) in 5.66s
+     Running benches/borrow_return_bench.rs (target/release/deps/borrow_return_bench-df8b1c0f207176d1)
+Successfully connected to PostgreSQL!
+Tables don't exist. Setting up test tables...
+Database doesn't have the correct number of records:
+  - Users: 0 (should be 1000)
+  - Device kinds: 0 (should be 2000)
+  - Devices: 0 (should be 50000)
+Recreating test data...
+Generating test data with:
+  - 1000 users
+  - 2000 device kinds
+  - 50000 devices
+  - 10 labs
+Creating users...
+Created 1000/1000 users
+Creating labs...
+Created 10 labs
+Creating device kinds...
+Created 2000/2000 device kinds
+Creating categories...
+Created 3 categories
+Assigning categories to device kinds...
+Assigned categories to device kinds
+Creating devices...
+Created 50000/50000 devices (100.00%)
+Creating optimized indexes to speed up queries...
+Indexes created successfully
+
+--- Current Database State ---
+bench_labs: 10 rows
+bench_users: 1000 rows
+bench_device_kinds: 2000 rows
+bench_devices: 50000 rows
+-----------------------------
+
+Benchmarking Borrow-Return Operations/Fetch Ready Borrow Devices/10
+Benchmarking Borrow-Return Operations/Fetch Ready Borrow Devices/10: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 18.9s, or reduce sample count to 20.
+Benchmarking Borrow-Return Operations/Fetch Ready Borrow Devices/10: Collecting 100 samples in estimated 18.915 s (100 iterations)
+Benchmarking Borrow-Return Operations/Fetch Ready Borrow Devices/10: Analyzing
+Borrow-Return Operations/Fetch Ready Borrow Devices/10
+                        time:   [170.96 ms 176.91 ms 184.52 ms]
+Found 8 outliers among 100 measurements (8.00%)
+  6 (6.00%) high mild
+  2 (2.00%) high severe
+Benchmarking Borrow-Return Operations/Fetch Borrowing Devices/10
+Benchmarking Borrow-Return Operations/Fetch Borrowing Devices/10: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 13.6s, or reduce sample count to 30.
+Benchmarking Borrow-Return Operations/Fetch Borrowing Devices/10: Collecting 100 samples in estimated 13.566 s (100 iterations)
+Benchmarking Borrow-Return Operations/Fetch Borrowing Devices/10: Analyzing
+Borrow-Return Operations/Fetch Borrowing Devices/10
+                        time:   [135.91 ms 145.57 ms 157.98 ms]
+Found 10 outliers among 100 measurements (10.00%)
+  1 (1.00%) high mild
+  9 (9.00%) high severe
+Benchmarking Borrow-Return Operations/Fetch Returned Devices/10
+Benchmarking Borrow-Return Operations/Fetch Returned Devices/10: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 13.3s, or reduce sample count to 30.
+Benchmarking Borrow-Return Operations/Fetch Returned Devices/10: Collecting 100 samples in estimated 13.341 s (100 iterations)
+Benchmarking Borrow-Return Operations/Fetch Returned Devices/10: Analyzing
+Borrow-Return Operations/Fetch Returned Devices/10
+                        time:   [136.44 ms 144.06 ms 154.26 ms]
+Found 10 outliers among 100 measurements (10.00%)
+  10 (10.00%) high severe
+Benchmarking Borrow-Return Operations/Create Borrow Receipt/2
+Benchmarking Borrow-Return Operations/Create Borrow Receipt/2: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 14.5s, or reduce sample count to 30.
+Benchmarking Borrow-Return Operations/Create Borrow Receipt/2: Collecting 100 samples in estimated 14.483 s (100 iterations)
+Benchmarking Borrow-Return Operations/Create Borrow Receipt/2: Analyzing
+Borrow-Return Operations/Create Borrow Receipt/2
+                        time:   [135.51 ms 142.43 ms 151.44 ms]
+Found 9 outliers among 100 measurements (9.00%)
+  2 (2.00%) high mild
+  7 (7.00%) high severe
+Benchmarking Borrow-Return Operations/Return Receipt/2
+Benchmarking Borrow-Return Operations/Return Receipt/2: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 14.0s, or reduce sample count to 30.
+Benchmarking Borrow-Return Operations/Return Receipt/2: Collecting 100 samples in estimated 14.031 s (100 iterations)
+Benchmarking Borrow-Return Operations/Return Receipt/2: Analyzing
+Borrow-Return Operations/Return Receipt/2
+                        time:   [133.82 ms 144.70 ms 158.63 ms]
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) high mild
+  4 (4.00%) high severe
+
+Benchmark completed. Database state preserved for future runs.

@@ -175,7 +175,7 @@ async fn search_users(
                 "id": row.get::<_, String>(0),
                 "name": row.get::<_, String>(1),
                 "email": row.get::<_, String>(2),
-                "image": row.get::<_, serde_json::Value>(3),
+                "image": serde_json::from_str::<serde_json::Value>(&row.get::<_, String>(3)).unwrap_or(serde_json::json!(null)),
                 "resultType": row.get::<_, String>(4)
             })
         })
@@ -321,12 +321,12 @@ async fn search_device_kind(
             json!({
                 "id": row.get::<_, String>(0),
                 "name": row.get::<_, String>(1),
-                "brand": row.get::<_, String>(2),
-                "manufacturer": row.get::<_, String>(3),
-                "description": row.get::<_, String>(4),
+                "brand": row.get::<_, Option<String>>(2).unwrap_or_default(),
+                "manufacturer": row.get::<_, Option<String>>(3).unwrap_or_default(),
+                "description": row.get::<_, Option<String>>(4).unwrap_or_default(),
                 "image": row.get::<_, serde_json::Value>(5),
-                "categoryName": row.get::<_, String>(6),
-                "categoryId": row.get::<_, String>(7)
+                "categoryName": row.get::<_, Option<String>>(6).unwrap_or_default(),
+                "categoryId": row.get::<_, Option<String>>(7).unwrap_or_default()
             })
         })
         .collect();

@@ -1,0 +1,49 @@
+   Compiling hmi v0.1.0 (/Users/nguyenngocphu/Documents/hmi/src-tauri)
+    Finished `bench` profile [optimized] target(s) in 5.38s
+     Running benches/maintenance_bench.rs (target/release/deps/maintenance_bench-2a791ca9d6869ab9)
+Successfully connected to PostgreSQL!
+Successfully connected to PostgreSQL!
+Database already contains the correct test data:
+  - 1000 users
+  - 2000 device kinds
+  - 50000 devices
+  - 10 labs
+Benchmarking Maintenance Operations/Fetch Maintenance Records/10
+Benchmarking Maintenance Operations/Fetch Maintenance Records/10: Warming up for 3.0000 s
+Benchmarking Maintenance Operations/Fetch Maintenance Records/10: Collecting 100 samples in estimated 5.9131 s (200 iterations)
+Benchmarking Maintenance Operations/Fetch Maintenance Records/10: Analyzing
+Maintenance Operations/Fetch Maintenance Records/10
+                        time:   [23.007 ms 26.391 ms 30.470 ms]
+                        change: [+15.305% +32.304% +52.209%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 12 outliers among 100 measurements (12.00%)
+  1 (1.00%) high mild
+  11 (11.00%) high severe
+Benchmarking Maintenance Operations/Fetch Maintenance Details/1
+Benchmarking Maintenance Operations/Fetch Maintenance Details/1: Warming up for 3.0000 s
+Benchmarking Maintenance Operations/Fetch Maintenance Details/1: Collecting 100 samples in estimated 6.3612 s (200 iterations)
+Benchmarking Maintenance Operations/Fetch Maintenance Details/1: Analyzing
+Maintenance Operations/Fetch Maintenance Details/1
+                        time:   [22.502 ms 25.365 ms 28.566 ms]
+Found 14 outliers among 100 measurements (14.00%)
+  1 (1.00%) high mild
+  13 (13.00%) high severe
+Benchmarking Maintenance Operations/Create Maintenance Record/3
+Benchmarking Maintenance Operations/Create Maintenance Record/3: Warming up for 3.0000 s
+Benchmarking Maintenance Operations/Create Maintenance Record/3: Collecting 100 samples in estimated 7.2909 s (300 iterations)
+Benchmarking Maintenance Operations/Create Maintenance Record/3: Analyzing
+Maintenance Operations/Create Maintenance Record/3
+                        time:   [24.067 ms 26.672 ms 29.679 ms]
+Found 16 outliers among 100 measurements (16.00%)
+  1 (1.00%) high mild
+  15 (15.00%) high severe
+Benchmarking Maintenance Operations/Finish Maintenance/2
+Benchmarking Maintenance Operations/Finish Maintenance/2: Warming up for 3.0000 s
+Benchmarking Maintenance Operations/Finish Maintenance/2: Collecting 100 samples in estimated 6.9589 s (300 iterations)
+Benchmarking Maintenance Operations/Finish Maintenance/2: Analyzing
+Maintenance Operations/Finish Maintenance/2
+                        time:   [21.827 ms 23.857 ms 26.115 ms]
+Found 14 outliers among 100 measurements (14.00%)
+  14 (14.00%) high severe
+
+Benchmark completed. Database state preserved for future runs.
