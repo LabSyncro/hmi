@@ -59,7 +59,7 @@ RUN useradd -ms /bin/bash appuser
 
 WORKDIR /app
 
-COPY --from=builder /app/src-tauri/target/release/app /app/app
+COPY --from=builder /app/src-tauri/target/release/hmi /app/app
 COPY --from=builder /app/src-tauri/icons /app/icons
 COPY --from=builder /app/dist /app/dist
 
@@ -73,6 +73,6 @@ ENV RUST_LOG=info \
     DEBIAN_RELEASE=bookworm
 
 HEALTHCHECK --interval=60s --timeout=10s --start-period=5s --retries=3 \
-  CMD pgrep app > /dev/null || exit 1
+  CMD pgrep hmi > /dev/null || exit 1
 
 CMD ["/app/app"]
