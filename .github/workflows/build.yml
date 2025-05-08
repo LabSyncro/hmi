@@ -67,9 +67,11 @@ jobs:
       - name: Package for Debian
         run: |
           mkdir -p dist
-          cp src-tauri/target/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-debian.deb
+          # Get system architecture to use in package name
+          ARCH=$(dpkg --print-architecture)
+          cp src-tauri/target/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-debian-${ARCH}.deb
           if [ -d "src-tauri/target/release/bundle/appimage" ]; then
-            cp src-tauri/target/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-debian.AppImage
+            cp src-tauri/target/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-debian-${ARCH}.AppImage
           fi
 
       - name: Upload Release Assets
@@ -106,6 +108,6 @@ jobs:
             ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest
             ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}
             ghcr.io/${{ env.REPO_LOWERCASE }}/app:debian-${{ github.event.inputs.version }}
-          platforms: linux/amd64
+          platforms: linux/arm64,linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
