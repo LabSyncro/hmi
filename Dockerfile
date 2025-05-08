@@ -1,7 +1,7 @@
 ARG DEBIAN_VERSION=bookworm
 
 # Stage 1: Build environment
-FROM rust:1.75-slim-${DEBIAN_VERSION} as builder
+FROM rust:1.77-slim-${DEBIAN_VERSION} as builder
 
 RUN apt-get update && apt-get install -y \
     curl \
@@ -41,8 +41,8 @@ RUN echo "pub fn dummy() {}" > src-tauri/src/lib.rs
 RUN sed '/\[\[bench\]\]/,/harness = false/d' src-tauri/Cargo.toml > src-tauri/Cargo.tmp.toml \
     && mv src-tauri/Cargo.tmp.toml src-tauri/Cargo.toml
 
-# Fetch dependencies based on the Cargo.toml
-RUN cd src-tauri && cargo fetch
+# Fetch dependencies based on the Cargo.toml (without using existing lock file)
+RUN cd src-tauri && cargo update && cargo fetch --locked=false
 
 COPY . .
 
