@@ -959,18 +959,18 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
         <div
           class="p-4 border-b border-gray-200 flex justify-between items-center"
         >
-          <h2 class="text-lg font-semibold flex items-center gap-2">
-            <ClipboardCheckIcon class="h-5 w-5" />
+          <h2 class="text-sm font-semibold flex items-center gap-1">
+            <ClipboardCheckIcon class="h-4 w-4" />
             DANH SÁCH GHI NHẬN
           </h2>
 
           <Button
             variant="outline"
             size="sm"
-            class="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+            class="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 text-xs py-1 px-2"
             @click="openIncompleteAuditsModal"
           >
-            <ListIcon class="h-4 w-4" />
+            <ListIcon class="h-3 w-3" />
             Kiểm đếm chưa hoàn thành
           </Button>
         </div>
@@ -978,16 +978,16 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
         <div class="h-[calc(100vh-10rem)] overflow-y-auto">
           <div
             v-if="devices.length === 0"
-            class="flex flex-col items-center justify-center py-20 text-center"
+            class="flex flex-col items-center justify-center py-12 text-center"
           >
-            <div class="rounded-full bg-gray-100 p-3 mb-4">
+            <div class="rounded-full bg-gray-100 p-2 mb-3">
               <LoaderIcon
                 v-if="isLoadingDeviceScan"
-                class="h-6 w-6 text-blue-500 animate-spin"
+                class="h-5 w-5 text-blue-500 animate-spin"
               />
-              <PackageIcon v-else class="h-6 w-6 text-gray-500" />
+              <PackageIcon v-else class="h-5 w-5 text-gray-400" />
             </div>
-            <p class="text-gray-500">
+            <p class="text-xs text-gray-500">
               {{
                 isLoadingDeviceScan
                   ? "Đang xử lý thiết bị..."
@@ -1003,46 +1003,48 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               class="divide-y divide-gray-100"
             >
               <div
-                class="p-4 hover:bg-gray-50 cursor-pointer"
+                class="p-3 hover:bg-gray-50 cursor-pointer"
                 @click="toggleDevice(device)"
               >
                 <div class="grid grid-cols-10 items-center">
-                  <div class="flex items-center col-span-7 gap-3">
+                  <div class="flex items-center col-span-7 gap-2">
                     <img
                       :src="device.image.mainImage"
                       alt="Device image"
-                      class="h-12 w-12 rounded-full object-cover"
+                      class="h-10 w-10 rounded-full object-cover"
                     />
                     <div>
-                      <div class="flex items-center gap-2 mb-0.5">
-                        <h3 class="font-medium text-gray-900 text-sm">
+                      <div class="flex items-center gap-1 mb-0.5">
+                        <h3 class="font-medium text-gray-900 text-xs">
                           Mã loại:
-                          <span class="font-bold text-base">{{
+                          <span class="font-bold text-sm whitespace-nowrap">{{
                             device.code
                           }}</span>
                         </h3>
                         <Badge
                           v-if="device.isBorrowableLabOnly"
                           variant="outline"
-                          class="text-blue-600 border-blue-200 bg-blue-50 text-xs"
+                          class="text-blue-600 border-blue-200 bg-blue-50 text-xs py-0 px-1"
                         >
                           Không mượn về
                         </Badge>
                       </div>
-                      <p class="text-base text-gray-900 font-medium">
+                      <p
+                        class="text-sm text-gray-900 font-medium whitespace-nowrap"
+                      >
                         {{ device.name }}
                       </p>
                     </div>
                   </div>
                   <div class="col-span-3 text-center flex items-center">
                     <span
-                      class="text-base text-gray-900 font-medium w-full text-start"
+                      class="text-sm text-gray-900 font-medium w-full text-start"
                     >
                       SL: {{ device.quantity }} /
                       {{ device.expectedQuantity || device.quantity }}
                     </span>
                     <ChevronDownIcon
-                      class="h-5 w-5 text-gray-400 transition-transform"
+                      class="h-4 w-4 text-gray-400 transition-transform"
                       :class="{ 'rotate-180': device.expanded }"
                     />
                   </div>
@@ -1087,7 +1089,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                         {{ statusMap[item.status] }}
                       </Badge>
                       <span class="text-gray-400">→</span>
-                      <div class="w-32">
+                      <div class="w-28">
                         <Select
                           v-model="item.auditCondition"
                           class="flex-grow"
@@ -1096,7 +1098,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                           "
                         >
                           <SelectTrigger
-                            class="h-8 text-sm bg-white font-semibold w-fit"
+                            class="h-7 text-xs bg-white font-semibold w-fit"
                             :class="
                               item.auditCondition
                                 ? statusColorMap[item.auditCondition]
@@ -1230,9 +1232,9 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
       <div
         class="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 h-fit"
       >
-        <div class="p-4 border-b border-gray-200">
-          <h2 class="text-lg font-semibold flex items-center gap-2">
-            <UserIcon class="h-5 w-5" />
+        <div class="p-3 border-b border-gray-200">
+          <h2 class="text-sm font-semibold flex items-center gap-1">
+            <UserIcon class="h-4 w-4" />
             NGƯỜI KIỂM ĐẾM
           </h2>
         </div>
@@ -1259,27 +1261,27 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </p>
             </div>
 
-            <div v-else class="rounded-lg px-4 py-1">
+            <div v-else class="rounded-lg px-3 py-1">
               <div class="flex items-center">
                 <img
-                  :src="userInfo.avatar"
+                  :src="userInfo.avatar || undefined"
                   alt="User avatar"
-                  class="h-12 w-12 rounded-full object-cover"
+                  class="h-10 w-10 rounded-full object-cover"
                 />
-                <div class="ml-3">
-                  <h4 class="text-sm font-medium text-gray-500">
+                <div class="ml-2">
+                  <h4 class="text-xs font-medium text-gray-500">
                     Mã số:
                     <span class="text-gray-500 font-semibold">{{
                       userInfo.id
                     }}</span>
-                    <span class="text-sm text-gray-500 italic font-semibold">
+                    <span class="text-xs text-gray-500 italic font-semibold">
                       ({{
                         userInfo.roles?.map((r) => r.name).join(", ") ||
                         "Không có vai trò"
                       }})
                     </span>
                   </h4>
-                  <p class="text-base font-semibold text-gray-900">
+                  <p class="text-sm font-semibold text-gray-900">
                     {{ userInfo.name }}
                   </p>
                 </div>
@@ -1291,13 +1293,13 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
             v-if="mode === 'audit' && devices.length > 0"
             class="p-4 border-t border-gray-200"
           >
-            <div class="flex items-center gap-3">
-              <div class="rounded-full bg-blue-50 p-2">
-                <BoxIcon class="h-4 w-4 text-blue-600" />
+            <div class="flex items-center gap-2">
+              <div class="rounded-full bg-blue-50 p-1.5">
+                <BoxIcon class="h-3.5 w-3.5 text-blue-600" />
               </div>
               <div class="flex justify-between w-full">
-                <p class="text-sm text-gray-500">Tổng thiết bị</p>
-                <p class="font-medium text-blue-600 text-base">
+                <p class="text-xs text-gray-500">Tổng thiết bị</p>
+                <p class="font-medium text-blue-600 text-sm">
                   {{ auditDetails.totalDevices }}
                 </p>
               </div>
@@ -1423,9 +1425,9 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
         class="bg-white rounded-lg shadow-xl z-10 max-w-3xl w-full mx-4 overflow-hidden"
       >
         <div
-          class="flex justify-between items-center border-b border-gray-200 px-6 py-4"
+          class="flex justify-between items-center border-b border-gray-200 px-4 py-3"
         >
-          <h2 class="text-xl font-semibold leading-6 text-gray-900">
+          <h2 class="text-base font-semibold leading-6 text-gray-900">
             Kiểm đếm chưa hoàn thành
           </h2>
           <Button
@@ -1434,7 +1436,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
             @click="showIncompleteAuditsModal = false"
             class="rounded-full"
           >
-            <XIcon class="h-5 w-5" />
+            <XIcon class="h-4 w-4" />
           </Button>
         </div>
 

@@ -617,15 +617,15 @@ const getActivityStatusText = (status: string) => {
 
 <template>
   <div>
-    <div v-if="mode === 'idle'" class="text-center py-12">
-      <div class="max-w-sm mx-auto bg-white rounded-full shadow p-16">
+    <div v-if="mode === 'idle'" class="text-center py-4">
+      <div class="max-w-sm mx-auto bg-white rounded-full shadow p-20">
         <div
-          class="rounded-full bg-gray-100 mx-auto w-36 h-36 flex items-center justify-center mb-4"
+          class="rounded-full bg-gray-100 mx-auto w-36 h-36 flex items-center justify-center mb-3"
         >
-          <SearchIcon class="h-12 w-12 text-gray-400" />
+          <SearchIcon class="h-10 w-10 text-gray-400" />
         </div>
-        <h2 class="text-xl font-semibold mb-2">CHƯA CÓ THÔNG TIN</h2>
-        <p class="text-gray-600">
+        <h2 class="text-lg font-semibold mb-1">CHƯA CÓ THÔNG TIN</h2>
+        <p class="text-sm text-gray-600">
           Quét mã QR thiết bị / người dùng<br />để hiển thị thông tin chi tiết
         </p>
       </div>
@@ -633,13 +633,13 @@ const getActivityStatusText = (status: string) => {
 
     <div
       v-else-if="isLoadingDeviceScan || isLoadingUser || loading"
-      class="text-center py-12 bg-white rounded-lg shadow p-8"
+      class="text-center py-8 bg-white rounded-lg shadow p-6"
     >
       <div class="max-w-md mx-auto">
-        <div class="flex justify-center mb-4">
-          <LoaderIcon class="h-10 w-10 animate-spin text-blue-500" />
+        <div class="flex justify-center mb-3">
+          <LoaderIcon class="h-8 w-8 animate-spin text-blue-500" />
         </div>
-        <p class="mt-2 text-sm text-gray-600">
+        <p class="mt-2 text-xs text-gray-600">
           {{
             isLoadingDeviceScan
               ? "Đang tải thông tin thiết bị..."
@@ -651,11 +651,11 @@ const getActivityStatusText = (status: string) => {
       </div>
     </div>
 
-    <div v-else-if="error" class="bg-red-50 p-4 rounded-md">
-      <p class="text-red-700">{{ error }}</p>
+    <div v-else-if="error" class="bg-red-50 p-3 rounded-md">
+      <p class="text-red-700 text-sm">{{ error }}</p>
       <button
         @click="retryLoading"
-        class="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        class="mt-2 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         :disabled="retrying"
       >
         <span v-if="retrying">Đang thử lại...</span>
@@ -665,7 +665,7 @@ const getActivityStatusText = (status: string) => {
 
     <div v-else-if="mode === 'device' && deviceDetail">
       <div>
-        <div class="grid grid-cols-3 gap-6">
+        <div class="grid grid-cols-3 gap-4">
           <div
             class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
           >
@@ -674,15 +674,15 @@ const getActivityStatusText = (status: string) => {
                 <TabsList class="bg-transparent p-0 w-full flex">
                   <TabsTrigger
                     value="inventory"
-                    class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                    class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
                     <div class="flex items-center justify-center gap-1 w-full">
                       <div class="rounded-full bg-blue-50 p-1">
-                        <PackageIcon class="h-4 w-4 text-blue-600" />
+                        <PackageIcon class="h-3 w-3 text-blue-600" />
                       </div>
-                      <span class="whitespace-nowrap">TỒN KHO</span>
+                      <span class="whitespace-nowrap text-xs">TỒN KHO</span>
                       <span
-                        class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
                       >
                         {{ inventory.length || 0 }}
                       </span>
@@ -690,15 +690,15 @@ const getActivityStatusText = (status: string) => {
                   </TabsTrigger>
                   <TabsTrigger
                     value="borrowed"
-                    class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                    class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
                     <div class="flex items-center justify-center gap-1 w-full">
                       <div class="rounded-full bg-violet-50 p-1">
-                        <UserIcon class="h-4 w-4 text-violet-600" />
+                        <UserIcon class="h-3 w-3 text-violet-600" />
                       </div>
-                      <span class="whitespace-nowrap">MƯỢN TRẢ</span>
+                      <span class="whitespace-nowrap text-xs">MƯỢN TRẢ</span>
                       <span
-                        class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
                       >
                         {{ borrowedDevices.length || 0 }}
                       </span>
@@ -706,15 +706,15 @@ const getActivityStatusText = (status: string) => {
                   </TabsTrigger>
                   <TabsTrigger
                     value="audit"
-                    class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                    class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
                     <div class="flex items-center justify-center gap-1 w-full">
                       <div class="rounded-full bg-rose-50 p-1">
-                        <ClipboardCheckIcon class="h-4 w-4 text-rose-600" />
+                        <ClipboardCheckIcon class="h-3 w-3 text-rose-600" />
                       </div>
-                      <span class="whitespace-nowrap">KIỂM ĐẾM</span>
+                      <span class="whitespace-nowrap text-xs">KIỂM ĐẾM</span>
                       <span
-                        class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
                       >
                         {{ auditDevices.length || 0 }}
                       </span>
@@ -722,15 +722,15 @@ const getActivityStatusText = (status: string) => {
                   </TabsTrigger>
                   <TabsTrigger
                     value="maintenance"
-                    class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                    class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
                     <div class="flex items-center justify-center gap-1 w-full">
                       <div class="rounded-full bg-amber-50 p-1">
-                        <WrenchIcon class="h-4 w-4 text-amber-600" />
+                        <WrenchIcon class="h-3 w-3 text-amber-600" />
                       </div>
-                      <span class="whitespace-nowrap">BẢO TRÌ</span>
+                      <span class="whitespace-nowrap text-xs">BẢO TRÌ</span>
                       <span
-                        class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
                       >
                         {{ maintenanceDevices.length || 0 }}
                       </span>
@@ -738,15 +738,15 @@ const getActivityStatusText = (status: string) => {
                   </TabsTrigger>
                   <TabsTrigger
                     value="transport"
-                    class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                    class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
                     <div class="flex items-center justify-center gap-1 w-full">
                       <div class="rounded-full bg-emerald-50 p-1">
-                        <TruckIcon class="h-4 w-4 text-emerald-600" />
+                        <TruckIcon class="h-3 w-3 text-emerald-600" />
                       </div>
-                      <span class="whitespace-nowrap">VẬN CHUYỂN</span>
+                      <span class="whitespace-nowrap text-xs">VẬN CHUYỂN</span>
                       <span
-                        class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
                       >
                         {{ transportDevices.length || 0 }}
                       </span>
@@ -756,41 +756,43 @@ const getActivityStatusText = (status: string) => {
               </div>
               <TabsContent
                 value="inventory"
-                class="p-4 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+                class="p-3 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingInventory">
-                  <div class="flex justify-center items-center p-8">
-                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  <div class="flex justify-center items-center p-4">
+                    <LoaderIcon class="animate-spin h-6 w-6 text-gray-400" />
                   </div>
                 </div>
                 <div v-else-if="inventory && inventory.length">
                   <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border">
+                    <table
+                      class="min-w-full divide-y divide-gray-200 border text-xs"
+                    >
                       <thead>
                         <tr>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                             rowspan="1"
                           >
                             PHÒNG THÍ NGHIỆM
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-center text-xs font-semibold text-blue-900 border"
                           >
                             Tốt
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-center text-xs font-semibold text-blue-900 border"
                           >
                             Hư
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-center text-xs font-semibold text-blue-900 border"
                           >
                             Loại bỏ
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-center text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-center text-xs font-semibold text-blue-900 border"
                           >
                             Đã mất
                           </th>
@@ -802,28 +804,28 @@ const getActivityStatusText = (status: string) => {
                           :key="item.location"
                           class="hover:bg-gray-50"
                         >
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ item.location }}
                           </td>
-                          <td class="px-4 py-3 text-sm text-center border">
+                          <td class="px-2 py-1.5 text-xs text-center border">
                             {{ item.healthy }}
                           </td>
-                          <td class="px-4 py-3 text-sm text-center border">
+                          <td class="px-2 py-1.5 text-xs text-center border">
                             {{ item.broken }}
                           </td>
-                          <td class="px-4 py-3 text-sm text-center border">
+                          <td class="px-2 py-1.5 text-xs text-center border">
                             {{ item.discarded }}
                           </td>
-                          <td class="px-4 py-3 text-sm text-center border">
+                          <td class="px-2 py-1.5 text-xs text-center border">
                             {{ item.lost }}
                           </td>
                         </tr>
                         <tr class="bg-gray-50 font-medium">
-                          <td class="px-4 py-3 text-sm border font-semibold">
+                          <td class="px-2 py-1.5 text-xs border font-semibold">
                             TỔNG CỘNG
                           </td>
                           <td
-                            class="px-4 py-3 text-sm text-center border font-semibold"
+                            class="px-2 py-1.5 text-xs text-center border font-semibold"
                           >
                             {{
                               inventory.reduce(
@@ -834,7 +836,7 @@ const getActivityStatusText = (status: string) => {
                             }}
                           </td>
                           <td
-                            class="px-4 py-3 text-sm text-center border font-semibold"
+                            class="px-2 py-1.5 text-xs text-center border font-semibold"
                           >
                             {{
                               inventory.reduce(
@@ -845,7 +847,7 @@ const getActivityStatusText = (status: string) => {
                             }}
                           </td>
                           <td
-                            class="px-4 py-3 text-sm text-center border font-semibold"
+                            class="px-2 py-1.5 text-xs text-center border font-semibold"
                           >
                             {{
                               inventory.reduce(
@@ -856,7 +858,7 @@ const getActivityStatusText = (status: string) => {
                             }}
                           </td>
                           <td
-                            class="px-4 py-3 text-sm text-center border font-semibold"
+                            class="px-2 py-1.5 text-xs text-center border font-semibold"
                           >
                             {{
                               inventory.reduce(
@@ -870,51 +872,53 @@ const getActivityStatusText = (status: string) => {
                     </table>
                   </div>
                 </div>
-                <div v-else class="flex flex-col items-center py-6">
-                  <div class="rounded-full bg-gray-100 p-3 mb-3">
-                    <PackageIcon class="size-6 text-gray-400" />
+                <div v-else class="flex flex-col items-center py-4">
+                  <div class="rounded-full bg-gray-100 p-2 mb-2">
+                    <PackageIcon class="size-5 text-gray-400" />
                   </div>
-                  <p class="text-sm text-gray-500">
+                  <p class="text-xs text-gray-500">
                     Không có thiết bị nào trong kho
                   </p>
                 </div>
               </TabsContent>
               <TabsContent
                 value="borrowed"
-                class="p-4 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+                class="p-3 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingBorrowedItems">
-                  <div class="flex justify-center items-center p-8">
-                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  <div class="flex justify-center items-center p-4">
+                    <LoaderIcon class="animate-spin h-6 w-6 text-gray-400" />
                   </div>
                 </div>
                 <div v-else-if="borrowedDevices && borrowedDevices.length">
                   <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border">
+                    <table
+                      class="min-w-full divide-y divide-gray-200 border text-xs"
+                    >
                       <thead>
                         <tr class="whitespace-nowrap">
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             NGƯỜI MƯỢN
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             NGÀY MƯỢN
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             HẠN TRẢ
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             TRẠNG THÁI
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             GHI CHÚ
                           </th>
@@ -926,10 +930,10 @@ const getActivityStatusText = (status: string) => {
                           :key="item.id"
                           class="whitespace-nowrap hover:bg-gray-50"
                         >
-                          <td class="px-4 py-3 text-sm border">
-                            <div class="flex items-center gap-2">
+                          <td class="px-2 py-1.5 text-xs border">
+                            <div class="flex items-center gap-1.5">
                               <div
-                                class="relative flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full overflow-hidden"
+                                class="relative flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full overflow-hidden"
                               >
                                 <img
                                   :src="item.borrower?.avatar || 'User Avatar'"
@@ -948,15 +952,15 @@ const getActivityStatusText = (status: string) => {
                               </div>
                             </div>
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ formatDate(item.borrowDate) }}
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ formatDate(item.expectedReturnedAt) }}
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             <span
-                              class="text-xs px-2 py-1 rounded-full"
+                              class="text-xs px-1.5 py-0.5 rounded-full"
                               :class="getBorrowedProgressClass(item)"
                             >
                               {{
@@ -967,7 +971,7 @@ const getActivityStatusText = (status: string) => {
                               }}
                             </span>
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ item.returnedNote || "—" }}
                           </td>
                         </tr>
@@ -975,46 +979,49 @@ const getActivityStatusText = (status: string) => {
                     </table>
                   </div>
                 </div>
-                <div v-else class="flex flex-col items-center py-6">
-                  <div class="rounded-full bg-gray-100 p-3 mb-3">
-                    <UserIcon class="size-6 text-gray-400" />
+                <div v-else class="flex flex-col items-center py-4">
+                  <div class="rounded-full bg-gray-100 p-2 mb-2">
+                    <UserIcon class="size-5 text-gray-400" />
                   </div>
-                  <p class="text-sm text-gray-500">
+                  <p class="text-xs text-gray-500">
                     Không có thiết bị nào đang được mượn
                   </p>
                 </div>
               </TabsContent>
+
               <TabsContent
                 value="audit"
-                class="p-4 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+                class="p-3 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingAuditItems">
-                  <div class="flex justify-center items-center p-8">
-                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  <div class="flex justify-center items-center p-4">
+                    <LoaderIcon class="animate-spin h-6 w-6 text-gray-400" />
                   </div>
                 </div>
                 <div v-else-if="auditDevices && auditDevices.length">
                   <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border">
+                    <table
+                      class="min-w-full divide-y divide-gray-200 border text-xs"
+                    >
                       <thead>
                         <tr class="whitespace-nowrap">
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             NGƯỜI KIỂM ĐẾM
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             NGÀY KIỂM ĐẾM
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             KẾT QUẢ
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             GHI CHÚ
                           </th>
@@ -1026,10 +1033,10 @@ const getActivityStatusText = (status: string) => {
                           :key="item.id"
                           class="whitespace-nowrap hover:bg-gray-50"
                         >
-                          <td class="px-4 py-3 text-sm border">
-                            <div class="flex items-center gap-2">
+                          <td class="px-2 py-1.5 text-xs border">
+                            <div class="flex items-center gap-1.5">
                               <div
-                                class="relative flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full overflow-hidden"
+                                class="relative flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full overflow-hidden"
                               >
                                 <img
                                   :src="item.auditor?.avatar || 'User Avatar'"
@@ -1048,12 +1055,12 @@ const getActivityStatusText = (status: string) => {
                               </div>
                             </div>
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ formatDate(item.auditDate) }}
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             <span
-                              class="text-xs px-2 py-1 rounded-full"
+                              class="text-xs px-1.5 py-0.5 rounded-full"
                               :class="{
                                 'bg-yellow-50 text-yellow-800':
                                   item.auditResult === 'assessing',
@@ -1066,7 +1073,7 @@ const getActivityStatusText = (status: string) => {
                               {{ getAuditStatusText(item.auditResult) }}
                             </span>
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ item.notes || "—" }}
                           </td>
                         </tr>
@@ -1074,53 +1081,55 @@ const getActivityStatusText = (status: string) => {
                     </table>
                   </div>
                 </div>
-                <div v-else class="flex flex-col items-center py-6">
-                  <div class="rounded-full bg-gray-100 p-3 mb-3">
-                    <ClipboardCheckIcon class="size-6 text-gray-400" />
+                <div v-else class="flex flex-col items-center py-4">
+                  <div class="rounded-full bg-gray-100 p-2 mb-2">
+                    <ClipboardCheckIcon class="size-5 text-gray-400" />
                   </div>
-                  <p class="text-sm text-gray-500">
+                  <p class="text-xs text-gray-500">
                     Không có thiết bị nào đang kiểm đếm
                   </p>
                 </div>
               </TabsContent>
               <TabsContent
                 value="maintenance"
-                class="p-4 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+                class="p-3 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingMaintenanceItems">
-                  <div class="flex justify-center items-center p-8">
-                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  <div class="flex justify-center items-center p-4">
+                    <LoaderIcon class="animate-spin h-6 w-6 text-gray-400" />
                   </div>
                 </div>
                 <div
                   v-else-if="maintenanceDevices && maintenanceDevices.length"
                 >
                   <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border">
+                    <table
+                      class="min-w-full divide-y divide-gray-200 border text-xs"
+                    >
                       <thead>
                         <tr class="whitespace-nowrap">
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             KỸ THUẬT VIÊN
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             NGÀY BẮT ĐẦU
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             DỰ KIẾN HOÀN THÀNH
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             TRẠNG THÁI
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             LÝ DO
                           </th>
@@ -1132,10 +1141,10 @@ const getActivityStatusText = (status: string) => {
                           :key="item.id"
                           class="whitespace-nowrap hover:bg-gray-50"
                         >
-                          <td class="px-4 py-3 text-sm border">
-                            <div class="flex items-center gap-2">
+                          <td class="px-2 py-1.5 text-xs border">
+                            <div class="flex items-center gap-1.5">
                               <div
-                                class="relative flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full overflow-hidden"
+                                class="relative flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full overflow-hidden"
                               >
                                 <img
                                   :src="
@@ -1156,15 +1165,15 @@ const getActivityStatusText = (status: string) => {
                               </div>
                             </div>
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ formatDate(item.maintenanceStartDate) }}
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ formatDate(item.expectedCompletionDate) }}
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             <span
-                              class="text-xs px-2 py-1 rounded-full"
+                              class="text-xs px-1.5 py-0.5 rounded-full"
                               :class="{
                                 'bg-yellow-50 text-yellow-800':
                                   item.status === 'maintaining',
@@ -1177,7 +1186,7 @@ const getActivityStatusText = (status: string) => {
                               {{ getMaintenanceStatusText(item.status) }}
                             </span>
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ item.maintenanceReason || "Bảo trì định kỳ" }}
                           </td>
                         </tr>
@@ -1185,56 +1194,58 @@ const getActivityStatusText = (status: string) => {
                     </table>
                   </div>
                 </div>
-                <div v-else class="flex flex-col items-center py-6">
-                  <div class="rounded-full bg-gray-100 p-3 mb-3">
-                    <WrenchIcon class="size-6 text-gray-400" />
+                <div v-else class="flex flex-col items-center py-4">
+                  <div class="rounded-full bg-gray-100 p-2 mb-2">
+                    <WrenchIcon class="size-5 text-gray-400" />
                   </div>
-                  <p class="text-sm text-gray-500">
+                  <p class="text-xs text-gray-500">
                     Không có thiết bị nào đang bảo trì
                   </p>
                 </div>
               </TabsContent>
               <TabsContent
                 value="transport"
-                class="p-4 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+                class="p-3 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingTransportItems">
-                  <div class="flex justify-center items-center p-8">
-                    <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  <div class="flex justify-center items-center p-4">
+                    <LoaderIcon class="animate-spin h-6 w-6 text-gray-400" />
                   </div>
                 </div>
                 <div v-else-if="transportDevices && transportDevices.length">
                   <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border">
+                    <table
+                      class="min-w-full divide-y divide-gray-200 border text-xs"
+                    >
                       <thead>
                         <tr class="whitespace-nowrap">
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             TỪ ĐỊA ĐIỂM
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             ĐẾN ĐỊA ĐIỂM
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             NGƯỜI XÁC NHẬN VẬN CHUYỂN
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             NGƯỜI XÁC NHẬN NHẬN VỀ
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             NGÀY VẬN CHUYỂN
                           </th>
                           <th
-                            class="bg-blue-50 p-2 text-left text-sm font-semibold text-blue-900 border"
+                            class="bg-blue-50 p-1.5 text-left text-xs font-semibold text-blue-900 border"
                           >
                             TRẠNG THÁI
                           </th>
@@ -1246,19 +1257,19 @@ const getActivityStatusText = (status: string) => {
                           :key="item.id"
                           class="whitespace-nowrap hover:bg-gray-50"
                         >
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ item.sourceLocation || "N/A" }}
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ item.destinationLocation || "N/A" }}
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             <div
-                              class="flex items-center gap-2"
+                              class="flex items-center gap-1.5"
                               v-if="item.sender"
                             >
                               <div
-                                class="relative flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full overflow-hidden"
+                                class="relative flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full overflow-hidden"
                               >
                                 <img
                                   :src="item.sender?.avatar || 'User Avatar'"
@@ -1278,13 +1289,13 @@ const getActivityStatusText = (status: string) => {
                             </div>
                             <span v-else>—</span>
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             <div
-                              class="flex items-center gap-2"
+                              class="flex items-center gap-1.5"
                               v-if="item.receiver"
                             >
                               <div
-                                class="relative flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full overflow-hidden"
+                                class="relative flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full overflow-hidden"
                               >
                                 <img
                                   :src="item.receiver?.avatar || 'User Avatar'"
@@ -1304,12 +1315,12 @@ const getActivityStatusText = (status: string) => {
                             </div>
                             <span v-else>—</span>
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             {{ formatDate(item.transportDate) }}
                           </td>
-                          <td class="px-4 py-3 text-sm border">
+                          <td class="px-2 py-1.5 text-xs border">
                             <span
-                              class="text-xs px-2 py-1 rounded-full"
+                              class="text-xs px-1.5 py-0.5 rounded-full"
                               :class="{
                                 'bg-yellow-50 text-yellow-800':
                                   item.status === 'shipping',
@@ -1327,11 +1338,11 @@ const getActivityStatusText = (status: string) => {
                     </table>
                   </div>
                 </div>
-                <div v-else class="flex flex-col items-center py-6">
-                  <div class="rounded-full bg-gray-100 p-3 mb-3">
-                    <TruckIcon class="size-6 text-gray-400" />
+                <div v-else class="flex flex-col items-center py-4">
+                  <div class="rounded-full bg-gray-100 p-2 mb-2">
+                    <TruckIcon class="size-5 text-gray-400" />
                   </div>
-                  <p class="text-sm text-gray-500">
+                  <p class="text-xs text-gray-500">
                     Không có thiết bị nào đang vận chuyển
                   </p>
                 </div>
@@ -1342,16 +1353,16 @@ const getActivityStatusText = (status: string) => {
           <div
             class="bg-white h-[calc(100vh-6rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
           >
-            <div class="p-4 border-b border-gray-200">
-              <h2 class="text-xl font-semibold text-gray-700">
+            <div class="p-3 border-b border-gray-200">
+              <h2 class="text-sm font-semibold text-gray-700">
                 THÔNG TIN THIẾT BỊ
               </h2>
             </div>
 
-            <div class="p-4">
-              <div class="flex items-center mb-4">
+            <div class="p-3">
+              <div class="flex items-center mb-3">
                 <div
-                  class="flex-shrink-0 mr-4 w-20 h-20 bg-gray-100 rounded border"
+                  class="flex-shrink-0 mr-3 w-16 h-16 bg-gray-100 rounded border"
                 >
                   <img
                     :src="deviceDetail.image?.mainImage"
@@ -1361,29 +1372,29 @@ const getActivityStatusText = (status: string) => {
                 </div>
 
                 <div class="flex-grow">
-                  <div class="text-sm text-gray-500 mb-1">
+                  <div class="text-xs text-gray-500 mb-0.5">
                     Mã thiết bị: {{ deviceDetail.id }}
                   </div>
-                  <h1 class="text-xl font-medium text-gray-900">
+                  <h1 class="text-base font-medium text-gray-900">
                     {{ deviceDetail.deviceName }}
                   </h1>
                 </div>
               </div>
 
-              <div class="mb-6 space-y-2">
-                <div class="grid grid-cols-[120px_1fr]">
-                  <div class="text-base text-gray-500">Tình trạng</div>
-                  <div class="text-base font-medium text-red-600">Hư</div>
+              <div class="mb-4 space-y-1.5">
+                <div class="grid grid-cols-[90px_1fr]">
+                  <div class="text-sm text-gray-500">Tình trạng</div>
+                  <div class="text-sm font-medium text-red-600">Hư</div>
                 </div>
 
-                <div class="grid grid-cols-[120px_1fr]">
-                  <div class="text-base text-gray-500">Hoạt động</div>
-                  <div class="text-base text-gray-900">Sửa chữa: Đang chờ</div>
+                <div class="grid grid-cols-[90px_1fr]">
+                  <div class="text-sm text-gray-500">Hoạt động</div>
+                  <div class="text-sm text-gray-900">Sửa chữa: Đang chờ</div>
                 </div>
 
-                <div class="grid grid-cols-[120px_1fr]">
-                  <div class="text-base text-gray-500">Nơi chứa</div>
-                  <div class="text-base text-gray-900">
+                <div class="grid grid-cols-[90px_1fr]">
+                  <div class="text-sm text-gray-500">Nơi chứa</div>
+                  <div class="text-sm text-gray-900">
                     {{
                       deviceDetail.labRoom && deviceDetail.labBranch
                         ? deviceDetail.labRoom.split("-")[1] +
@@ -1399,36 +1410,36 @@ const getActivityStatusText = (status: string) => {
 
               <div class="border rounded-md">
                 <div
-                  class="p-4 flex justify-between items-center cursor-pointer"
+                  class="p-2 flex justify-between items-center cursor-pointer"
                   @click="showMore = !showMore"
                 >
-                  <h3 class="text-base text-blue-600 font-medium">Chi tiết</h3>
+                  <h3 class="text-sm text-blue-600 font-medium">Chi tiết</h3>
                   <ChevronDownIcon
                     v-if="!showMore"
-                    class="h-5 w-5 text-blue-500"
+                    class="h-4 w-4 text-blue-500"
                   />
-                  <ChevronUpIcon v-else class="h-5 w-5 text-blue-500" />
+                  <ChevronUpIcon v-else class="h-4 w-4 text-blue-500" />
                 </div>
 
-                <div v-if="showMore" class="p-4 border-t">
-                  <div class="space-y-3">
+                <div v-if="showMore" class="p-2 border-t">
+                  <div class="space-y-2">
                     <div class="flex">
-                      <div class="w-32 text-sm text-gray-500">Phân loại</div>
-                      <div class="flex-1 text-sm text-gray-900">
+                      <div class="w-28 text-xs text-gray-500">Phân loại</div>
+                      <div class="flex-1 text-xs text-gray-900">
                         {{ deviceDetail.categoryName || "Máy hàn khô" }}
                       </div>
                     </div>
 
                     <div class="flex">
-                      <div class="w-32 text-sm text-gray-500">Thương hiệu</div>
-                      <div class="flex-1 text-sm text-gray-900">
+                      <div class="w-28 text-xs text-gray-500">Thương hiệu</div>
+                      <div class="flex-1 text-xs text-gray-900">
                         {{ deviceDetail.brand || "OEM" }}
                       </div>
                     </div>
 
                     <div class="flex">
-                      <div class="w-32 text-sm text-gray-500">Quyền mượn</div>
-                      <div class="flex-1 text-sm text-gray-900">
+                      <div class="w-28 text-xs text-gray-500">Quyền mượn</div>
+                      <div class="flex-1 text-xs text-gray-900">
                         {{
                           /*deviceDetail.allowedBorrowRoles?.join(", ") ||*/ "Sinh viên, Giảng viên"
                         }}
@@ -1436,8 +1447,8 @@ const getActivityStatusText = (status: string) => {
                     </div>
 
                     <div class="flex">
-                      <div class="w-32 text-sm text-gray-500">Môn đang học</div>
-                      <div class="flex-1 text-sm text-gray-900">
+                      <div class="w-28 text-xs text-gray-500">Môn đang học</div>
+                      <div class="flex-1 text-xs text-gray-900">
                         Kỹ thuật Lập trình<br />
                         Lập trình ứng dụng IoT<br />
                         Đồ án Đa ngành
@@ -1445,8 +1456,8 @@ const getActivityStatusText = (status: string) => {
                     </div>
 
                     <div class="flex">
-                      <div class="w-32 text-sm text-gray-500">Môn đã học</div>
-                      <div class="flex-1 text-sm text-gray-900">
+                      <div class="w-28 text-xs text-gray-500">Môn đã học</div>
+                      <div class="flex-1 text-xs text-gray-900">
                         Hệ thống số
                       </div>
                     </div>
@@ -1454,41 +1465,41 @@ const getActivityStatusText = (status: string) => {
                 </div>
               </div>
 
-              <div class="border rounded-md mt-3">
+              <div class="border rounded-md mt-2">
                 <div
-                  class="p-4 flex justify-between items-center cursor-pointer"
+                  class="p-2 flex justify-between items-center cursor-pointer"
                   @click="showAccessories = !showAccessories"
                 >
-                  <h3 class="text-base text-blue-600 font-medium">
+                  <h3 class="text-sm text-blue-600 font-medium">
                     Dụng cụ đi kèm
                   </h3>
                   <ChevronDownIcon
                     v-if="!showAccessories"
-                    class="h-5 w-5 text-blue-500"
+                    class="h-4 w-4 text-blue-500"
                   />
-                  <ChevronUpIcon v-else class="h-5 w-5 text-blue-500" />
+                  <ChevronUpIcon v-else class="h-4 w-4 text-blue-500" />
                 </div>
-                <div v-if="showAccessories" class="p-4 border-t">
+                <div v-if="showAccessories" class="p-2 border-t">
                   <div
                     v-if="loadingAccessories"
-                    class="flex justify-center items-center py-4"
+                    class="flex justify-center items-center py-3"
                   >
-                    <LoaderIcon class="animate-spin h-6 w-6 text-gray-400" />
+                    <LoaderIcon class="animate-spin h-5 w-5 text-gray-400" />
                   </div>
                   <div
                     v-else-if="accessories.length === 0"
-                    class="text-sm text-gray-500"
+                    class="text-xs text-gray-500"
                   >
                     Không có dụng cụ đi kèm
                   </div>
-                  <div v-else class="space-y-4">
+                  <div v-else class="space-y-3">
                     <div
                       v-for="accessory in accessories"
                       :key="accessory.id"
-                      class="flex items-center space-x-3 border-b border-gray-100 pb-3"
+                      class="flex items-center space-x-2 border-b border-gray-100 pb-2"
                     >
                       <div
-                        class="flex-shrink-0 w-12 h-12 bg-gray-100 border rounded flex items-center justify-center overflow-hidden"
+                        class="flex-shrink-0 w-10 h-10 bg-gray-100 border rounded flex items-center justify-center overflow-hidden"
                       >
                         <img
                           v-if="accessory.image"
@@ -1498,17 +1509,17 @@ const getActivityStatusText = (status: string) => {
                           :alt="accessory.name"
                           class="w-full h-full object-contain"
                         />
-                        <PackageIcon v-else class="h-6 w-6 text-gray-400" />
+                        <PackageIcon v-else class="h-5 w-5 text-gray-400" />
                       </div>
                       <div class="flex-1">
-                        <div class="text-sm font-medium text-gray-900">
+                        <div class="text-xs font-medium text-gray-900">
                           {{ accessory.name }}
                         </div>
                         <div class="text-xs text-gray-500">
                           {{ accessory.brand || "Không có thương hiệu" }}
                         </div>
                       </div>
-                      <div class="text-sm font-medium text-gray-900">
+                      <div class="text-xs font-medium text-gray-900">
                         x {{ accessory.quantity }} {{ accessory.unit || "EA" }}
                       </div>
                     </div>
@@ -1522,7 +1533,7 @@ const getActivityStatusText = (status: string) => {
     </div>
 
     <div v-if="mode === 'user' && userInfo">
-      <div class="grid grid-cols-3 gap-6">
+      <div class="grid grid-cols-3 gap-4">
         <div
           class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
         >
@@ -1531,15 +1542,17 @@ const getActivityStatusText = (status: string) => {
               <TabsList class="bg-transparent p-0 w-full flex">
                 <TabsTrigger
                   value="borrowed"
-                  class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                  class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                 >
                   <div class="flex items-center justify-center gap-1 w-full">
                     <div class="rounded-full bg-violet-50 p-1">
-                      <PackageIcon class="h-4 w-4 text-violet-600" />
+                      <PackageIcon class="h-3 w-3 text-violet-600" />
                     </div>
-                    <span class="whitespace-nowrap">THIẾT BỊ ĐANG MƯỢN</span>
+                    <span class="whitespace-nowrap text-xs"
+                      >THIẾT BỊ ĐANG MƯỢN</span
+                    >
                     <span
-                      class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                      class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
                     >
                       {{ groupedBorrowedDevices.length || 0 }}
                     </span>
@@ -1547,15 +1560,17 @@ const getActivityStatusText = (status: string) => {
                 </TabsTrigger>
                 <TabsTrigger
                   value="activities"
-                  class="text-xs flex-1 px-4 py-3 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
+                  class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                 >
                   <div class="flex items-center justify-center gap-1 w-full">
                     <div class="rounded-full bg-emerald-50 p-1">
-                      <ClipboardCheckIcon class="h-4 w-4 text-emerald-600" />
+                      <ClipboardCheckIcon class="h-3 w-3 text-emerald-600" />
                     </div>
-                    <span class="whitespace-nowrap">CÁC HOẠT ĐỘNG KHÁC</span>
+                    <span class="whitespace-nowrap text-xs"
+                      >CÁC HOẠT ĐỘNG KHÁC</span
+                    >
                     <span
-                      class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                      class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
                     >
                       {{ userActivities.length || 0 }}
                     </span>
@@ -1565,12 +1580,12 @@ const getActivityStatusText = (status: string) => {
             </div>
 
             <div class="h-[calc(100vh-10rem)] overflow-y-auto">
-              <TabsContent value="borrowed" class="p-4 mt-0">
+              <TabsContent value="borrowed" class="p-3 mt-0">
                 <div
                   v-if="loadingUserBorrowedItems"
-                  class="flex justify-center items-center p-8"
+                  class="flex justify-center items-center p-4"
                 >
-                  <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  <LoaderIcon class="animate-spin h-6 w-6 text-gray-400" />
                 </div>
                 <div
                   v-else-if="groupedBorrowedDevices.length > 0"
@@ -1685,12 +1700,12 @@ const getActivityStatusText = (status: string) => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="activities" class="p-4 mt-0">
+              <TabsContent value="activities" class="p-3 mt-0">
                 <div
                   v-if="loadingUserActivities"
-                  class="flex justify-center items-center p-8"
+                  class="flex justify-center items-center p-4"
                 >
-                  <LoaderIcon class="animate-spin h-8 w-8 text-gray-400" />
+                  <LoaderIcon class="animate-spin h-6 w-6 text-gray-400" />
                 </div>
                 <div
                   v-else-if="userActivities.length > 0"
@@ -1861,35 +1876,35 @@ const getActivityStatusText = (status: string) => {
         <div
           class="bg-white h-[calc(100vh-6rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
         >
-          <div class="border-b border-gray-200 p-4">
-            <h2 class="text-xl font-semibold text-gray-700">
+          <div class="border-b border-gray-200 p-3">
+            <h2 class="text-sm font-semibold text-gray-700">
               THÔNG TIN NGƯỜI DÙNG
             </h2>
           </div>
 
           <div>
             <div class="space-y-4 bg-gray-50 rounded-lg p-2">
-              <div class="rounded-lg px-4 py-1">
+              <div class="rounded-lg px-3 py-1">
                 <div class="flex items-center">
                   <img
                     :src="userInfo.avatar || undefined"
                     alt="User avatar"
-                    class="h-12 w-12 rounded-full object-cover"
+                    class="h-10 w-10 rounded-full object-cover"
                   />
-                  <div class="ml-3">
-                    <h4 class="text-sm font-medium text-gray-500">
+                  <div class="ml-2">
+                    <h4 class="text-xs font-medium text-gray-500">
                       Mã số:
                       <span class="text-gray-500 font-semibold">{{
                         userInfo.id
                       }}</span>
-                      <span class="text-sm text-gray-500 italic font-semibold">
+                      <span class="text-xs text-gray-500 italic font-semibold">
                         ({{
                           userInfo.roles?.map((r) => r.name).join(", ") ||
                           "Không có vai trò"
                         }})
                       </span>
                     </h4>
-                    <p class="text-base font-semibold text-gray-900">
+                    <p class="text-sm font-semibold text-gray-900">
                       {{ userInfo.name }}
                     </p>
                   </div>
@@ -1897,44 +1912,44 @@ const getActivityStatusText = (status: string) => {
               </div>
             </div>
 
-            <div class="space-y-4 p-4 border-t border-gray-200">
-              <div class="grid grid-cols-[100px_1fr]">
-                <div class="text-sm text-gray-500">Tài khoản</div>
-                <div class="text-sm text-green-600">Hoạt động</div>
+            <div class="space-y-3 p-3 border-t border-gray-200">
+              <div class="grid grid-cols-[80px_1fr]">
+                <div class="text-xs text-gray-500">Tài khoản</div>
+                <div class="text-xs text-green-600">Hoạt động</div>
               </div>
 
-              <div class="grid grid-cols-[100px_1fr]">
-                <div class="text-sm text-gray-500">Tình trạng</div>
-                <div class="text-sm text-red-600">
+              <div class="grid grid-cols-[80px_1fr]">
+                <div class="text-xs text-gray-500">Tình trạng</div>
+                <div class="text-xs text-red-600">
                   Cấm hoạt động (đến 05/05/2025)
                 </div>
               </div>
 
               <div class="border rounded-md">
                 <div
-                  class="p-4 flex justify-between items-center cursor-pointer"
+                  class="p-2 flex justify-between items-center cursor-pointer"
                   @click="showUserDetails = !showUserDetails"
                 >
-                  <h3 class="text-base text-blue-600 font-medium">Chi tiết</h3>
+                  <h3 class="text-sm text-blue-600 font-medium">Chi tiết</h3>
                   <ChevronDownIcon
                     v-if="!showUserDetails"
-                    class="h-5 w-5 text-blue-500"
+                    class="h-4 w-4 text-blue-500"
                   />
-                  <ChevronUpIcon v-else class="h-5 w-5 text-blue-500" />
+                  <ChevronUpIcon v-else class="h-4 w-4 text-blue-500" />
                 </div>
 
-                <div v-if="showUserDetails" class="p-4 border-t">
-                  <div class="space-y-3">
+                <div v-if="showUserDetails" class="p-2 border-t">
+                  <div class="space-y-2">
                     <div class="flex">
-                      <div class="w-32 text-sm text-gray-500">Nguyên nhân</div>
-                      <div class="flex-1 text-sm text-gray-900">
+                      <div class="w-28 text-xs text-gray-500">Nguyên nhân</div>
+                      <div class="flex-1 text-xs text-gray-900">
                         Làm mất thiết bị
                       </div>
                     </div>
 
                     <div class="flex">
-                      <div class="w-32 text-sm text-gray-500">Môn đang học</div>
-                      <div class="flex-1 text-sm text-gray-900">
+                      <div class="w-28 text-xs text-gray-500">Môn đang học</div>
+                      <div class="flex-1 text-xs text-gray-900">
                         Hệ thống số<br />
                         Điện - Điện tử<br />
                         Thiết kế vi mạch
@@ -1942,17 +1957,17 @@ const getActivityStatusText = (status: string) => {
                     </div>
 
                     <div class="flex">
-                      <div class="w-32 text-sm text-gray-500">Môn đã học</div>
-                      <div class="flex-1 text-sm text-gray-900">
+                      <div class="w-28 text-xs text-gray-500">Môn đã học</div>
+                      <div class="flex-1 text-xs text-gray-900">
                         Hệ thống số
                       </div>
                     </div>
 
                     <div class="flex">
-                      <div class="w-32 text-sm text-gray-500">
+                      <div class="w-28 text-xs text-gray-500">
                         Phòng có phép
                       </div>
-                      <div class="flex-1 text-sm text-gray-900">
+                      <div class="flex-1 text-xs text-gray-900">
                         605 H6, Dĩ An<br />
                         601 H6, Dĩ An
                       </div>
@@ -1962,8 +1977,8 @@ const getActivityStatusText = (status: string) => {
               </div>
             </div>
 
-            <div class="px-4 pb-4">
-              <Button class="w-full bg-blue-600 hover:bg-blue-700">
+            <div class="px-3 pb-3">
+              <Button class="w-full bg-blue-600 hover:bg-blue-700 text-xs py-2">
                 Cho phép mượn
               </Button>
             </div>
