@@ -32,9 +32,12 @@ RUN bun install
 COPY src-tauri/Cargo.* ./src-tauri/
 COPY src-tauri/tauri.conf.json ./src-tauri/
 
+# Create minimal source files structure for dependency fetching
 RUN mkdir -p src-tauri/src
 RUN echo "fn main() {}" > src-tauri/src/main.rs
+RUN echo "pub fn dummy() {}" > src-tauri/src/lib.rs
 
+# Fetch dependencies based on the Cargo.toml
 RUN cd src-tauri && cargo fetch
 
 COPY . .
