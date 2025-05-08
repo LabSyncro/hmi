@@ -59,99 +59,83 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Tauri App for ARM64 using cross-compilation container
+      - name: Install Tauri CLI
+        run: bun add --dev @tauri-apps/cli
+
+      - name: Set up cross-compilation environment
         run: |
-          # Create a Dockerfile for cross-compilation
-          cat > Dockerfile.cross << EOF
-          FROM rust:slim-bookworm
-
-          # Install dependencies
-          RUN apt-get update && apt-get install -y \
-              build-essential \
-              curl \
-              wget \
-              file \
-              unzip \
-              libwebkit2gtk-4.1-dev \
-              libssl-dev \
-              libgtk-3-dev \
-              libayatana-appindicator3-dev \
-              librsvg2-dev \
-              patchelf \
-              pkg-config \
-              nodejs \
-              npm
-
-          # Install Rust target
-          RUN rustup target add aarch64-unknown-linux-gnu
-
           # Install cross-compilation tools
-          RUN apt-get install -y \
-              gcc-aarch64-linux-gnu \
-              g++-aarch64-linux-gnu \
-              libc6-dev-arm64-cross
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
-          # Add ARM64 architecture and install ARM64 libraries
-          RUN dpkg --add-architecture arm64 && \
-              apt-get update && \
-              apt-get install -y \
-              libwebkit2gtk-4.1-dev:arm64 \
-              libssl-dev:arm64 \
-              libgtk-3-dev:arm64 \
-              libayatana-appindicator3-dev:arm64 \
-              librsvg2-dev:arm64
-
-          # Set up cargo config
-          RUN mkdir -p /root/.cargo && \
-              echo '[target.aarch64-unknown-linux-gnu]' > /root/.cargo/config && \
-              echo 'linker = "aarch64-linux-gnu-gcc"' >> /root/.cargo/config && \
-              echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> /root/.cargo/config && \
-              echo '' >> /root/.cargo/config && \
-              echo '[env]' >> /root/.cargo/config && \
-              echo 'PKG_CONFIG_ALLOW_CROSS = "1"' >> /root/.cargo/config && \
-              echo 'PKG_CONFIG_PATH = "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"' >> /root/.cargo/config && \
-              echo 'PKG_CONFIG_SYSROOT_DIR = "/"' >> /root/.cargo/config
-
-          # Install bun
-          RUN curl -fsSL https://bun.sh/install | bash
-
-          # Set environment variables
-          ENV PATH="/root/.bun/bin:${PATH}"
-          ENV PKG_CONFIG_ALLOW_CROSS=1
-          ENV PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
-          ENV PKG_CONFIG_SYSROOT_DIR="/"
-          ENV RUSTFLAGS="-C link-arg=-march=armv8-a"
-
-          # Set up working directory
-          WORKDIR /app
+          # Set up Cargo config for cross-compilation
+          mkdir -p ~/.cargo
+          cat > ~/.cargo/config.toml << EOF
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          rustflags = ["-C", "link-arg=-march=armv8-a"]
           EOF
 
-          # Build the cross-compilation container
-          docker build -t tauri-cross-arm64 -f Dockerfile.cross .
+          # Install Rust target
+          rustup target add aarch64-unknown-linux-gnu
 
-          # Install Tauri CLI in the project
-          bun add --dev @tauri-apps/cli
+      - name: Use cross tool for Rust cross-compilation
+        run: |
+          # Install cross tool for Rust cross-compilation
+          cargo install cross
 
-          # Run the build in the container
-          docker run --rm -v $(pwd):/app tauri-cross-arm64 bash -c "
-            cd /app &&
-            export PATH=/root/.bun/bin:\$PATH &&
-            export PKG_CONFIG_ALLOW_CROSS=1 &&
-            export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig &&
-            export PKG_CONFIG_SYSROOT_DIR=/ &&
-            export RUSTFLAGS='-C link-arg=-march=armv8-a' &&
-            bun install &&
-            bun tauri build --target aarch64-unknown-linux-gnu
-          "
+          # Create a Cross.toml configuration file
+          cat > Cross.toml << EOF
+          [target.aarch64-unknown-linux-gnu]
+          image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:latest"
 
-          # Create dist directory
-          mkdir -p dist
+          [build.env]
+          passthrough = [
+            "POSTGRES_HOST",
+            "POSTGRES_PORT",
+            "POSTGRES_USER",
+            "POSTGRES_PASSWORD",
+            "POSTGRES_DB",
+            "POSTGRES_MAX_CONNECTIONS",
+            "VITE_API_BASE_URL"
+          ]
+          EOF
 
-          # Copy the built packages
-          cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
-          if [ -d "src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage" ]; then
-            cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.AppImage
-          fi
+      - name: Build Tauri App for ARM64
+        run: |
+          # Build the frontend
+          bun run build
+
+          # Use cross to build the Tauri app for ARM64
+          cd src-tauri
+          cross build --target aarch64-unknown-linux-gnu --release
+
+          # Create dist directory and copy the binary
+          mkdir -p ../dist
+          cp target/aarch64-unknown-linux-gnu/release/hmi ../dist/hmi-${{ github.event.inputs.version }}-${{ matrix.targetName }}
+
+          # Create a simple Debian package structure
+          mkdir -p deb-package/DEBIAN
+          mkdir -p deb-package/usr/local/bin
+
+          # Create control file
+          cat > deb-package/DEBIAN/control << EOF
+          Package: hmi
+          Version: ${{ github.event.inputs.version }}
+          Section: utils
+          Priority: optional
+          Architecture: arm64
+          Maintainer: HMI Team
+          Description: HMI Application for Raspberry Pi
+           This package provides the HMI application for Raspberry Pi devices.
+          EOF
+
+          # Copy binary to package
+          cp target/aarch64-unknown-linux-gnu/release/hmi deb-package/usr/local/bin/
+
+          # Build the Debian package
+          dpkg-deb --build deb-package
+          mv deb-package.deb ../dist/hmi-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
