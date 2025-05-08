@@ -70,17 +70,14 @@ jobs:
       - name: Install frontend dependencies
         run: bun install
 
+      - name: Install Tauri CLI
+        run: bun add -g @tauri-apps/cli
+
       - name: Build Tauri App for Debian 12 Bookworm
-        uses: tauri-apps/tauri-action@v0
+        run: |
+          bun x tauri build ${{ matrix.args }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v${{ github.event.inputs.version }}
-          releaseName: "App v${{ github.event.inputs.version }} for Debian 12"
-          releaseBody: "Release for Raspberry Pi devices running Debian 12 (Bookworm). Download and install the package for your Raspberry Pi."
-          releaseDraft: false
-          prerelease: ${{ github.event.inputs.prerelease }}
-          args: ${{ matrix.args }}
 
       - name: Package for Raspberry Pi (Debian 12)
         run: |
@@ -90,11 +87,16 @@ jobs:
             cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.AppImage
           fi
 
-      - name: Upload Release Assets
+      - name: Create GitHub Release
+        id: create_release
         uses: softprops/action-gh-release@v1
         with:
           files: dist/*
           tag_name: v${{ github.event.inputs.version }}
+          name: App v${{ github.event.inputs.version }} for Debian 12
+          body: |
+            Release for Raspberry Pi devices running Debian 12 (Bookworm).
+            Download and install the package for your Raspberry Pi.
           draft: false
           prerelease: ${{ github.event.inputs.prerelease }}
         env:
