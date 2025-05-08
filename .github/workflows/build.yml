@@ -59,26 +59,56 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libgtk-3-dev patchelf
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           sudo apt-get install -y qemu-user-static
-          # Install pkg-config and cross-compilation dependencies for glib
+          # Install pkg-config for cross-compilation
           sudo apt-get install -y pkg-config
-          sudo apt-get install -y libglib2.0-dev libglib2.0-dev:arm64
-          # Install additional ARM64 dependencies
+
+          # Add ARM64 architecture and update package lists
           sudo dpkg --add-architecture arm64
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev:arm64 libwebkit2gtk-4.1-dev:arm64 libayatana-appindicator3-dev:arm64 librsvg2-dev:arm64
+
+          # Install ARM64 cross-compilation libraries
+          sudo apt-get install -y libglib2.0-dev
+          sudo apt-get install -y crossbuild-essential-arm64
+
+          # Install specific ARM64 libraries needed for Tauri and glib-sys
+          sudo apt-get install -y libgtk-3-dev
+          sudo apt-get install -y libglib2.0-dev
+          sudo apt-get install -y libatk1.0-dev
+          sudo apt-get install -y libcairo2-dev
+          sudo apt-get install -y libpango1.0-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev
+          sudo apt-get install -y libappindicator3-dev
+          sudo apt-get install -y libasound2-dev
+          sudo apt-get install -y libssl-dev
 
       - name: Set up Cargo config for cross-compilation
         run: |
           mkdir -p ~/.cargo
-          echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config
-          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config
-          echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> ~/.cargo/config
+          cat > ~/.cargo/config << EOF
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          rustflags = ["-C", "link-arg=-march=armv8-a"]
+
+          [env]
+          PKG_CONFIG_ALLOW_CROSS = "1"
+          PKG_CONFIG = "aarch64-linux-gnu-pkg-config"
+          EOF
 
       - name: Set up pkg-config for cross-compilation
         run: |
-          echo 'export PKG_CONFIG_ALLOW_CROSS=1' >> $GITHUB_ENV
-          echo 'export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig' >> $GITHUB_ENV
-          echo 'export PKG_CONFIG_SYSROOT_DIR=/' >> $GITHUB_ENV
+          # Create a pkg-config wrapper for cross-compilation
+          sudo tee /usr/local/bin/aarch64-linux-gnu-pkg-config > /dev/null << 'EOF'
+          #!/bin/bash
+          export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+          export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+          export PKG_CONFIG_SYSROOT_DIR=/
+          exec pkg-config "$@"
+          EOF
+          sudo chmod +x /usr/local/bin/aarch64-linux-gnu-pkg-config
+
+          # Set environment variables for cross-compilation
+          echo 'PKG_CONFIG_ALLOW_CROSS=1' >> $GITHUB_ENV
+          echo 'PKG_CONFIG=aarch64-linux-gnu-pkg-config' >> $GITHUB_ENV
 
       - name: Install frontend dependencies
         run: bun install
@@ -88,8 +118,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PKG_CONFIG_ALLOW_CROSS: 1
-          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
-          PKG_CONFIG_SYSROOT_DIR: /
+          PKG_CONFIG: aarch64-linux-gnu-pkg-config
           RUSTFLAGS: "-C link-arg=-march=armv8-a"
         with:
           tagName: v${{ github.event.inputs.version }}
