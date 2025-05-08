@@ -50,33 +50,39 @@ jobs:
       - name: Install cross-compilation tools for Debian
         if: matrix.platform == 'ubuntu-22.04'
         run: |
+          # Add arm64 architecture and configure sources
+          sudo dpkg --add-architecture arm64
+          sudo tee /etc/apt/sources.list.d/arm64.list > /dev/null <<EOL
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
+          EOL
+
+          # Update package lists
           sudo apt update
-          sudo apt install -y libwebkit2gtk-4.1-dev \
+
+          # Install host architecture dependencies
+          sudo apt install -y \
             build-essential \
             curl \
             wget \
             file \
-            libxdo-dev \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            pkg-config
-          sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          sudo apt install -y qemu-user-static
+            pkg-config \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            qemu-user-static
 
-          # Install cross-compilation dependencies
-          sudo dpkg --add-architecture arm64
-          sudo apt update
+          # Install target architecture dependencies
           sudo apt install -y \
             libwebkit2gtk-4.1-dev:arm64 \
             libssl-dev:arm64 \
             libayatana-appindicator3-dev:arm64 \
             librsvg2-dev:arm64 \
-            libglib2.0-dev:arm64
+            libglib2.0-dev:arm64 \
+            libxdo-dev:arm64
 
           # Set up pkg-config for cross-compilation
-          sudo mkdir -p /usr/lib/aarch64-linux-gnu/pkgconfig
+          sudo mkdir -p /usr/aarch64-linux-gnu/lib/pkgconfig
           sudo cp -r /usr/lib/aarch64-linux-gnu/pkgconfig/* /usr/aarch64-linux-gnu/lib/pkgconfig/ || true
 
       - name: Set up Cargo config for cross-compilation
