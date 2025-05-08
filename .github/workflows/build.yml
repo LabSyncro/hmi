@@ -25,120 +25,77 @@ jobs:
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       POSTGRES_MAX_CONNECTIONS: ${{ secrets.POSTGRES_MAX_CONNECTIONS || 5 }}
       VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-    runs-on: ubuntu-latest
-
     strategy:
       fail-fast: false
       matrix:
         include:
-          - target: aarch64-unknown-linux-gnu
-            targetName: debian-arm64
+          - platform: "ubuntu-22.04"
+            args: "--target aarch64-unknown-linux-gnu"
+            targetName: "raspberry-pi-debian12"
 
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Rust
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: "bun"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-gnu
 
-      - name: Install ARM64 dependencies
+      - name: Install cross-compilation tools for Debian 12 Bookworm
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            gcc-aarch64-linux-gnu \
-            libc6-dev-arm64-cross \
-            libssl-dev \
-            pkg-config \
-            libwebkit2gtk-4.0-dev:arm64 \
-            libgtk-3-dev:arm64 \
-            libsoup-3.0-dev:arm64 \
-            libayatana-appindicator3-dev:arm64 \
-            librsvg2-dev:arm64
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libgtk-3-dev patchelf
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          sudo apt-get install -y qemu-user-static
 
-      - name: Setup cross-compilation environment
+      - name: Set up Cargo config for cross-compilation
         run: |
           mkdir -p ~/.cargo
-          echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config.toml
-          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config.toml
-          echo 'ar = "aarch64-linux-gnu-ar"' >> ~/.cargo/config.toml
+          echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config
+          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config
+          echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> ~/.cargo/config
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+      - name: Install frontend dependencies
+        run: bun install
 
-      - name: Install dependencies and build frontend
-        run: |
-          bun install
-          bun run build
-
-      - name: Install Tauri CLI
-        run: bun add -g @tauri-apps/cli
-
-      - name: Build Tauri (ARM64)
-        run: |
-          cd src-tauri
-          cargo build --target aarch64-unknown-linux-gnu --release
+      - name: Build Tauri App for Debian 12 Bookworm
+        uses: tauri-apps/tauri-action@v0
         env:
-          PKG_CONFIG_SYSROOT_DIR: /usr/aarch64-linux-gnu
-          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v${{ github.event.inputs.version }}
+          releaseName: "App v${{ github.event.inputs.version }} for Debian 12"
+          releaseBody: "Release for Raspberry Pi devices running Debian 12 (Bookworm). Download and install the package for your Raspberry Pi."
+          releaseDraft: false
+          prerelease: ${{ github.event.inputs.prerelease }}
+          args: ${{ matrix.args }}
 
-      - name: Create Debian package
+      - name: Package for Raspberry Pi (Debian 12)
         run: |
-          # Create directories for Debian package
-          mkdir -p debian/DEBIAN
-          mkdir -p debian/usr/bin
-          mkdir -p debian/usr/share/applications
-          mkdir -p debian/usr/share/icons/hicolor/scalable/apps
-
-          # Copy binary
-          cp src-tauri/target/aarch64-unknown-linux-gnu/release/app debian/usr/bin/
-
-          # Create desktop file
-          cat > debian/usr/share/applications/app.desktop << EOD
-          [Desktop Entry]
-          Name=HMI App
-          Exec=/usr/bin/app
-          Icon=/usr/share/icons/hicolor/scalable/apps/app.svg
-          Terminal=false
-          Type=Application
-          Categories=Utility;
-          EOD
-
-          # Copy icon
-          if [ -f "src-tauri/icons/icon.svg" ]; then
-            cp src-tauri/icons/icon.svg debian/usr/share/icons/hicolor/scalable/apps/app.svg
+          mkdir -p dist
+          cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
+          if [ -d "src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage" ]; then
+            cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.AppImage
           fi
 
-          # Create control file
-          cat > debian/DEBIAN/control << EOD
-          Package: hmi-app
-          Version: ${{ github.event.inputs.version }}
-          Section: utils
-          Priority: optional
-          Architecture: arm64
-          Maintainer: Maintainer <maintainer@example.com>
-          Description: HMI Application for Raspberry Pi
-           A Tauri application built for Raspberry Pi running Debian 12 (bookworm).
-          EOD
-
-          # Build package
-          mkdir -p dist
-          cp src-tauri/target/aarch64-unknown-linux-gnu/release/app dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}
-          dpkg-deb --build debian dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
-
-      - name: Create GitHub Release
-        id: create_release
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
           files: dist/*
           tag_name: v${{ github.event.inputs.version }}
-          name: App v${{ github.event.inputs.version }} for Debian 12
-          body: |
-            Release for Raspberry Pi devices running Debian 12 (Bookworm).
-            Download and install the package for your Raspberry Pi.
           draft: false
           prerelease: ${{ github.event.inputs.prerelease }}
         env:
@@ -154,35 +111,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Prepare Docker image build
-        run: |
-          # Create a minimal Docker context
-          mkdir -p docker-build
-
-          # Copy the binary and other assets
-          cp dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }} docker-build/app
-          cp -r dist docker-build/
-
-          # Copy our existing Dockerfile but modify it to use the pre-built binary
-          cp Dockerfile docker-build/
-
-          # Modify the Dockerfile to use our pre-built binary instead of building it
-          sed -i 's/COPY --from=builder \/app\/src-tauri\/target\/release\/app/COPY app/' docker-build/Dockerfile
-
-          # Remove the build stage from the Dockerfile since we don't need it
-          awk 'BEGIN{p=0} /^# Stage 2/{p=1} {if(p==1)print}' Dockerfile > docker-build/Dockerfile.tmp
-
-          # Add VERSION environment variable
-          echo "ENV APP_VERSION=${{ github.event.inputs.version }}" >> docker-build/Dockerfile.tmp
-
-          # Replace the original file
-          mv docker-build/Dockerfile.tmp docker-build/Dockerfile
-
       - name: Build and push Docker image for Debian 12
         uses: docker/build-push-action@v5
         with:
-          context: docker-build
+          context: .
           push: true
+          build-args: |
+            DEBIAN_VERSION=bookworm
           tags: |
             ghcr.io/${{ github.repository }}/app:latest
             ghcr.io/${{ github.repository }}/app:${{ github.event.inputs.version }}
