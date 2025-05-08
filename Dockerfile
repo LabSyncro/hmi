@@ -15,13 +15,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     nodejs \
     git \
-    gcc-aarch64-linux-gnu \
-    libc6-dev-arm64-cross \
     && rm -rf /var/lib/apt/lists/*
-
-ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-    CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
-    CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
 
 WORKDIR /app
 
@@ -44,26 +38,28 @@ RUN cd src-tauri && cargo fetch
 
 COPY . .
 
+# Build for Linux
 RUN bun run tauri build
 
 # Stage 2: Runtime environment (minimal)
 FROM debian:${DEBIAN_VERSION}-slim
 
 RUN apt-get update && apt-get install -y \
-    libwebkit2gtk-4.0-0 \
+    libwebkit2gtk-4.1-0 \
     libgtk-3-0 \
     libayatana-appindicator3-1 \
     librsvg2-2 \
     libssl3 \
     ca-certificates \
     libudev1 \
+    libxdo3 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -ms /bin/bash appuser
 
 WORKDIR /app
 
-COPY --from=builder /app/src-tauri/target/aarch64-unknown-linux-gnu/release/app /app/app
+COPY --from=builder /app/src-tauri/target/release/app /app/app
 COPY --from=builder /app/src-tauri/icons /app/icons
 COPY --from=builder /app/dist /app/dist
 
