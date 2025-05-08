@@ -61,13 +61,14 @@ jobs:
           sudo apt-get install -y qemu-user-static
           sudo apt-get install -y libxdo-dev libssl-dev file wget
 
-          # Install cross-compiler pkg-config
-          sudo apt-get install -y crossbuild-essential-arm64 pkg-config-aarch64-linux-gnu
+          # Install ARM64 cross-compilation libraries
+          sudo apt-get install -y crossbuild-essential-arm64 pkg-config
+          sudo apt-get install -y libglib2.0-dev-arm64 libgtk-3-dev-arm64 libwebkit2gtk-4.1-dev-arm64 libappindicator3-dev-arm64 librsvg2-dev-arm64
 
-          # Setup pkg-config for ARM64
-          echo 'export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig' >> $GITHUB_ENV
-          echo 'export PKG_CONFIG_ALLOW_CROSS=1' >> $GITHUB_ENV
-          echo 'export PKG_CONFIG=pkg-config-aarch64-linux-gnu' >> $GITHUB_ENV
+          # Set environment variables for cross-compilation
+          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
+          echo "PKG_CONFIG_SYSROOT_DIR=/" >> $GITHUB_ENV
 
       - name: Set up Cargo config for cross-compilation
         run: |
@@ -76,20 +77,23 @@ jobs:
           echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config
           echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> ~/.cargo/config
 
-          # Create a wrapper script for pkg-config to handle cross-compilation
-          mkdir -p $HOME/bin
-          cat > $HOME/bin/aarch64-pkg-config <<'EOF'
-          #!/bin/bash
-          export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
-          export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
-          export PKG_CONFIG_SYSROOT_DIR=/
-          exec pkg-config-aarch64-linux-gnu "$@"
-          EOF
-          chmod +x $HOME/bin/aarch64-pkg-config
-          echo "$HOME/bin" >> $GITHUB_PATH
+          # Create wrapper script for cross-compilation
+          sudo mkdir -p /usr/lib/aarch64-linux-gnu/pkgconfig
 
-          # Set pkg-config environment for cross-compilation
-          echo 'export PKG_CONFIG=aarch64-pkg-config' >> $GITHUB_ENV
+          # Create a simple pkg-config wrapper for ARM64
+          cat > /tmp/arm64-pkg-config.sh <<'EOF'
+          #!/bin/bash
+          export PKG_CONFIG_ALLOW_CROSS=1
+          export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+          export PKG_CONFIG_SYSROOT_DIR=/
+          /usr/bin/pkg-config "$@"
+          EOF
+
+          sudo mv /tmp/arm64-pkg-config.sh /usr/local/bin/arm64-pkg-config
+          sudo chmod +x /usr/local/bin/arm64-pkg-config
+
+          # Set environment variable
+          echo "PKG_CONFIG=/usr/local/bin/arm64-pkg-config" >> $GITHUB_ENV
 
       - name: Install frontend dependencies
         run: bun install
