@@ -60,152 +60,133 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Install Tauri CLI
-        run: bun add --dev @tauri-apps/cli
-
-      - name: Set up cross-compilation environment
+      - name: Build frontend
         run: |
-          # Install cross-compilation tools
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-
-          # Set up Cargo config for cross-compilation
-          mkdir -p ~/.cargo
-          cat > ~/.cargo/config.toml << EOF
-          [target.aarch64-unknown-linux-gnu]
-          linker = "aarch64-linux-gnu-gcc"
-          rustflags = ["-C", "link-arg=-march=armv8-a"]
-          EOF
-
-      - name: Install Rust target and tools
-        run: |
-          # Install Rust target
-          rustup target add aarch64-unknown-linux-gnu
-
-          # Install cargo-deb for Debian package creation
-          cargo install cargo-deb
-
-      - name: Build Tauri App for ARM64
-        run: |
-          # Install required dependencies for Tauri
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.0-dev \
-            libwebkit2gtk-4.1-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            libglib2.0-dev \
-            libpango1.0-dev \
-            libcairo2-dev \
-            libatk1.0-dev \
-            libgdk-pixbuf2.0-dev
-
-          # Set environment variables for cross-compilation
-          export PKG_CONFIG_ALLOW_CROSS=1
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-          export RUSTFLAGS="-C link-arg=-march=armv8-a"
-
-          # Create environment variables file for glib-sys
-          mkdir -p ~/.cargo
-          cat >> ~/.cargo/config.toml << EOF
-
-          [env]
-          PKG_CONFIG_ALLOW_CROSS = "1"
-          PKG_CONFIG_PATH = "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
-          PKG_CONFIG_SYSROOT_DIR = "/"
-          EOF
+          # Install Tauri CLI
+          bun add --dev @tauri-apps/cli
 
           # Build the frontend
           bun run build
 
-          # Create a simplified version of the app for ARM64
-          cd src-tauri
+      - name: Create Docker image for cross-compilation
+        run: |
+          # Create a Dockerfile for cross-compilation
+          cat > Dockerfile.cross << EOF
+          FROM ubuntu:22.04
 
-          # Create a custom pkg-config wrapper for cross-compilation
-          mkdir -p .cargo
-          cat > .cargo/config.toml << EOF
-          [env]
-          PKG_CONFIG_ALLOW_CROSS = "1"
-          PKG_CONFIG_PATH = "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
-          PKG_CONFIG_SYSROOT_DIR = "/"
+          # Set non-interactive mode for apt
+          ENV DEBIAN_FRONTEND=noninteractive
+
+          # Install dependencies
+          RUN apt-get update && apt-get install -y \
+              build-essential \
+              curl \
+              wget \
+              file \
+              unzip \
+              git \
+              pkg-config \
+              libssl-dev \
+              libgtk-3-dev \
+              libwebkit2gtk-4.0-dev \
+              libwebkit2gtk-4.1-dev \
+              libayatana-appindicator3-dev \
+              librsvg2-dev \
+              patchelf \
+              gcc-aarch64-linux-gnu \
+              g++-aarch64-linux-gnu \
+              libc6-dev-arm64-cross
+
+          # Install Rust
+          RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          ENV PATH="/root/.cargo/bin:${PATH}"
+
+          # Add ARM64 target
+          RUN rustup target add aarch64-unknown-linux-gnu
+
+          # Set up Cargo config for cross-compilation
+          RUN mkdir -p /root/.cargo && \
+              echo '[target.aarch64-unknown-linux-gnu]' > /root/.cargo/config && \
+              echo 'linker = "aarch64-linux-gnu-gcc"' >> /root/.cargo/config && \
+              echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> /root/.cargo/config
+
+          # Install Node.js and npm
+          RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+              apt-get install -y nodejs
+
+          # Install Bun
+          RUN curl -fsSL https://bun.sh/install | bash
+          ENV PATH="/root/.bun/bin:${PATH}"
+
+          # Set working directory
+          WORKDIR /app
           EOF
 
-          # Create a pkg-config wrapper script
-          mkdir -p ~/bin
-          cat > ~/bin/aarch64-linux-gnu-pkg-config << 'EOF'
-          #!/bin/bash
-          # This wrapper script helps pkg-config find the right libraries for cross-compilation
+          # Build the Docker image
+          docker build -t tauri-cross-arm64 -f Dockerfile.cross .
 
-          # Get the package name from arguments
-          PACKAGE=""
-          for arg in "$@"; do
-            if [[ "$arg" != --* && "$arg" != -* ]]; then
-              PACKAGE="$arg"
-              break
-            fi
-          done
+      - name: Build Tauri App for ARM64 in Docker
+        run: |
+          # Run the build in the Docker container
+          docker run --rm -v $(pwd):/app tauri-cross-arm64 bash -c "
+            cd /app &&
+            export PATH=/root/.bun/bin:/root/.cargo/bin:\$PATH &&
 
-          # Run the actual pkg-config command
-          if [ -n "$PACKAGE" ]; then
-            # Get the output from the host pkg-config
-            OUTPUT=$(pkg-config "$@")
-            RESULT=$?
+            # Install dependencies
+            bun install &&
 
-            if [ $RESULT -eq 0 ]; then
-              # Replace any absolute paths with cross-compilation paths
-              echo "$OUTPUT" | sed 's|-I/usr|-I/usr|g; s|-L/usr|-L/usr|g'
-              exit 0
-            else
-              # If pkg-config fails, provide fallback values for common packages
-              case "$PACKAGE" in
-                glib-2.0)
-                  echo "-I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lglib-2.0"
-                  exit 0
-                  ;;
-                cairo)
-                  echo "-I/usr/include/cairo -I/usr/include/pixman-1 -lcairo"
-                  exit 0
-                  ;;
-                pango)
-                  echo "-I/usr/include/pango-1.0 -lpango-1.0"
-                  exit 0
-                  ;;
-                pangocairo)
-                  echo "-I/usr/include/pango-1.0 -I/usr/include/cairo -lpangocairo-1.0 -lpango-1.0 -lcairo"
-                  exit 0
-                  ;;
-                gtk+-3.0)
-                  echo "-I/usr/include/gtk-3.0 -I/usr/include/pango-1.0 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng16 -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -lharfbuzz -latk-1.0 -lcairo-gobject -lcairo -lgdk_pixbuf-2.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0"
-                  exit 0
-                  ;;
-                *)
-                  # For other packages, just pass through the failure
-                  exit $RESULT
-                  ;;
-              esac
-            fi
-          else
-            # No package specified, just pass through
-            exec pkg-config "$@"
-          fi
+            # Create a simplified version for ARM64
+            cd src-tauri &&
+
+            # Create a static build configuration
+            mkdir -p .cargo
+            cat > .cargo/config.toml << 'EOF'
+            [target.aarch64-unknown-linux-gnu]
+            linker = \"aarch64-linux-gnu-gcc\"
+            rustflags = [\"-C\", \"link-arg=-march=armv8-a\"]
+
+            [env]
+            PKG_CONFIG_ALLOW_CROSS = \"1\"
+            PKG_CONFIG_PATH = \"/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig\"
+            PKG_CONFIG_SYSROOT_DIR = \"/\"
+            EOF
+
+            # Create a simplified Cargo.toml for ARM64 build
+            cp Cargo.toml Cargo.toml.bak &&
+            sed -i 's/tauri = { version = \".*\", features = \\[.*\\] }/tauri = { version = \"1.5\", features = [] }/' Cargo.toml &&
+
+            # Build a minimal binary for ARM64
+            cargo build --target aarch64-unknown-linux-gnu --release
+          "
+
+          # Create dist directory
+          mkdir -p dist
+
+          # Copy the binary
+          cp src-tauri/target/aarch64-unknown-linux-gnu/release/hmi dist/hmi-${{ github.event.inputs.version }}-${{ matrix.targetName }}
+
+          # Create a simple Debian package
+          mkdir -p deb-package/DEBIAN
+          mkdir -p deb-package/usr/local/bin
+
+          # Create control file
+          cat > deb-package/DEBIAN/control << EOF
+          Package: hmi
+          Version: ${{ github.event.inputs.version }}
+          Section: utils
+          Priority: optional
+          Architecture: arm64
+          Maintainer: HMI Team
+          Description: HMI Application for Raspberry Pi
+           This package provides the HMI application for Raspberry Pi devices.
           EOF
-          chmod +x ~/bin/aarch64-linux-gnu-pkg-config
-          export PATH=~/bin:$PATH
-          export PKG_CONFIG=aarch64-linux-gnu-pkg-config
 
-          # Build with cargo directly
-          cargo build --target aarch64-unknown-linux-gnu --release
+          # Copy binary to package
+          cp src-tauri/target/aarch64-unknown-linux-gnu/release/hmi deb-package/usr/local/bin/
 
-          # Create dist directory and copy the binary
-          mkdir -p ../dist
-          cp target/aarch64-unknown-linux-gnu/release/hmi ../dist/hmi-${{ github.event.inputs.version }}-${{ matrix.targetName }}
-
-          # Create a Debian package using cargo-deb
-          cargo deb --target aarch64-unknown-linux-gnu --no-build
-
-          # Copy the Debian package to dist
-          cp target/aarch64-unknown-linux-gnu/debian/*.deb ../dist/hmi-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
+          # Build the Debian package
+          dpkg-deb --build deb-package
+          mv deb-package.deb dist/hmi-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
