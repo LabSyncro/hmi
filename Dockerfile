@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     build-essential \
     nodejs \
-    curl \
     git \
     gcc-aarch64-linux-gnu \
     libc6-dev-arm64-cross \
