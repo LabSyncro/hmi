@@ -25,15 +25,7 @@ jobs:
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       POSTGRES_MAX_CONNECTIONS: ${{ secrets.POSTGRES_MAX_CONNECTIONS || 5 }}
       VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: "ubuntu-22.04"
-            args: "--target aarch64-unknown-linux-gnu"
-            targetName: "linux-debian"
-
-    runs-on: ${{ matrix.platform }}
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -44,53 +36,19 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
 
-      - name: Install cross-compilation tools for Debian
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Install Tauri dependencies for Debian
         run: |
-          # Add arm64 architecture and configure sources
-          sudo dpkg --add-architecture arm64
-          sudo tee /etc/apt/sources.list.d/arm64.list > /dev/null <<EOL
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
-          EOL
-
-          # Update package lists
           sudo apt update
-
-          # Install host architecture dependencies
-          sudo apt install -y \
+          sudo apt install -y libwebkit2gtk-4.1-dev \
             build-essential \
             curl \
             wget \
             file \
-            pkg-config \
-            gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu \
-            qemu-user-static
-
-          # Install target architecture dependencies
-          sudo apt install -y \
-            libwebkit2gtk-4.1-dev:arm64 \
-            libssl-dev:arm64 \
-            libayatana-appindicator3-dev:arm64 \
-            librsvg2-dev:arm64 \
-            libglib2.0-dev:arm64 \
-            libxdo-dev:arm64
-
-          # Set up pkg-config for cross-compilation
-          sudo mkdir -p /usr/aarch64-linux-gnu/lib/pkgconfig
-          sudo cp -r /usr/lib/aarch64-linux-gnu/pkgconfig/* /usr/aarch64-linux-gnu/lib/pkgconfig/ || true
-
-      - name: Set up Cargo config for cross-compilation
-        run: |
-          mkdir -p ~/.cargo
-          echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config
-          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config
-          echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> ~/.cargo/config
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
 
       - name: Install frontend dependencies
         run: bun install
@@ -99,23 +57,19 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PKG_CONFIG_ALLOW_CROSS: 1
-          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
-          PKG_CONFIG_SYSROOT_DIR: /
         with:
           tagName: v${{ github.event.inputs.version }}
-          releaseName: "App v${{ github.event.inputs.version }} for Linux Debian"
-          releaseBody: "Release for Linux Debian devices. Download and install the package for your Debian system."
+          releaseName: "App v${{ github.event.inputs.version }} for Debian"
+          releaseBody: "Release for Linux Debian. Download and install the package for your Debian system."
           releaseDraft: false
           prerelease: ${{ github.event.inputs.prerelease }}
-          args: ${{ matrix.args }}
 
-      - name: Package for Linux Debian
+      - name: Package for Debian
         run: |
           mkdir -p dist
-          cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
-          if [ -d "src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage" ]; then
-            cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.AppImage
+          cp src-tauri/target/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-debian.deb
+          if [ -d "src-tauri/target/release/bundle/appimage" ]; then
+            cp src-tauri/target/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-debian.AppImage
           fi
 
       - name: Upload Release Assets
@@ -149,6 +103,6 @@ jobs:
             ghcr.io/${{ github.repository }}/app:latest
             ghcr.io/${{ github.repository }}/app:${{ github.event.inputs.version }}
             ghcr.io/${{ github.repository }}/app:debian-${{ github.event.inputs.version }}
-          platforms: linux/arm64
+          platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
