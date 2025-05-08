@@ -37,6 +37,10 @@ RUN mkdir -p src-tauri/src
 RUN echo "fn main() {}" > src-tauri/src/main.rs
 RUN echo "pub fn dummy() {}" > src-tauri/src/lib.rs
 
+# Create a temporary version of Cargo.toml without the bench section for dependency fetching
+RUN sed '/\[\[bench\]\]/,/harness = false/d' src-tauri/Cargo.toml > src-tauri/Cargo.tmp.toml \
+    && mv src-tauri/Cargo.tmp.toml src-tauri/Cargo.toml
+
 # Fetch dependencies based on the Cargo.toml
 RUN cd src-tauri && cargo fetch
 
