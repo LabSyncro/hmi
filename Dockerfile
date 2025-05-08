@@ -1,7 +1,7 @@
 ARG DEBIAN_VERSION=bookworm
 
 # Stage 1: Build environment
-FROM rust:1.77-slim-${DEBIAN_VERSION} as builder
+FROM rust:1.82-slim-${DEBIAN_VERSION} as builder
 
 RUN apt-get update && apt-get install -y \
     curl \
@@ -35,7 +35,7 @@ RUN sed -i '/\[\[bench\]\]/,/harness = false/d' src-tauri/Cargo.toml
 RUN bun install
 
 # Initialize a fresh Cargo.lock that works with this Rust version
-RUN cd src-tauri && cargo update
+RUN cd src-tauri && rustc --version && cargo update
 
 # Build for Linux
 RUN bun run tauri build
