@@ -25,131 +25,79 @@ jobs:
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       POSTGRES_MAX_CONNECTIONS: ${{ secrets.POSTGRES_MAX_CONNECTIONS || 5 }}
       VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+    runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: "ubuntu-22.04"
-            args: "--target aarch64-unknown-linux-gnu"
-            targetName: "raspberry-pi-debian12"
+          - target: aarch64-unknown-linux-gnu
+            targetName: debian-arm64
 
-    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install Rust stable
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-gnu
 
-      - name: Install cross-compilation tools for Debian 12 Bookworm
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Install ARM64 dependencies
         run: |
-          # Install prerequisites for Docker
           sudo apt-get update
-          sudo apt-get install -y qemu qemu-user-static binfmt-support
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            libc6-dev-arm64-cross \
+            libssl-dev \
+            pkg-config \
+            libwebkit2gtk-4.0-dev:arm64 \
+            libgtk-3-dev:arm64 \
+            libsoup-3.0-dev:arm64 \
+            libayatana-appindicator3-dev:arm64 \
+            librsvg2-dev:arm64
 
-          # Set up Docker with QEMU for ARM64 emulation
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
-          # Verify ARM64 emulation with platform flag
-          # This will work in GitHub Actions and handle local development gracefully
-          docker run --platform linux/arm64 --rm -t ubuntu:latest uname -m || echo "ARM64 emulation verification failed, but continuing as this may be expected in local development"
-
-          # Create a Dockerfile for the Tauri cross-compilation environment
-          cat > Dockerfile.build << EOF
-          FROM debian:bookworm-slim
-
-          # Install Rust
-          RUN apt-get update && apt-get install -y \
-              curl \
-              build-essential \
-              git \
-              pkg-config \
-              libssl-dev \
-              libwebkit2gtk-4.1-dev \
-              libgtk-3-dev \
-              libappindicator3-dev \
-              librsvg2-dev \
-              libxdo-dev \
-              file \
-              wget \
-              unzip \
-              python3 \
-              && rm -rf /var/lib/apt/lists/*
-
-          # Install Rust
-          RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          ENV PATH="/root/.cargo/bin:${PATH}"
-
-          # Install Node.js
-          RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
-              && apt-get install -y nodejs
-
-          # Install Bun
-          RUN curl -fsSL https://bun.sh/install | bash
-          ENV PATH="/root/.bun/bin:${PATH}"
-
-          # Set working directory
-          WORKDIR /app
-
-          # We'll copy the app and build when running the container
-          CMD ["/bin/bash"]
-          EOF
-
-          # Build the Docker image with platform specification
-          docker build --platform linux/arm64 -t tauri-arm64-builder -f Dockerfile.build . || {
-            echo "ARM64 Docker build failed, falling back to native architecture build"
-            docker build -t tauri-arm64-builder -f Dockerfile.build .
-          }
-
-      - name: Install frontend dependencies locally
-        run: bun install
-
-      - name: Build frontend
-        run: bun run build
-
-      - name: Build and package Tauri App for ARM64 in Docker
+      - name: Setup cross-compilation environment
         run: |
-          # Create a build directory
-          mkdir -p build-output
+          mkdir -p ~/.cargo
+          echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config.toml
+          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config.toml
+          echo 'ar = "aarch64-linux-gnu-ar"' >> ~/.cargo/config.toml
 
-          # Create a simple build script to run in the Docker container
-          cat > build-arm64.sh << 'EOF'
-          #!/bin/bash
-          set -e
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
 
-          # Install dependencies
-          cd /app
+      - name: Install dependencies and build frontend
+        run: |
           bun install
+          bun run build
 
-          # Install Tauri CLI
-          bun add -g @tauri-apps/cli
+      - name: Install Tauri CLI
+        run: bun add -g @tauri-apps/cli
 
-          # Build the Tauri app
+      - name: Build Tauri (ARM64)
+        run: |
           cd src-tauri
-          cargo build --release
+          cargo build --target aarch64-unknown-linux-gnu --release
+        env:
+          PKG_CONFIG_SYSROOT_DIR: /usr/aarch64-linux-gnu
+          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
-          # Create output directories for the package
-          mkdir -p /app/dist
-          mkdir -p /app/debian/DEBIAN /app/debian/usr/bin /app/debian/usr/share/applications /app/debian/usr/share/icons/hicolor/scalable/apps
+      - name: Create Debian package
+        run: |
+          # Create directories for Debian package
+          mkdir -p debian/DEBIAN
+          mkdir -p debian/usr/bin
+          mkdir -p debian/usr/share/applications
+          mkdir -p debian/usr/share/icons/hicolor/scalable/apps
 
-          # Copy the binary
-          cp target/release/app /app/dist/
-          cp target/release/app /app/debian/usr/bin/
+          # Copy binary
+          cp src-tauri/target/aarch64-unknown-linux-gnu/release/app debian/usr/bin/
 
-          # Create a desktop file
-          cat > /app/debian/usr/share/applications/app.desktop << EOD
+          # Create desktop file
+          cat > debian/usr/share/applications/app.desktop << EOD
           [Desktop Entry]
           Name=HMI App
           Exec=/usr/bin/app
@@ -160,14 +108,14 @@ jobs:
           EOD
 
           # Copy icon
-          if [ -f "icons/icon.svg" ]; then
-            cp icons/icon.svg /app/debian/usr/share/icons/hicolor/scalable/apps/app.svg
+          if [ -f "src-tauri/icons/icon.svg" ]; then
+            cp src-tauri/icons/icon.svg debian/usr/share/icons/hicolor/scalable/apps/app.svg
           fi
 
           # Create control file
-          cat > /app/debian/DEBIAN/control << EOD
+          cat > debian/DEBIAN/control << EOD
           Package: hmi-app
-          Version: $VERSION
+          Version: ${{ github.event.inputs.version }}
           Section: utils
           Priority: optional
           Architecture: arm64
@@ -176,32 +124,10 @@ jobs:
            A Tauri application built for Raspberry Pi running Debian 12 (bookworm).
           EOD
 
-          # Build the package
-          cd /app
-          dpkg-deb --build debian dist/hmi-app-${VERSION}-arm64.deb
-
-          # Set permissions for the output directory
-          chmod -R 777 /app/dist
-          EOF
-
-          # Make the build script executable
-          chmod +x build-arm64.sh
-
-          # Run the Docker container to build the app with platform specification
-          docker run --platform linux/arm64 --rm -v $(pwd):/app -e VERSION=${{ github.event.inputs.version }} tauri-arm64-builder /app/build-arm64.sh || {
-            echo "ARM64 Docker run failed, falling back to native architecture. This might not produce ARM64 binaries."
-            docker run --rm -v $(pwd):/app -e VERSION=${{ github.event.inputs.version }} tauri-arm64-builder /app/build-arm64.sh
-          }
-
-          # Create our distribution directory
+          # Build package
           mkdir -p dist
-          cp -r build-output/* dist/ 2>/dev/null || echo "No files in build-output/"
-          cp -r src-tauri/target/release/app dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }} 2>/dev/null || echo "No binary found"
-
-          # Use the debian package from the Docker build
-          if [ -f "dist/hmi-app-${{ github.event.inputs.version }}-arm64.deb" ]; then
-            cp dist/hmi-app-${{ github.event.inputs.version }}-arm64.deb dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
-          fi
+          cp src-tauri/target/aarch64-unknown-linux-gnu/release/app dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}
+          dpkg-deb --build debian dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
 
       - name: Create GitHub Release
         id: create_release
