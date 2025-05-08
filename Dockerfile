@@ -38,8 +38,17 @@ RUN bun install
 # Initialize a fresh Cargo.lock that works with this Rust version
 RUN cd src-tauri && rustc --version && cargo update
 
-# Build for Linux
-RUN bun run tauri build
+# Detect architecture and build accordingly
+RUN arch=$(uname -m) && \
+    # For ARM architecture, skip AppImage bundling which often fails on ARM
+    if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
+        echo "Building for ARM architecture, skipping AppImage..." && \
+        bun run tauri build -- --bundles deb,rpm; \
+    else \
+        # For x86_64 architecture, build all formats
+        echo "Building for x86_64 architecture..." && \
+        bun run tauri build; \
+    fi
 
 # Stage 2: Runtime environment (minimal)
 FROM debian:${DEBIAN_VERSION}-slim

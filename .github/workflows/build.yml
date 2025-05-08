@@ -70,8 +70,18 @@ jobs:
           # Get system architecture to use in package name
           ARCH=$(dpkg --print-architecture)
           cp src-tauri/target/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-debian-${ARCH}.deb
-          if [ -d "src-tauri/target/release/bundle/appimage" ]; then
-            cp src-tauri/target/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-debian-${ARCH}.AppImage
+          
+          # Check if AppImage directory exists AND if we're not on ARM architecture
+          # AppImage creation is skipped on ARM due to issues with linuxdeploy
+          if [ -d "src-tauri/target/release/bundle/appimage" ] && [ "$ARCH" != "arm64" ]; then
+            if [ -f "src-tauri/target/release/bundle/appimage/*.AppImage" ]; then
+              cp src-tauri/target/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-debian-${ARCH}.AppImage
+              echo "AppImage bundle created and copied to dist/"
+            else
+              echo "No AppImage files found in the bundle directory, skipping..."
+            fi
+          else
+            echo "Skipping AppImage packaging for ARM architecture or missing AppImage directory"
           fi
 
       - name: Upload Release Assets
