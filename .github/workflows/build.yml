@@ -30,7 +30,6 @@ jobs:
       matrix:
         include:
           - platform: "ubuntu-22.04"
-            args: "--target aarch64-unknown-linux-gnu"
             targetName: "raspberry-pi-debian12"
 
     runs-on: ${{ matrix.platform }}
@@ -47,127 +46,85 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
-
-      - name: Install cross-compilation tools for Debian 12 Bookworm
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libgtk-3-dev patchelf
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           sudo apt-get install -y qemu-user-static
-          sudo apt-get install -y pkg-config
-
-          # Install native development libraries needed for cross-compilation
-          sudo apt-get install -y libglib2.0-dev
-          sudo apt-get install -y libgtk-3-dev
-          sudo apt-get install -y libatk1.0-dev
-          sudo apt-get install -y libcairo2-dev
-          sudo apt-get install -y libpango1.0-dev
-          sudo apt-get install -y libwebkit2gtk-4.1-dev
-          sudo apt-get install -y libayatana-appindicator3-dev
-          sudo apt-get install -y libasound2-dev
-          sudo apt-get install -y libssl-dev
-
-      - name: Set up pkg-config for cross-compilation
-        run: |
-          # Create an advanced pkg-config wrapper for cross-compilation
-          sudo tee /usr/local/bin/aarch64-linux-gnu-pkg-config > /dev/null << 'EOF'
-          #!/bin/bash
-          # This wrapper modifies pkg-config output for cross-compilation
-
-          # Get the package name from arguments
-          PACKAGE=""
-          for arg in "$@"; do
-            if [[ "$arg" != --* && "$arg" != -* ]]; then
-              PACKAGE="$arg"
-              break
-            fi
-          done
-
-          # Run the actual pkg-config command
-          if [ -n "$PACKAGE" ]; then
-            # Get the output from the host pkg-config
-            OUTPUT=$(pkg-config "$@")
-            RESULT=$?
-
-            if [ $RESULT -eq 0 ]; then
-              # Replace any absolute paths with cross-compilation paths
-              echo "$OUTPUT" | sed 's|-I/usr|-I/usr|g; s|-L/usr|-L/usr|g'
-              exit 0
-            else
-              # If pkg-config fails, provide fallback values for common packages
-              case "$PACKAGE" in
-                glib-2.0)
-                  echo "-I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lglib-2.0"
-                  exit 0
-                  ;;
-                cairo)
-                  echo "-I/usr/include/cairo -I/usr/include/pixman-1 -lcairo"
-                  exit 0
-                  ;;
-                pango)
-                  echo "-I/usr/include/pango-1.0 -lpango-1.0"
-                  exit 0
-                  ;;
-                gtk+-3.0)
-                  echo "-I/usr/include/gtk-3.0 -I/usr/include/pango-1.0 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng16 -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -lharfbuzz -latk-1.0 -lcairo-gobject -lcairo -lgdk_pixbuf-2.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0"
-                  exit 0
-                  ;;
-                *)
-                  # For other packages, just pass through the failure
-                  exit $RESULT
-                  ;;
-              esac
-            fi
-          else
-            # No package specified, just pass through
-            exec pkg-config "$@"
-          fi
-          EOF
-          sudo chmod +x /usr/local/bin/aarch64-linux-gnu-pkg-config
-
-          # Set environment variables for cross-compilation
-          echo 'PKG_CONFIG_ALLOW_CROSS=1' >> $GITHUB_ENV
-          echo 'PKG_CONFIG=aarch64-linux-gnu-pkg-config' >> $GITHUB_ENV
-
-      - name: Create custom build script for glib-sys
-        run: |
-          mkdir -p .cargo
-          cat > .cargo/config.toml << EOF
-          [target.aarch64-unknown-linux-gnu]
-          linker = "aarch64-linux-gnu-gcc"
-          rustflags = ["-C", "link-arg=-march=armv8-a"]
-
-          [env]
-          PKG_CONFIG_ALLOW_CROSS = "1"
-          PKG_CONFIG = "aarch64-linux-gnu-pkg-config"
-          EOF
+          sudo apt-get install -y build-essential curl wget file
+          sudo apt-get install -y patchelf
 
       - name: Install frontend dependencies
         run: bun install
 
-      - name: Build Tauri App for Debian 12 Bookworm
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PKG_CONFIG_ALLOW_CROSS: 1
-          PKG_CONFIG: aarch64-linux-gnu-pkg-config
-          RUSTFLAGS: "-C link-arg=-march=armv8-a"
-        with:
-          tagName: v${{ github.event.inputs.version }}
-          releaseName: "App v${{ github.event.inputs.version }} for Debian 12"
-          releaseBody: "Release for Raspberry Pi devices running Debian 12 (Bookworm). Download and install the package for your Raspberry Pi."
-          releaseDraft: false
-          prerelease: ${{ github.event.inputs.prerelease }}
-          args: ${{ matrix.args }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Package for Raspberry Pi (Debian 12)
+      - name: Build Tauri App for ARM64 using cross-compilation container
         run: |
+          # Create a Dockerfile for cross-compilation
+          cat > Dockerfile.cross << EOF
+          FROM --platform=linux/amd64 rust:slim-bookworm
+
+          # Install dependencies
+          RUN apt-get update && apt-get install -y \
+              build-essential \
+              curl \
+              wget \
+              file \
+              libwebkit2gtk-4.1-dev \
+              libssl-dev \
+              libgtk-3-dev \
+              libayatana-appindicator3-dev \
+              librsvg2-dev \
+              patchelf \
+              pkg-config \
+              nodejs \
+              npm
+
+          # Install Rust target
+          RUN rustup target add aarch64-unknown-linux-gnu
+
+          # Install cross-compilation tools
+          RUN apt-get install -y \
+              gcc-aarch64-linux-gnu \
+              g++-aarch64-linux-gnu \
+              libc6-dev-arm64-cross
+
+          # Set up cargo config
+          RUN mkdir -p /root/.cargo && \
+              echo '[target.aarch64-unknown-linux-gnu]' > /root/.cargo/config && \
+              echo 'linker = "aarch64-linux-gnu-gcc"' >> /root/.cargo/config && \
+              echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> /root/.cargo/config
+
+          # Install bun
+          RUN curl -fsSL https://bun.sh/install | bash
+
+          # Set environment variables
+          ENV PATH="/root/.bun/bin:${PATH}"
+          ENV PKG_CONFIG_ALLOW_CROSS=1
+
+          # Set up working directory
+          WORKDIR /app
+          EOF
+
+          # Build the cross-compilation container
+          docker build -t tauri-cross-arm64 -f Dockerfile.cross .
+
+          # Install Tauri CLI in the project
+          bun add --dev @tauri-apps/cli
+
+          # Run the build in the container
+          docker run --rm -v $(pwd):/app tauri-cross-arm64 bash -c "
+            cd /app &&
+            export PATH=/root/.bun/bin:\$PATH &&
+            bun install &&
+            bun tauri build --target aarch64-unknown-linux-gnu
+          "
+
+          # Create dist directory
           mkdir -p dist
+
+          # Copy the built packages
           cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
           if [ -d "src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage" ]; then
             cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.AppImage
@@ -189,9 +146,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Build and push Docker image for Debian 12
         uses: docker/build-push-action@v5
