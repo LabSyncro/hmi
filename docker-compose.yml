@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  app:
+    image: ghcr.io/${GITHUB_REPOSITORY:-yourusername/tauri-app}/app:${APP_VERSION:-debian12-latest}
+    container_name: tauri-app-debian12
+    restart: unless-stopped
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0}
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000}
+      - PULSE_SERVER=${PULSE_SERVER:-/run/user/1000/pulse/native}
+      - DEBIAN_RELEASE=bookworm
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_MAX_CONNECTIONS=${POSTGRES_MAX_CONNECTIONS:-5}
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}:${XDG_RUNTIME_DIR:-/run/user/1000}
+      - ./data:/app/data
+      - ./config:/app/config
+    network_mode: host
+    devices:
+      - /dev/input:/dev/input
+      - /dev/dri:/dev/dri
+      - /dev/fb0:/dev/fb0
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "pgrep", "app", ">", "/dev/null", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 86400 --cleanup tauri-app-debian12
+    environment:
+      - WATCHTOWER_CLEANUP=true
+
+networks:
+  default:
+    driver: bridge
