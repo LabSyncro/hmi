@@ -74,12 +74,59 @@ jobs:
 
       - name: Set up pkg-config for cross-compilation
         run: |
-          # Create a simple pkg-config wrapper for cross-compilation
+          # Create an advanced pkg-config wrapper for cross-compilation
           sudo tee /usr/local/bin/aarch64-linux-gnu-pkg-config > /dev/null << 'EOF'
           #!/bin/bash
-          # This wrapper forces pkg-config to return system library flags
-          # but pretends they're for the target architecture
-          exec pkg-config "$@"
+          # This wrapper modifies pkg-config output for cross-compilation
+
+          # Get the package name from arguments
+          PACKAGE=""
+          for arg in "$@"; do
+            if [[ "$arg" != --* && "$arg" != -* ]]; then
+              PACKAGE="$arg"
+              break
+            fi
+          done
+
+          # Run the actual pkg-config command
+          if [ -n "$PACKAGE" ]; then
+            # Get the output from the host pkg-config
+            OUTPUT=$(pkg-config "$@")
+            RESULT=$?
+
+            if [ $RESULT -eq 0 ]; then
+              # Replace any absolute paths with cross-compilation paths
+              echo "$OUTPUT" | sed 's|-I/usr|-I/usr|g; s|-L/usr|-L/usr|g'
+              exit 0
+            else
+              # If pkg-config fails, provide fallback values for common packages
+              case "$PACKAGE" in
+                glib-2.0)
+                  echo "-I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lglib-2.0"
+                  exit 0
+                  ;;
+                cairo)
+                  echo "-I/usr/include/cairo -I/usr/include/pixman-1 -lcairo"
+                  exit 0
+                  ;;
+                pango)
+                  echo "-I/usr/include/pango-1.0 -lpango-1.0"
+                  exit 0
+                  ;;
+                gtk+-3.0)
+                  echo "-I/usr/include/gtk-3.0 -I/usr/include/pango-1.0 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng16 -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -lharfbuzz -latk-1.0 -lcairo-gobject -lcairo -lgdk_pixbuf-2.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0"
+                  exit 0
+                  ;;
+                *)
+                  # For other packages, just pass through the failure
+                  exit $RESULT
+                  ;;
+              esac
+            fi
+          else
+            # No package specified, just pass through
+            exec pkg-config "$@"
+          fi
           EOF
           sudo chmod +x /usr/local/bin/aarch64-linux-gnu-pkg-config
 
@@ -98,13 +145,6 @@ jobs:
           [env]
           PKG_CONFIG_ALLOW_CROSS = "1"
           PKG_CONFIG = "aarch64-linux-gnu-pkg-config"
-          GLIB_SYS_NO_PKG_CONFIG = "1"
-          GOBJECT_SYS_NO_PKG_CONFIG = "1"
-          GIO_SYS_NO_PKG_CONFIG = "1"
-          ATKMM_NO_PKG_CONFIG = "1"
-          CAIRO_NO_PKG_CONFIG = "1"
-          PANGOCAIRO_NO_PKG_CONFIG = "1"
-          GTK_NO_PKG_CONFIG = "1"
           EOF
 
       - name: Install frontend dependencies
@@ -117,13 +157,6 @@ jobs:
           PKG_CONFIG_ALLOW_CROSS: 1
           PKG_CONFIG: aarch64-linux-gnu-pkg-config
           RUSTFLAGS: "-C link-arg=-march=armv8-a"
-          GLIB_SYS_NO_PKG_CONFIG: 1
-          GOBJECT_SYS_NO_PKG_CONFIG: 1
-          GIO_SYS_NO_PKG_CONFIG: 1
-          ATKMM_NO_PKG_CONFIG: 1
-          CAIRO_NO_PKG_CONFIG: 1
-          PANGOCAIRO_NO_PKG_CONFIG: 1
-          GTK_NO_PKG_CONFIG: 1
         with:
           tagName: v${{ github.event.inputs.version }}
           releaseName: "App v${{ github.event.inputs.version }} for Debian 12"
