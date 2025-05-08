@@ -55,89 +55,97 @@ jobs:
       - name: Install cross-compilation tools for Debian 12 Bookworm
         if: matrix.platform == 'ubuntu-22.04'
         run: |
+          # Install prerequisites for Docker
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev librsvg2-dev patchelf
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          sudo apt-get install -y qemu-user-static
-          sudo apt-get install -y libxdo-dev libssl-dev file wget
+          sudo apt-get install -y qemu qemu-user-static binfmt-support
 
-          # Install standard build dependencies
-          sudo apt-get install -y \
-            build-essential \
-            curl \
-            wget \
-            libwebkit2gtk-4.1-dev \
-            libgtk-3-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            libssl-dev \
-            libxdo-dev \
-            pkg-config
+          # Set up Docker with QEMU for ARM64 emulation
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
-          # Install cross-compilation tools for ARM64
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          # Verify ARM64 emulation
+          docker run --rm -t arm64v8/ubuntu uname -m
 
-          # Set environment variables for cross-compilation
-          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
-          echo "PKG_CONFIG_SYSROOT_DIR=/" >> $GITHUB_ENV
+          # Create a Dockerfile for the Tauri cross-compilation environment
+          cat > Dockerfile.build << EOF
+          FROM --platform=linux/arm64 debian:bookworm-slim
 
-      - name: Set up Cargo config for cross-compilation
-        run: |
-          mkdir -p ~/.cargo
-          echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config
-          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config
-          echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> ~/.cargo/config
+          # Install Rust
+          RUN apt-get update && apt-get install -y \
+              curl \
+              build-essential \
+              git \
+              pkg-config \
+              libssl-dev \
+              libwebkit2gtk-4.1-dev \
+              libgtk-3-dev \
+              libappindicator3-dev \
+              librsvg2-dev \
+              libxdo-dev \
+              file \
+              wget \
+              unzip \
+              python3 \
+              && rm -rf /var/lib/apt/lists/*
 
-          # Create simplified cross-compilation config
-          mkdir -p ~/.cargo/config.d
+          # Install Rust
+          RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          ENV PATH="/root/.cargo/bin:${PATH}"
 
-      - name: Install frontend dependencies
-        run: bun install
+          # Install Node.js
+          RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+              && apt-get install -y nodejs
 
-      - name: Install Tauri CLI
-        run: bun add -g @tauri-apps/cli
+          # Install Bun
+          RUN curl -fsSL https://bun.sh/install | bash
+          ENV PATH="/root/.bun/bin:${PATH}"
 
-      - name: Install cross for Rust cross-compilation
-        run: cargo install cross --git https://github.com/cross-rs/cross
+          # Set working directory
+          WORKDIR /app
 
-      - name: Build Tauri App for Debian 12 Bookworm
-        run: |
-          # Create .cargo/config.d/aarch64-unknown-linux-gnu.config
-          mkdir -p .cargo/config.d
-          cat > .cargo/config.d/aarch64-unknown-linux-gnu.config << 'EOF'
-          [target.aarch64-unknown-linux-gnu]
-          linker = "aarch64-linux-gnu-gcc"
+          # We'll copy the app and build when running the container
+          CMD ["/bin/bash"]
           EOF
 
-          # Build using cross to handle ARM64 dependencies
-          echo "Building for ARM64 with cross..."
-          cd src-tauri
+          # Build the Docker image
+          docker build -t tauri-arm64-builder -f Dockerfile.build .
 
-          # Modify the tauri.conf.json to use cross
-          sed -i 's/"beforeBuildCommand": "bun run build"/"beforeBuildCommand": "cd .. \&\& bun run build"/' tauri.conf.json
+      - name: Install frontend dependencies locally
+        run: bun install
 
-          # Build with cross
-          cross build --target aarch64-unknown-linux-gnu --release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+      - name: Build frontend
+        run: bun run build
 
-      - name: Package for Raspberry Pi (Debian 12)
+      - name: Build and package Tauri App for ARM64 in Docker
         run: |
-          mkdir -p dist
+          # Create a build directory
+          mkdir -p build-output
 
-          # Copy the binary file
-          cp src-tauri/target/aarch64-unknown-linux-gnu/release/app dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}
+          # Create a simple build script to run in the Docker container
+          cat > build-arm64.sh << 'EOF'
+          #!/bin/bash
+          set -e
 
-          # Create a simple Debian package using dpkg-deb
-          mkdir -p debian/DEBIAN debian/usr/bin debian/usr/share/applications debian/usr/share/icons/hicolor/scalable/apps
+          # Install dependencies
+          cd /app
+          bun install
+
+          # Install Tauri CLI
+          bun add -g @tauri-apps/cli
+
+          # Build the Tauri app
+          cd src-tauri
+          cargo build --release
+
+          # Create output directories for the package
+          mkdir -p /app/dist
+          mkdir -p /app/debian/DEBIAN /app/debian/usr/bin /app/debian/usr/share/applications /app/debian/usr/share/icons/hicolor/scalable/apps
 
           # Copy the binary
-          cp src-tauri/target/aarch64-unknown-linux-gnu/release/app debian/usr/bin/
+          cp target/release/app /app/dist/
+          cp target/release/app /app/debian/usr/bin/
 
           # Create a desktop file
-          cat > debian/usr/share/applications/app.desktop << EOF
+          cat > /app/debian/usr/share/applications/app.desktop << EOD
           [Desktop Entry]
           Name=HMI App
           Exec=/usr/bin/app
@@ -145,25 +153,48 @@ jobs:
           Terminal=false
           Type=Application
           Categories=Utility;
-          EOF
+          EOD
 
           # Copy icon
-          cp src-tauri/icons/icon.svg debian/usr/share/icons/hicolor/scalable/apps/app.svg 2>/dev/null || echo "No icon found"
+          if [ -f "icons/icon.svg" ]; then
+            cp icons/icon.svg /app/debian/usr/share/icons/hicolor/scalable/apps/app.svg
+          fi
 
           # Create control file
-          cat > debian/DEBIAN/control << EOF
+          cat > /app/debian/DEBIAN/control << EOD
           Package: hmi-app
-          Version: ${{ github.event.inputs.version }}
+          Version: $VERSION
           Section: utils
           Priority: optional
           Architecture: arm64
           Maintainer: Maintainer <maintainer@example.com>
           Description: HMI Application for Raspberry Pi
            A Tauri application built for Raspberry Pi running Debian 12 (bookworm).
-          EOF
+          EOD
 
           # Build the package
-          dpkg-deb --build debian dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
+          cd /app
+          dpkg-deb --build debian dist/hmi-app-${VERSION}-arm64.deb
+
+          # Set permissions for the output directory
+          chmod -R 777 /app/dist
+          EOF
+
+          # Make the build script executable
+          chmod +x build-arm64.sh
+
+          # Run the Docker container to build the app
+          docker run --rm -v $(pwd):/app -e VERSION=${{ github.event.inputs.version }} tauri-arm64-builder /app/build-arm64.sh
+
+          # Create our distribution directory
+          mkdir -p dist
+          cp -r build-output/* dist/ 2>/dev/null || echo "No files in build-output/"
+          cp -r src-tauri/target/release/app dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }} 2>/dev/null || echo "No binary found"
+
+          # Use the debian package from the Docker build
+          if [ -f "dist/hmi-app-${{ github.event.inputs.version }}-arm64.deb" ]; then
+            cp dist/hmi-app-${{ github.event.inputs.version }}-arm64.deb dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
+          fi
 
       - name: Create GitHub Release
         id: create_release
@@ -190,51 +221,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Prepare Docker context
+      - name: Prepare Docker image build
         run: |
           # Create a minimal Docker context
           mkdir -p docker-build
+
+          # Copy the binary and other assets
           cp dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }} docker-build/app
           cp -r dist docker-build/
 
-          # Create a simple Dockerfile for ARM64
-          cat > docker-build/Dockerfile << EOF
-          FROM debian:bookworm-slim
+          # Copy our existing Dockerfile but modify it to use the pre-built binary
+          cp Dockerfile docker-build/
 
-          # Install minimal dependencies
-          RUN apt-get update && apt-get install -y \
-              libwebkit2gtk-4.1-0 \
-              libgtk-3-0 \
-              libayatana-appindicator3-1 \
-              librsvg2-2 \
-              libssl3 \
-              ca-certificates \
-              libudev1 \
-              && rm -rf /var/lib/apt/lists/*
+          # Modify the Dockerfile to use our pre-built binary instead of building it
+          sed -i 's/COPY --from=builder \/app\/src-tauri\/target\/release\/app/COPY app/' docker-build/Dockerfile
 
-          # Create a non-root user
-          RUN useradd -ms /bin/bash appuser
+          # Remove the build stage from the Dockerfile since we don't need it
+          awk 'BEGIN{p=0} /^# Stage 2/{p=1} {if(p==1)print}' Dockerfile > docker-build/Dockerfile.tmp
 
-          # Set working directory
-          WORKDIR /app
+          # Add VERSION environment variable
+          echo "ENV APP_VERSION=${{ github.event.inputs.version }}" >> docker-build/Dockerfile.tmp
 
-          # Copy application
-          COPY app /app/app
-
-          # Set permissions
-          RUN chmod +x /app/app && chown -R appuser:appuser /app
-          USER appuser
-
-          # Set environment variables
-          ENV RUST_LOG=info
-
-          # Add healthcheck
-          HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-            CMD pgrep app > /dev/null || exit 1
-
-          # Command to run the application
-          CMD ["/app/app"]
-          EOF
+          # Replace the original file
+          mv docker-build/Dockerfile.tmp docker-build/Dockerfile
 
       - name: Build and push Docker image for Debian 12
         uses: docker/build-push-action@v5
