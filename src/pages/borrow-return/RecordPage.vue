@@ -700,9 +700,9 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
       <div
         class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
       >
-        <div class="p-4 border-b border-gray-200">
-          <h2 class="text-lg font-semibold flex items-center gap-2">
-            <PackageCheckIcon class="h-5 w-5" />
+        <div class="p-3 border-b border-gray-200">
+          <h2 class="text-sm font-semibold flex items-center gap-1">
+            <PackageCheckIcon class="h-4 w-4" />
             {{ leftColumnTitle }}
           </h2>
         </div>
@@ -710,16 +710,17 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
         <div class="h-[calc(100vh-10rem)] overflow-y-auto">
           <div
             v-if="devices.length === 0"
-            class="flex flex-col items-center justify-center py-20 text-center"
+            class="flex flex-col items-center justify-center py-12 text-center"
           >
-            <div class="rounded-full bg-gray-100 p-3 mb-4">
+            <div class="rounded-full bg-gray-100 p-2 mb-3">
               <LoaderIcon
                 v-if="isLoadingDeviceScan"
-                class="h-8 w-8 text-blue-500 animate-spin"
+                class="h-5 w-5 text-blue-500 animate-spin"
               />
-              <PackageIcon v-else class="h-8 w-8 text-gray-400" />
+              <PackageIcon v-else class="h-5 w-5 text-gray-400" />
             </div>
-            <p class="text-sm text-gray-500 max-w-xs">
+            <h3 class="text-sm font-medium mb-1">CHƯA GHI NHẬN</h3>
+            <p class="text-xs text-gray-500 max-w-xs">
               {{
                 isLoadingDeviceScan
                   ? "Đang xử lý thiết bị..."
@@ -743,39 +744,41 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 @click="toggleDevice(device)"
               >
                 <div class="grid grid-cols-12 items-center">
-                  <div class="col-span-9 flex items-center gap-3">
+                  <div class="col-span-9 flex items-center gap-2">
                     <img
                       :src="device.image.mainImage"
                       alt="Device image"
-                      class="h-12 w-12 rounded-full object-cover"
+                      class="h-10 w-10 rounded-full object-cover"
                     />
                     <div>
-                      <div class="flex items-center gap-2 mb-0.5">
-                        <h3 class="font-medium text-gray-900 text-sm">
+                      <div class="flex items-center gap-1 mb-0.5">
+                        <h3 class="font-medium text-gray-900 text-xs">
                           Mã loại:
-                          <span class="font-bold text-base">{{
+                          <span class="font-bold text-sm whitespace-nowrap">{{
                             device.code
                           }}</span>
                         </h3>
                         <Badge
                           v-if="device.isBorrowableLabOnly"
                           variant="outline"
-                          class="text-blue-600 border-blue-200 bg-blue-50 text-xs"
+                          class="text-blue-600 border-blue-200 bg-blue-50 text-xs py-0 px-1"
                         >
                           Không mượn về
                         </Badge>
                       </div>
-                      <p class="text-base text-gray-900 font-medium">
+                      <p
+                        class="text-sm text-gray-900 font-medium whitespace-nowrap"
+                      >
                         {{ device.name }}
                       </p>
                     </div>
                   </div>
                   <div class="col-span-3 flex items-center">
-                    <span class="text-base text-gray-900 font-medium w-full">
+                    <span class="text-sm text-gray-900 font-medium w-full">
                       SL: {{ device.quantity }} {{ device.unit }}
                     </span>
                     <ChevronDownIcon
-                      class="h-5 w-5 text-gray-400 transition-transform justify-self-end"
+                      class="h-4 w-4 text-gray-400 transition-transform justify-self-end"
                       :class="{ 'rotate-180': device.expanded }"
                     />
                   </div>
@@ -840,39 +843,41 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 @click="toggleDevice(device)"
               >
                 <div class="grid grid-cols-12 items-center">
-                  <div class="col-span-9 flex items-center gap-3">
+                  <div class="col-span-9 flex items-center gap-2">
                     <img
                       :src="device.image.mainImage"
                       alt="Device image"
-                      class="h-12 w-12 rounded-full object-cover"
+                      class="h-10 w-10 rounded-full object-cover"
                     />
                     <div>
-                      <div class="flex items-center gap-2 mb-0.5">
-                        <h3 class="font-medium text-gray-900 text-sm">
+                      <div class="flex items-center gap-1 mb-0.5">
+                        <h3 class="font-medium text-gray-900 text-xs">
                           Mã loại:
-                          <span class="font-bold text-base">{{
+                          <span class="font-bold text-sm whitespace-nowrap">{{
                             device.code
                           }}</span>
                         </h3>
                         <Badge
                           v-if="device.isBorrowableLabOnly"
                           variant="outline"
-                          class="text-blue-600 border-blue-200 bg-blue-50 text-xs"
+                          class="text-blue-600 border-blue-200 bg-blue-50 text-xs py-0 px-1"
                         >
                           Không mượn về
                         </Badge>
                       </div>
-                      <p class="text-base text-gray-900 font-medium">
+                      <p
+                        class="text-sm text-gray-900 font-medium whitespace-nowrap"
+                      >
                         {{ device.name }}
                       </p>
                     </div>
                   </div>
                   <div class="col-span-3 flex items-center">
-                    <span class="text-base text-gray-900 font-medium w-full">
+                    <span class="text-sm text-gray-900 font-medium w-full">
                       SL: {{ device.quantity }} {{ device.unit }}
                     </span>
                     <ChevronDownIcon
-                      class="h-5 w-5 text-gray-400 transition-transform justify-self-end"
+                      class="h-4 w-4 text-gray-400 transition-transform justify-self-end"
                       :class="{ 'rotate-180': device.expanded }"
                     />
                   </div>
@@ -999,9 +1004,9 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
       <div
         class="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 h-fit"
       >
-        <div class="p-4 border-b border-gray-200">
-          <h2 class="text-lg font-semibold flex items-center gap-2">
-            <UserIcon class="h-5 w-5" />
+        <div class="p-3 border-b border-gray-200">
+          <h2 class="text-sm font-semibold flex items-center gap-1">
+            <UserIcon class="h-4 w-4" />
             {{ rightColumnTitle }}
           </h2>
         </div>
@@ -1028,27 +1033,27 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </p>
             </div>
 
-            <div v-else class="rounded-lg px-4 py-1">
+            <div v-else class="rounded-lg px-3 py-1">
               <div class="flex items-center">
                 <img
                   :src="userInfo.avatar || undefined"
                   alt="User avatar"
-                  class="h-12 w-12 rounded-full object-cover"
+                  class="h-10 w-10 rounded-full object-cover"
                 />
-                <div class="ml-3">
-                  <h4 class="text-sm font-medium text-gray-500">
+                <div class="ml-2">
+                  <h4 class="text-xs font-medium text-gray-500">
                     Mã số:
                     <span class="text-gray-500 font-semibold">{{
                       userInfo.id
                     }}</span>
-                    <span class="text-sm text-gray-500 italic font-semibold">
+                    <span class="text-xs text-gray-500 italic font-semibold">
                       ({{
                         userInfo.roles?.map((r) => r.name).join(", ") ||
                         "Không có vai trò"
                       }})
                     </span>
                   </h4>
-                  <p class="text-base font-semibold text-gray-900">
+                  <p class="text-sm font-semibold text-gray-900">
                     {{ userInfo.name }}
                   </p>
                 </div>

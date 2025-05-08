@@ -123,16 +123,16 @@ onBeforeUnmount(() => {
 <template>
   <div class="w-full">
     <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <img class="h-8 w-auto" src="/logo.svg" alt="Lab Syncro" />
-        <span class="text-sm font-bold">Lab Syncro</span>
+      <div class="flex items-center gap-1">
+        <img class="h-6 w-auto" src="/logo.svg" alt="Lab Syncro" />
+        <span class="text-xs font-bold whitespace-nowrap">Lab Syncro</span>
       </div>
-      <div class="flex items-center space-x-1">
+      <div class="flex items-center space-x-0.5">
         <template v-for="(item, index) in activeNavItems" :key="index">
           <router-link
             v-if="!item.children"
             :to="item.route!"
-            class="px-4 py-2 text-sm font-semibold transition-colors rounded-md flex items-center gap-2"
+            class="px-2 py-1 text-xs font-semibold transition-colors rounded-md flex items-center gap-1 whitespace-nowrap"
             :class="
               item.active
                 ? 'bg-blue-50 text-blue-600'
@@ -140,24 +140,24 @@ onBeforeUnmount(() => {
             "
             :aria-current="item.active ? 'page' : undefined"
           >
-            <component :is="item.icon" class="h-4 w-4" />
+            <component :is="item.icon" class="h-3 w-3" />
             {{ item.name }}
           </router-link>
 
           <div v-else class="relative" @click.stop>
             <button
               @click="toggleDropdown(item.name)"
-              class="px-4 py-2 text-sm font-semibold transition-colors rounded-md flex items-center gap-2 w-full text-left"
+              class="px-2 py-1 text-xs font-semibold transition-colors rounded-md flex items-center gap-1 w-full text-left whitespace-nowrap"
               :class="
                 item.active
                   ? 'bg-blue-50 text-blue-600'
                   : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
               "
             >
-              <component :is="item.icon" class="h-4 w-4" />
+              <component :is="item.icon" class="h-3 w-3" />
               {{ item.name }}
               <ChevronDown
-                class="h-4 w-4 ml-1 transition-transform"
+                class="h-3 w-3 transition-transform"
                 :class="{ 'rotate-180': openDropdown === item.name }"
               />
             </button>
@@ -171,14 +171,14 @@ onBeforeUnmount(() => {
             >
               <div
                 v-if="openDropdown === item.name && item.children"
-                class="absolute z-10 mt-2 w-48 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none left-0"
+                class="absolute z-10 mt-1 w-40 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none left-0"
               >
                 <router-link
                   v-for="child in item.children"
                   :key="child.route"
                   :to="child.route"
                   @click="closeAllDropdowns"
-                  class="block px-4 py-2 text-sm w-full text-left"
+                  class="block px-3 py-1 text-xs w-full text-left"
                   :class="
                     child.active
                       ? 'bg-blue-50 text-blue-600'
@@ -197,15 +197,15 @@ onBeforeUnmount(() => {
         <div class="relative" @click.stop>
           <div
             @click="toggleUserDropdown"
-            class="flex items-center px-3 py-1.5 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+            class="flex items-center px-2 py-1 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
           >
             <img
               :src="userProfile.avatar"
               alt="User Avatar"
-              class="h-8 w-8 rounded-full object-cover"
+              class="h-6 w-6 rounded-full object-cover"
             />
             <ChevronDown
-              class="h-4 w-4 ml-2 transition-transform"
+              class="h-3 w-3 ml-1 transition-transform"
               :class="{ 'rotate-180': userDropdownOpen }"
             />
           </div>
@@ -220,10 +220,10 @@ onBeforeUnmount(() => {
           >
             <div
               v-if="userDropdownOpen"
-              class="absolute z-10 mt-2 w-56 origin-top-right right-0 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+              class="absolute z-10 mt-1 w-48 origin-top-right right-0 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
             >
-              <div class="px-4 py-3 border-b border-gray-100">
-                <p class="text-sm font-medium text-gray-900">
+              <div class="px-3 py-2 border-b border-gray-100">
+                <p class="text-xs font-medium text-gray-900">
                   {{ userProfile.name }}
                 </p>
                 <p class="text-xs text-gray-500 truncate">
@@ -239,17 +239,17 @@ onBeforeUnmount(() => {
 
               <a
                 href="#"
-                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                class="block px-3 py-1 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
-                <User class="h-4 w-4" />
+                <User class="h-3 w-3" />
                 Thông tin cá nhân
               </a>
               <a
                 href="#"
-                class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center gap-2"
+                class="block px-3 py-1 text-xs text-red-600 hover:bg-gray-50 flex items-center gap-2"
                 @click="handleLogout"
               >
-                <LogOut class="h-4 w-4" />
+                <LogOut class="h-3 w-3" />
                 Đăng xuất
               </a>
             </div>
