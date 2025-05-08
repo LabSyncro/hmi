@@ -41,7 +41,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: "npm"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -64,7 +68,7 @@ jobs:
           echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> ~/.cargo/config
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: bun install
 
       - name: Build Tauri App for Debian 12 Bookworm
         uses: tauri-apps/tauri-action@v0
