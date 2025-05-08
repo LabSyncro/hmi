@@ -30,163 +30,69 @@ jobs:
       matrix:
         include:
           - platform: "ubuntu-22.04"
-            targetName: "raspberry-pi-debian12"
+            args: "--target aarch64-unknown-linux-gnu"
+            targetName: "linux-debian"
 
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Install dependencies
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Install cross-compilation tools for Debian
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-user-static
-          sudo apt-get install -y build-essential curl wget file
-          sudo apt-get install -y patchelf
-          sudo apt-get install -y dpkg-dev
+          sudo apt update
+          sudo apt install -y libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+          sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          sudo apt install -y qemu-user-static
+
+      - name: Set up Cargo config for cross-compilation
+        run: |
+          mkdir -p ~/.cargo
+          echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config
+          echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config
+          echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> ~/.cargo/config
 
       - name: Install frontend dependencies
         run: bun install
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Build Tauri App for Debian 12 Bookworm
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v${{ github.event.inputs.version }}
+          releaseName: "App v${{ github.event.inputs.version }} for Linux Debian"
+          releaseBody: "Release for Linux Debian devices. Download and install the package for your Debian system."
+          releaseDraft: false
+          prerelease: ${{ github.event.inputs.prerelease }}
+          args: ${{ matrix.args }}
 
-      - name: Build frontend
+      - name: Package for Linux Debian
         run: |
-          # Install Tauri CLI
-          bun add --dev @tauri-apps/cli
-
-          # Build the frontend
-          bun run build
-
-      - name: Create Docker image for cross-compilation
-        run: |
-          # Create a Dockerfile for cross-compilation
-          cat > Dockerfile.cross << EOF
-          FROM ubuntu:22.04
-
-          # Set non-interactive mode for apt
-          ENV DEBIAN_FRONTEND=noninteractive
-
-          # Install dependencies
-          RUN apt-get update && apt-get install -y \
-              build-essential \
-              curl \
-              wget \
-              file \
-              unzip \
-              git \
-              pkg-config \
-              libssl-dev \
-              libgtk-3-dev \
-              libwebkit2gtk-4.0-dev \
-              libwebkit2gtk-4.1-dev \
-              libayatana-appindicator3-dev \
-              librsvg2-dev \
-              patchelf \
-              gcc-aarch64-linux-gnu \
-              g++-aarch64-linux-gnu \
-              libc6-dev-arm64-cross
-
-          # Install Rust
-          RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          ENV PATH="/root/.cargo/bin:${PATH}"
-
-          # Add ARM64 target
-          RUN rustup target add aarch64-unknown-linux-gnu
-
-          # Set up Cargo config for cross-compilation
-          RUN mkdir -p /root/.cargo && \
-              echo '[target.aarch64-unknown-linux-gnu]' > /root/.cargo/config && \
-              echo 'linker = "aarch64-linux-gnu-gcc"' >> /root/.cargo/config && \
-              echo 'rustflags = ["-C", "link-arg=-march=armv8-a"]' >> /root/.cargo/config
-
-          # Install Node.js and npm
-          RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-              apt-get install -y nodejs
-
-          # Install Bun
-          RUN curl -fsSL https://bun.sh/install | bash
-          ENV PATH="/root/.bun/bin:${PATH}"
-
-          # Set working directory
-          WORKDIR /app
-          EOF
-
-          # Build the Docker image
-          docker build -t tauri-cross-arm64 -f Dockerfile.cross .
-
-      - name: Build Tauri App for ARM64 in Docker
-        run: |
-          # Run the build in the Docker container
-          docker run --rm -v $(pwd):/app tauri-cross-arm64 bash -c "
-            cd /app &&
-            export PATH=/root/.bun/bin:/root/.cargo/bin:\$PATH &&
-
-            # Install dependencies
-            bun install &&
-
-            # Create a simplified version for ARM64
-            cd src-tauri &&
-
-            # Create a static build configuration
-            mkdir -p .cargo
-            cat > .cargo/config.toml << 'EOF'
-            [target.aarch64-unknown-linux-gnu]
-            linker = \"aarch64-linux-gnu-gcc\"
-            rustflags = [\"-C\", \"link-arg=-march=armv8-a\"]
-
-            [env]
-            PKG_CONFIG_ALLOW_CROSS = \"1\"
-            PKG_CONFIG_PATH = \"/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig\"
-            PKG_CONFIG_SYSROOT_DIR = \"/\"
-            EOF
-
-            # Create a simplified Cargo.toml for ARM64 build
-            cp Cargo.toml Cargo.toml.bak &&
-            sed -i 's/tauri = { version = \".*\", features = \\[.*\\] }/tauri = { version = \"1.5\", features = [] }/' Cargo.toml &&
-
-            # Build a minimal binary for ARM64
-            cargo build --target aarch64-unknown-linux-gnu --release
-          "
-
-          # Create dist directory
           mkdir -p dist
-
-          # Copy the binary
-          cp src-tauri/target/aarch64-unknown-linux-gnu/release/hmi dist/hmi-${{ github.event.inputs.version }}-${{ matrix.targetName }}
-
-          # Create a simple Debian package
-          mkdir -p deb-package/DEBIAN
-          mkdir -p deb-package/usr/local/bin
-
-          # Create control file
-          cat > deb-package/DEBIAN/control << EOF
-          Package: hmi
-          Version: ${{ github.event.inputs.version }}
-          Section: utils
-          Priority: optional
-          Architecture: arm64
-          Maintainer: HMI Team
-          Description: HMI Application for Raspberry Pi
-           This package provides the HMI application for Raspberry Pi devices.
-          EOF
-
-          # Copy binary to package
-          cp src-tauri/target/aarch64-unknown-linux-gnu/release/hmi deb-package/usr/local/bin/
-
-          # Build the Debian package
-          dpkg-deb --build deb-package
-          mv deb-package.deb dist/hmi-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
+          cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.deb
+          if [ -d "src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage" ]; then
+            cp src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-${{ matrix.targetName }}.AppImage
+          fi
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
@@ -205,7 +111,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image for Debian 12
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image for Debian
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -215,7 +124,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/app:latest
             ghcr.io/${{ github.repository }}/app:${{ github.event.inputs.version }}
-            ghcr.io/${{ github.repository }}/app:debian12-${{ github.event.inputs.version }}
+            ghcr.io/${{ github.repository }}/app:debian-${{ github.event.inputs.version }}
           platforms: linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
