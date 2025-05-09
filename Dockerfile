@@ -46,7 +46,7 @@ RUN arch=$(uname -m) && \
         # Create a temporary copy of the config with modified bundle formats for ARM
         cp src-tauri/tauri.conf.json src-tauri/tauri.conf.json.orig && \
         cat src-tauri/tauri.conf.json | \
-            jq '.bundle.targets = "deb,rpm"' > src-tauri/tauri.conf.json.tmp && \
+            jq '.bundle.targets = ["deb", "rpm"]' > src-tauri/tauri.conf.json.tmp && \
         mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json && \
         # Build with the modified config
         bun run tauri build && \
