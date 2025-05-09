@@ -39,24 +39,10 @@ RUN bun install
 # Initialize a fresh Cargo.lock that works with this Rust version
 RUN cd src-tauri && rustc --version && cargo update
 
-# Detect architecture and build accordingly
-RUN arch=$(uname -m) && \
-    if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
-        echo "Building for ARM architecture, skipping AppImage..." && \
-        # Create a temporary copy of the config with modified bundle formats for ARM
-        cp src-tauri/tauri.conf.json src-tauri/tauri.conf.json.orig && \
-        cat src-tauri/tauri.conf.json | \
-            jq '.bundle.targets = ["deb", "rpm"]' > src-tauri/tauri.conf.json.tmp && \
-        mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json && \
-        # Build with the modified config
-        bun run tauri build && \
-        # Restore original config
-        mv src-tauri/tauri.conf.json.orig src-tauri/tauri.conf.json; \
-    else \
-        # For x86_64 architecture, build all formats
-        echo "Building for x86_64 architecture..." && \
-        bun run tauri build; \
-    fi
+# Build Tauri app (for all architectures)
+# The differences in package formats will be handled in the GitHub Actions workflow
+# by checking which formats were actually produced
+RUN echo "Building Tauri app..." && bun run tauri build
 
 # Stage 2: Runtime environment (minimal)
 FROM debian:${DEBIAN_VERSION}-slim
