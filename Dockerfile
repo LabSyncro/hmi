@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     git \
     xdg-utils \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -40,10 +41,17 @@ RUN cd src-tauri && rustc --version && cargo update
 
 # Detect architecture and build accordingly
 RUN arch=$(uname -m) && \
-    # For ARM architecture, skip AppImage bundling which often fails on ARM
     if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
         echo "Building for ARM architecture, skipping AppImage..." && \
-        bun run tauri build --config '{"tauri":{"bundle":{"formats":["deb","rpm"]}}}'; \
+        # Create a temporary copy of the config with modified bundle formats for ARM
+        cp src-tauri/tauri.conf.json src-tauri/tauri.conf.json.orig && \
+        cat src-tauri/tauri.conf.json | \
+            jq '.bundle.targets = "deb,rpm"' > src-tauri/tauri.conf.json.tmp && \
+        mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json && \
+        # Build with the modified config
+        bun run tauri build && \
+        # Restore original config
+        mv src-tauri/tauri.conf.json.orig src-tauri/tauri.conf.json; \
     else \
         # For x86_64 architecture, build all formats
         echo "Building for x86_64 architecture..." && \
