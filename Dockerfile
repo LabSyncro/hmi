@@ -43,7 +43,7 @@ RUN arch=$(uname -m) && \
     # For ARM architecture, skip AppImage bundling which often fails on ARM
     if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
         echo "Building for ARM architecture, skipping AppImage..." && \
-        bun run tauri build -- --bundles deb,rpm; \
+        bun run tauri build --config '{"tauri":{"bundle":{"formats":["deb","rpm"]}}}'; \
     else \
         # For x86_64 architecture, build all formats
         echo "Building for x86_64 architecture..." && \
