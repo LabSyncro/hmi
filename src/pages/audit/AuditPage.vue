@@ -952,7 +952,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
 <template>
   <div>
-    <div class="grid grid-cols-3 gap-6">
+    <div class="grid grid-cols-3 gap-2">
       <div
         class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
       >
@@ -975,7 +975,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           </Button>
         </div>
 
-        <div class="h-[calc(100vh-10rem)] overflow-y-auto">
+        <div class="h-[calc(100vh-7rem)] overflow-y-auto">
           <div
             v-if="devices.length === 0"
             class="flex flex-col items-center justify-center py-12 text-center"

@@ -696,7 +696,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
 
 <template>
   <div>
-    <div class="grid grid-cols-3 gap-6">
+    <div class="grid grid-cols-3 gap-2">
       <div
         class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
       >
@@ -707,7 +707,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
           </h2>
         </div>
 
-        <div class="h-[calc(100vh-10rem)] overflow-y-auto">
+        <div class="h-[calc(100vh-7rem)] overflow-y-auto">
           <div
             v-if="devices.length === 0"
             class="flex flex-col items-center justify-center py-12 text-center"
@@ -1071,7 +1071,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Tổng thiết bị</p>
-                <p class="font-medium text-gray-800 text-right mr-4">
+                <p class="font-medium text-gray-800 text-right">
                   {{ totalDevices }}
                 </p>
               </div>
@@ -1083,7 +1083,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Nơi mượn</p>
-                <p class="font-medium text-gray-800 text-right mr-4">
+                <p class="text-sm font-medium text-gray-800 text-right">
                   {{ borrowDetails.location }}
                 </p>
               </div>
@@ -1095,7 +1095,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Ngày mượn</p>
-                <p class="font-medium text-gray-800 text-right mr-4">
+                <p class="text-sm font-medium text-gray-800 text-right">
                   {{ borrowDetails.borrowDate }}
                 </p>
               </div>
@@ -1106,14 +1106,16 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                 <CalendarIcon class="h-4 w-4 text-purple-600" />
               </div>
               <div class="grid grid-cols-3 w-full items-center">
-                <p class="text-sm text-gray-500">Ngày hẹn trả</p>
+                <p class="text-sm text-gray-500 whitespace-nowrap">
+                  Ngày hẹn trả
+                </p>
                 <div class="text-right col-span-2">
                   <template v-if="hasBorrowableLabOnlyDevice">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger as-child>
                           <div
-                            class="text-base font-medium text-gray-800 inline-flex gap-2 items-center mr-4"
+                            class="text-sm font-medium text-gray-800 inline-flex gap-2 items-center"
                           >
                             <InfoIcon class="h-4 w-4 text-gray-400" />
                             {{ borrowDetails.borrowDate }}
@@ -1135,7 +1137,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                           variant="outline"
                           :class="
                             cn(
-                              'w-auto justify-end font-normal text-base',
+                              'w-auto justify-end font-normal text-sm',
                               !borrowDetails.returnDate &&
                                 'text-muted-foreground'
                             )
@@ -1146,7 +1148,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
                             borrowDetails.returnDate &&
                             borrowDetails.returnDate instanceof Date
                               ? df.format(borrowDetails.returnDate)
-                              : "Chọn ngày trả"
+                              : "Chọn ngày"
                           }}
                         </Button>
                       </PopoverTrigger>
@@ -1205,7 +1207,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Tổng thiết bị</p>
-                <p class="font-medium text-gray-800 text-right mr-4">
+                <p class="text-xs font-medium text-gray-800 text-right">
                   {{ totalDevices }}
                 </p>
               </div>
@@ -1217,7 +1219,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Nơi trả</p>
-                <p class="font-medium text-gray-800 text-right mr-4">
+                <p class="text-xs font-medium text-gray-800 text-right">
                   {{ returnDetails.location }}
                 </p>
               </div>
@@ -1230,7 +1232,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Tiến độ trả</p>
                 <p
-                  class="font-medium text-right mr-4"
+                  class="text-xs font-medium text-right"
                   :class="
                     overallReturnStatus === 'Trễ hạn'
                       ? 'text-red-600'
@@ -1248,7 +1250,7 @@ useVirtualKeyboardDetection(handleVirtualKeyboardDetection, {
               </div>
               <div class="grid grid-cols-2 w-full">
                 <p class="text-sm text-gray-500">Ngày trả thực tế</p>
-                <p class="font-medium text-gray-800 text-right mr-4">
+                <p class="text-xs font-medium text-gray-800 text-right">
                   {{ returnDetails.actualReturnDate }}
                 </p>
               </div>

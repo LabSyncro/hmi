@@ -665,7 +665,7 @@ const getActivityStatusText = (status: string) => {
 
     <div v-else-if="mode === 'device' && deviceDetail">
       <div>
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-3 gap-2">
           <div
             class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
           >
@@ -676,13 +676,13 @@ const getActivityStatusText = (status: string) => {
                     value="inventory"
                     class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
-                    <div class="flex items-center justify-center gap-1 w-full">
+                    <div class="flex items-center justify-center gap-0.5 w-full">
                       <div class="rounded-full bg-blue-50 p-1">
                         <PackageIcon class="h-3 w-3 text-blue-600" />
                       </div>
-                      <span class="whitespace-nowrap text-xs">TỒN KHO</span>
+                      <span class="whitespace-nowrap text-xs">Tồn kho</span>
                       <span
-                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full text-center"
                       >
                         {{ inventory.length || 0 }}
                       </span>
@@ -692,13 +692,13 @@ const getActivityStatusText = (status: string) => {
                     value="borrowed"
                     class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
-                    <div class="flex items-center justify-center gap-1 w-full">
+                    <div class="flex items-center justify-center gap-0.5 w-full">
                       <div class="rounded-full bg-violet-50 p-1">
                         <UserIcon class="h-3 w-3 text-violet-600" />
                       </div>
-                      <span class="whitespace-nowrap text-xs">MƯỢN TRẢ</span>
+                      <span class="whitespace-nowrap text-xs">Mượn trả</span>
                       <span
-                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full text-center"
                       >
                         {{ borrowedDevices.length || 0 }}
                       </span>
@@ -708,13 +708,13 @@ const getActivityStatusText = (status: string) => {
                     value="audit"
                     class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
-                    <div class="flex items-center justify-center gap-1 w-full">
+                    <div class="flex items-center justify-center gap-0.5 w-full">
                       <div class="rounded-full bg-rose-50 p-1">
                         <ClipboardCheckIcon class="h-3 w-3 text-rose-600" />
                       </div>
-                      <span class="whitespace-nowrap text-xs">KIỂM ĐẾM</span>
+                      <span class="whitespace-nowrap text-xs">Kiểm đếm</span>
                       <span
-                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full text-center"
                       >
                         {{ auditDevices.length || 0 }}
                       </span>
@@ -724,13 +724,13 @@ const getActivityStatusText = (status: string) => {
                     value="maintenance"
                     class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
-                    <div class="flex items-center justify-center gap-1 w-full">
+                    <div class="flex items-center justify-center gap-0.5 w-full">
                       <div class="rounded-full bg-amber-50 p-1">
                         <WrenchIcon class="h-3 w-3 text-amber-600" />
                       </div>
-                      <span class="whitespace-nowrap text-xs">BẢO TRÌ</span>
+                      <span class="whitespace-nowrap text-xs">Bảo trì</span>
                       <span
-                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full text-center"
                       >
                         {{ maintenanceDevices.length || 0 }}
                       </span>
@@ -740,13 +740,13 @@ const getActivityStatusText = (status: string) => {
                     value="transport"
                     class="text-xs flex-1 px-2 py-2 rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:text-blue-600"
                   >
-                    <div class="flex items-center justify-center gap-1 w-full">
+                    <div class="flex items-center justify-center gap-0.5 w-full">
                       <div class="rounded-full bg-emerald-50 p-1">
                         <TruckIcon class="h-3 w-3 text-emerald-600" />
                       </div>
-                      <span class="whitespace-nowrap text-xs">VẬN CHUYỂN</span>
+                      <span class="whitespace-nowrap text-xs">Vận chuyển</span>
                       <span
-                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full min-w-[20px] text-center"
+                        class="ml-auto px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full text-center"
                       >
                         {{ transportDevices.length || 0 }}
                       </span>
@@ -756,7 +756,7 @@ const getActivityStatusText = (status: string) => {
               </div>
               <TabsContent
                 value="inventory"
-                class="p-3 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+                class="p-3 h-[calc(100vh-7rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingInventory">
                   <div class="flex justify-center items-center p-4">
@@ -883,7 +883,7 @@ const getActivityStatusText = (status: string) => {
               </TabsContent>
               <TabsContent
                 value="borrowed"
-                class="p-3 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+                class="p-3 h-[calc(100vh-7rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingBorrowedItems">
                   <div class="flex justify-center items-center p-4">
@@ -991,7 +991,7 @@ const getActivityStatusText = (status: string) => {
 
               <TabsContent
                 value="audit"
-                class="p-3 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+                class="p-3 h-[calc(100vh-7rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingAuditItems">
                   <div class="flex justify-center items-center p-4">
@@ -1092,7 +1092,7 @@ const getActivityStatusText = (status: string) => {
               </TabsContent>
               <TabsContent
                 value="maintenance"
-                class="p-3 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+                class="p-3 h-[calc(100vh-7rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingMaintenanceItems">
                   <div class="flex justify-center items-center p-4">
@@ -1205,7 +1205,7 @@ const getActivityStatusText = (status: string) => {
               </TabsContent>
               <TabsContent
                 value="transport"
-                class="p-3 h-[calc(100vh-10rem)] overflow-y-auto mt-0"
+                class="p-3 h-[calc(100vh-7rem)] overflow-y-auto mt-0"
               >
                 <div v-if="loadingTransportItems">
                   <div class="flex justify-center items-center p-4">
@@ -1351,7 +1351,7 @@ const getActivityStatusText = (status: string) => {
           </div>
 
           <div
-            class="bg-white h-[calc(100vh-6rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
+            class="bg-white h-[calc(100vh-4rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
           >
             <div class="p-3 border-b border-gray-200">
               <h2 class="text-sm font-semibold text-gray-700">
@@ -1533,7 +1533,7 @@ const getActivityStatusText = (status: string) => {
     </div>
 
     <div v-if="mode === 'user' && userInfo">
-      <div class="grid grid-cols-3 gap-4">
+      <div class="grid grid-cols-3 gap-2">
         <div
           class="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200"
         >
@@ -1579,7 +1579,7 @@ const getActivityStatusText = (status: string) => {
               </TabsList>
             </div>
 
-            <div class="h-[calc(100vh-10rem)] overflow-y-auto">
+            <div class="h-[calc(100vh-7rem)] overflow-y-auto">
               <TabsContent value="borrowed" class="p-3 mt-0">
                 <div
                   v-if="loadingUserBorrowedItems"
@@ -1874,7 +1874,7 @@ const getActivityStatusText = (status: string) => {
         </div>
 
         <div
-          class="bg-white h-[calc(100vh-6rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
+          class="bg-white h-[calc(100vh-4rem)] overflow-y-auto rounded-lg shadow-sm border border-gray-200"
         >
           <div class="border-b border-gray-200 p-3">
             <h2 class="text-sm font-semibold text-gray-700">
