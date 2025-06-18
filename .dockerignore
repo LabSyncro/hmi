@@ -1,0 +1,71 @@
+# Build artifacts and cache directories
+src-tauri/target/
+node_modules/
+dist/
+.next/
+.nuxt/
+.output/
+.vite/
+.turbo/
+
+# Development files
+.git/
+.github/
+.vscode/
+.idea/
+*.log
+*.tmp
+*.temp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment and config files
+.env*
+!.env.example
+.npmrc
+.yarnrc
+.bun/
+
+# Documentation and non-essential files
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+docs/
+
+# Test files and benchmarks (not needed for production build)
+src-tauri/benches/
+src-tauri/criterion/
+**/*test*
+**/*spec*
+coverage/
+.nyc_output/
+
+# Lock files (will be regenerated)
+package-lock.json
+yarn.lock
+# Keep bun.lock as it's needed
+
+# Backup and temporary files
+*.bak
+*.swp
+*.swo
+*~
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-*
+.editorconfig
+
+# Docker files (not needed inside container)
+Dockerfile*
+docker-compose*.yml
+.dockerignore

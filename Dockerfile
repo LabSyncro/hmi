@@ -3,6 +3,7 @@ ARG DEBIAN_VERSION=bookworm
 # Stage 1: Build environment
 FROM rust:1.82-slim-${DEBIAN_VERSION} as builder
 
+# Install system dependencies in a single layer
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -18,7 +19,8 @@ RUN apt-get update && apt-get install -y \
     git \
     xdg-utils \
     jq \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 WORKDIR /app
 
@@ -26,22 +28,37 @@ WORKDIR /app
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
 
-# First, copy everything except Cargo.lock for dependency preparation
-COPY . .
-RUN rm -f src-tauri/Cargo.lock
+# Copy package files first for better caching
+COPY package.json bun.lock* ./
+COPY src-tauri/Cargo.toml src-tauri/Cargo.lock* src-tauri/
+COPY src-tauri/build.rs src-tauri/
+COPY src-tauri/tauri.conf.json src-tauri/
 
-# Remove benchmark sections from Cargo.toml
+# Remove benchmark sections from Cargo.toml to reduce dependencies
 RUN sed -i '/\[\[bench\]\]/,/harness = false/d' src-tauri/Cargo.toml
 
-# Install frontend dependencies
-RUN bun install
+# Install frontend dependencies (cached layer)
+RUN bun install --frozen-lockfile
 
-# Initialize a fresh Cargo.lock that works with this Rust version
-RUN cd src-tauri && rustc --version && cargo update
+# Pre-build Rust dependencies (cached layer)
+RUN cd src-tauri && \
+    mkdir -p src && \
+    echo "fn main() {}" > src/main.rs && \
+    echo "pub fn lib_main() {}" > src/lib.rs && \
+    cargo build --release && \
+    rm -rf src
 
-# Build Tauri app (for all architectures)
-# The differences in package formats will be handled in the GitHub Actions workflow
-# by checking which formats were actually produced
+# Copy source code
+COPY src/ src/
+COPY public/ public/
+COPY src-tauri/src/ src-tauri/src/
+COPY src-tauri/icons/ src-tauri/icons/
+COPY src-tauri/capabilities/ src-tauri/capabilities/
+COPY *.config.* ./
+COPY *.json ./
+COPY index.html ./
+
+# Build the application
 RUN echo "Building Tauri app..." && bun run tauri build
 
 # Stage 2: Runtime environment (minimal)
