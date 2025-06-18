@@ -1,5 +1,6 @@
 # Generated database types
 /src/types/db/schema.json
+/src/types/db/generated.ts
 
 # Logs
 logs
@@ -25,8 +26,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.cursor
 .vscode
 
 .env
-.windsurfrules
