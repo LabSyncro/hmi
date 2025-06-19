@@ -37,14 +37,11 @@ COPY src-tauri/tauri.conf.json src-tauri/
 # Remove benchmark sections from Cargo.toml to reduce dependencies
 RUN sed -i '/\[\[bench\]\]/,/harness = false/d' src-tauri/Cargo.toml
 
-# Install frontend dependencies (cached layer with mount cache)
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile
+# Install frontend dependencies (cached layer)
+RUN bun install --frozen-lockfile
 
-# Pre-build Rust dependencies (cached layer with mount cache)
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/src-tauri/target \
-    cd src-tauri && \
+# Pre-build Rust dependencies (cached layer)
+RUN cd src-tauri && \
     mkdir -p src && \
     echo "fn main() {}" > src/main.rs && \
     echo "pub fn lib_main() {}" > src/lib.rs && \
@@ -70,11 +67,8 @@ RUN echo "Modifying build script to skip TypeScript checking..." && \
     jq '.scripts.build = "vite build"' package.json > package-temp.json && \
     mv package-temp.json package.json
 
-# Build the Tauri application with cache mounts
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/src-tauri/target \
-    echo "Building Tauri app..." && bun run tauri build
+# Build the Tauri application
+RUN echo "Building Tauri app..." && bun run tauri build
 
 # Stage 2: Runtime environment (minimal)
 FROM debian:${DEBIAN_VERSION}-slim
