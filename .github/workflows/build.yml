@@ -37,6 +37,9 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Add ARM64 Rust target
+        run: rustup target add aarch64-unknown-linux-gnu
+
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
@@ -104,8 +107,10 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PKG_CONFIG_ALLOW_CROSS: "1"
         with:
           args: "--target aarch64-unknown-linux-gnu"
+          useCross: true
           tagName: v${{ github.event.inputs.version }}
           releaseName: "App v${{ github.event.inputs.version }} for Debian"
           releaseBody: "Release for Linux Debian. Download and install the package for your Debian system."
