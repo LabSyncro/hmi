@@ -116,50 +116,29 @@ jobs:
       - name: Prepare Docker repo name
         run: echo "REPO_LOWERCASE=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-      - name: Build and push Docker image for Debian (AMD64)
+      - name: Build and push multi-arch Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
+          platforms: linux/amd64,linux/arm64
           build-args: |
             DEBIAN_VERSION=bookworm
             BUILDKIT_INLINE_CACHE=1
           tags: |
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest-amd64
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}-amd64
-          platforms: linux/amd64
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}
           cache-from: |
-            type=gha,scope=amd64
-            type=registry,ref=ghcr.io/${{ env.REPO_LOWERCASE }}/cache:amd64
+            type=gha
+            type=registry,ref=ghcr.io/${{ env.REPO_LOWERCASE }}/cache:multi
           cache-to: |
-            type=gha,mode=max,scope=amd64
-            type=registry,ref=ghcr.io/${{ env.REPO_LOWERCASE }}/cache:amd64,mode=max
-
-      - name: Build and push Docker image for Debian (ARM64)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          build-args: |
-            DEBIAN_VERSION=bookworm
-            BUILDKIT_INLINE_CACHE=1
-          tags: |
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest-arm64
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}-arm64
-          platforms: linux/arm64
-          cache-from: |
-            type=gha,scope=arm64
-            type=registry,ref=ghcr.io/${{ env.REPO_LOWERCASE }}/cache:arm64
-          cache-to: |
-            type=gha,mode=max,scope=arm64
-            type=registry,ref=ghcr.io/${{ env.REPO_LOWERCASE }}/cache:arm64,mode=max
+            type=gha,mode=max
+            type=registry,ref=ghcr.io/${{ env.REPO_LOWERCASE }}/cache:multi,mode=max
 
       - name: Create multi-arch manifest
         run: |
           docker buildx imagetools create -t ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest \
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest-amd64 \
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest-arm64
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest
 
           docker buildx imagetools create -t ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }} \
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}-amd64 \
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}-arm64
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}
