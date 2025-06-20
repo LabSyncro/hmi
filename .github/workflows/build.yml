@@ -59,7 +59,7 @@ jobs:
       - name: Install frontend dependencies
         run: bun install
 
-      - name: Build Tauri App for Debian
+      - name: Build Tauri App for AMD64
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -76,7 +76,7 @@ jobs:
           # Get system architecture to use in package name
           ARCH=$(dpkg --print-architecture)
           cp src-tauri/target/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-debian-${ARCH}.deb
-          
+
           # Check if AppImage directory exists AND if we're not on ARM architecture
           # AppImage creation is skipped on ARM due to issues with linuxdeploy
           if [ -d "src-tauri/target/release/bundle/appimage" ] && [ "$ARCH" != "arm64" ]; then
@@ -90,6 +90,37 @@ jobs:
             echo "Skipping AppImage packaging for ARM architecture or missing AppImage directory"
           fi
 
+      - name: Archive AMD64 build
+        run: |
+          tar -czf tauri-amd64.tar.gz dist src-tauri/target/release/hmi
+
+      - name: Upload AMD64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-amd64
+          path: tauri-amd64.tar.gz
+
+      - name: Build Tauri App for ARM64
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: "--target aarch64-unknown-linux-gnu"
+          tagName: v${{ github.event.inputs.version }}
+          releaseName: "App v${{ github.event.inputs.version }} for Debian"
+          releaseBody: "Release for Linux Debian. Download and install the package for your Debian system."
+          releaseDraft: false
+          prerelease: ${{ github.event.inputs.prerelease }}
+
+      - name: Archive ARM64 build
+        run: |
+          tar -czf tauri-arm64.tar.gz dist src-tauri/target/aarch64-unknown-linux-gnu/release/hmi
+
+      - name: Upload ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-arm64
+          path: tauri-arm64.tar.gz
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
@@ -116,29 +147,60 @@ jobs:
       - name: Prepare Docker repo name
         run: echo "REPO_LOWERCASE=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-      - name: Build and push multi-arch Docker image
+      - name: Download AMD64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tauri-amd64
+          path: ./docker-artifacts/amd64
+
+      - name: Download ARM64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tauri-arm64
+          path: ./docker-artifacts/arm64
+
+      - name: Build and push AMD64 image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           build-args: |
             DEBIAN_VERSION=bookworm
             BUILDKIT_INLINE_CACHE=1
+            APP_ARTIFACT=docker-artifacts/amd64/tauri-amd64.tar.gz
           tags: |
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:amd64
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}-amd64
           cache-from: |
             type=gha
-            type=registry,ref=ghcr.io/${{ env.REPO_LOWERCASE }}/cache:multi
           cache-to: |
             type=gha,mode=max
-            type=registry,ref=ghcr.io/${{ env.REPO_LOWERCASE }}/cache:multi,mode=max
+
+      - name: Build and push ARM64 image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: linux/arm64
+          build-args: |
+            DEBIAN_VERSION=bookworm
+            BUILDKIT_INLINE_CACHE=1
+            APP_ARTIFACT=docker-artifacts/arm64/tauri-arm64.tar.gz
+          tags: |
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:arm64
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}-arm64
+          cache-from: |
+            type=gha
+          cache-to: |
+            type=gha,mode=max
 
       - name: Create multi-arch manifest
         run: |
           docker buildx imagetools create -t ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest \
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:latest
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:amd64 \
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:arm64
 
           docker buildx imagetools create -t ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }} \
-            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}-amd64 \
+            ghcr.io/${{ env.REPO_LOWERCASE }}/app:${{ github.event.inputs.version }}-arm64
