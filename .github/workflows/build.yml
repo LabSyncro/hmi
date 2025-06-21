@@ -68,7 +68,8 @@ jobs:
             libxdo-dev \
             libssl-dev \
             libayatana-appindicator3-dev \
-            librsvg2-dev
+            librsvg2-dev \
+            gcc-aarch64-linux-gnu
 
       - name: Install frontend dependencies
         run: bun install
