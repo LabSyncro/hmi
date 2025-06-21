@@ -128,6 +128,7 @@ jobs:
           AR_aarch64_unknown_linux_gnu: "aarch64-linux-gnu-ar"
         with:
           args: "--target aarch64-unknown-linux-gnu"
+          useCross: true
           tagName: v${{ github.event.inputs.version }}
           releaseName: "App v${{ github.event.inputs.version }} for Debian"
           releaseBody: "Release for Linux Debian. Download and install the package for your Debian system."
