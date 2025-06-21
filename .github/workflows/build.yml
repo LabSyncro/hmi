@@ -125,7 +125,11 @@ jobs:
               libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev \
               patchelf libfuse2 file unzip xz-utils
             curl https://sh.rustup.rs -sSf | sh -s -- -y
-            . "$HOME/.cargo/env"
+            if [ -f "$HOME/.cargo/env" ]; then
+              . "$HOME/.cargo/env"
+            else
+              export PATH="$HOME/.cargo/bin:$PATH"
+            fi
             curl -fsSL https://bun.sh/install | bash
             export BUN_INSTALL="$HOME/.bun"
             export PATH="$BUN_INSTALL/bin:$PATH"
