@@ -107,7 +107,7 @@ jobs:
           path: tauri-amd64.tar.gz
 
       - name: Install cross
-        run: cargo install --git https://github.com/cross-rs/cross --locked
+        run: cargo install --git https://github.com/cross-rs/cross --locked --package cross
 
       - name: Build Tauri App for ARM64
         env:
