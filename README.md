@@ -21,5 +21,6 @@ This project uses [cross](https://github.com/cross-rs/cross) to build ARM binari
 
 ```bash
 cargo install --git https://github.com/cross-rs/cross --locked cross
+rustup target add aarch64-unknown-linux-gnu
 CARGO=cross bun run tauri build --target aarch64-unknown-linux-gnu
 ```
