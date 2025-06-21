@@ -139,6 +139,7 @@ jobs:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "aarch64-linux-gnu-gcc"
         with:
           args: "--target aarch64-unknown-linux-gnu"
+          useCross: true
           tagName: v${{ github.event.inputs.version }}
           releaseName: "App v${{ github.event.inputs.version }} for Debian"
           releaseBody: "Release for Linux Debian. Download and install the package for your Debian system."
