@@ -37,8 +37,6 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Add ARM64 Rust target
-        run: rustup target add aarch64-unknown-linux-gnu
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -89,21 +87,13 @@ jobs:
       - name: Package for Debian
         run: |
           mkdir -p dist
-          # Get system architecture to use in package name
           ARCH=$(dpkg --print-architecture)
-          cp src-tauri/target/release/bundle/deb/*.deb dist/app-${{ github.event.inputs.version }}-debian-${ARCH}.deb
-
-          # Check if AppImage directory exists AND if we're not on ARM architecture
-          # AppImage creation is skipped on ARM due to issues with linuxdeploy
-          if [ -d "src-tauri/target/release/bundle/appimage" ] && [ "$ARCH" != "arm64" ]; then
-            if [ -f "src-tauri/target/release/bundle/appimage/*.AppImage" ]; then
-              cp src-tauri/target/release/bundle/appimage/*.AppImage dist/app-${{ github.event.inputs.version }}-debian-${ARCH}.AppImage
-              echo "AppImage bundle created and copied to dist/"
-            else
-              echo "No AppImage files found in the bundle directory, skipping..."
-            fi
+          cp src-tauri/target/release/bundle/deb/*.deb "dist/app-${{ github.event.inputs.version }}-debian-${ARCH}.deb"
+          if [ -d src-tauri/target/release/bundle/appimage ] && [ "$ARCH" != "arm64" ]; then
+            cp src-tauri/target/release/bundle/appimage/*.AppImage \
+              "dist/app-${{ github.event.inputs.version }}-debian-${ARCH}.AppImage" || true
           else
-            echo "Skipping AppImage packaging for ARM architecture or missing AppImage directory"
+            echo "Skipping AppImage packaging for ARM architecture or missing directory"
           fi
 
       - name: Archive AMD64 build
@@ -117,24 +107,31 @@ jobs:
           path: tauri-amd64.tar.gz
 
       - name: Build Tauri App for ARM64
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PKG_CONFIG_ALLOW_CROSS: "1"
-          PKG_CONFIG_PATH: "/usr/lib/aarch64-linux-gnu/pkgconfig"
-          PKG_CONFIG_SYSROOT_DIR: "/"
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "aarch64-linux-gnu-gcc"
-          CC_aarch64_unknown_linux_gnu: "aarch64-linux-gnu-gcc"
-          AR_aarch64_unknown_linux_gnu: "aarch64-linux-gnu-ar"
+        uses: pguyot/arm-runner-action@v2.6.5
         with:
-          tauriScript: cross
-          args: "--target aarch64-unknown-linux-gnu"
-          useCross: true
-          tagName: v${{ github.event.inputs.version }}
-          releaseName: "App v${{ github.event.inputs.version }} for Debian"
-          releaseBody: "Release for Linux Debian. Download and install the package for your Debian system."
-          releaseDraft: false
-          prerelease: ${{ github.event.inputs.prerelease }}
+          base_image: https://dietpi.com/downloads/images/DietPi_RPi5-ARMv8-Bookworm.img.xz
+          cpu: cortex-a72
+          bind_mount_repository: true
+          image_additional_mb: 10240
+          optimize_image: no
+          commands: |
+            set -e
+            export HOME=/root
+            export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+            apt-get update -y --allow-releaseinfo-change
+            apt-get autoremove -y
+            apt-get install -y --no-install-recommends --no-install-suggests \
+              curl libwebkit2gtk-4.1-dev build-essential libssl-dev \
+              libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev \
+              patchelf libfuse2 file unzip xz-utils
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+            . "$HOME/.cargo/env"
+            curl -fsSL https://bun.sh/install | bash
+            export BUN_INSTALL="$HOME/.bun"
+            export PATH="$BUN_INSTALL/bin:$PATH"
+            cd /github/workspace
+            bun install
+            bun run tauri build -- --verbose
 
       - name: Archive ARM64 build
         run: |
