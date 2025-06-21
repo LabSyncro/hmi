@@ -1,5 +1,4 @@
 ARG DEBIAN_VERSION=bookworm
-ARG APP_ARTIFACT
 
 FROM debian:${DEBIAN_VERSION}-slim AS runtime
 
@@ -18,8 +17,8 @@ RUN useradd -ms /bin/bash appuser
 
 WORKDIR /app
 
-ARG APP_ARTIFACT
-COPY ${APP_ARTIFACT} /tmp/app.tar.gz
+ARG TARGETARCH
+COPY docker-artifacts/${TARGETARCH}/tauri-${TARGETARCH}.tar.gz /tmp/app.tar.gz
 RUN tar -xzf /tmp/app.tar.gz -C /app && rm /tmp/app.tar.gz
 
 # Copy static icons
