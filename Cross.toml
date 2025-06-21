@@ -12,4 +12,3 @@ pre-build = [
     libsoup-3.0-dev:arm64 \
     libjavascriptcoregtk-4.1-dev:arm64"
 ]
-
