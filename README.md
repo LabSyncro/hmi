@@ -14,3 +14,12 @@ Since TypeScript cannot handle type information for `.vue` imports, they are shi
 2. Reload the VS Code window by running `Developer: Reload Window` from the command palette.
 
 You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
+
+## Cross compilation
+
+This project uses [cross](https://github.com/cross-rs/cross) to build ARM binaries on CI. You can build locally with:
+
+```bash
+cargo install --git https://github.com/cross-rs/cross --locked --package cross
+CARGO=cross bun run tauri build --target aarch64-unknown-linux-gnu
+```
