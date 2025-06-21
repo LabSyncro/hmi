@@ -127,6 +127,7 @@ jobs:
           CC_aarch64_unknown_linux_gnu: "aarch64-linux-gnu-gcc"
           AR_aarch64_unknown_linux_gnu: "aarch64-linux-gnu-ar"
         with:
+          tauriScript: cross
           args: "--target aarch64-unknown-linux-gnu"
           useCross: true
           tagName: v${{ github.event.inputs.version }}
