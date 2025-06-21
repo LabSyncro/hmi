@@ -49,6 +49,12 @@ jobs:
       - name: Install Tauri dependencies for Debian
         run: |
           sudo dpkg --add-architecture arm64
+          # Add Ubuntu ports repository for ARM packages
+          sudo tee /etc/apt/sources.list.d/ubuntu-ports.list >/dev/null <<'EOF'
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
+          EOF
           sudo apt update
           sudo apt install -y \
             libwebkit2gtk-4.1-dev \
