@@ -50,8 +50,15 @@ jobs:
         run: |
           sudo dpkg --add-architecture arm64
           # Limit existing repos to AMD64 so apt doesn't fetch arm packages from them
-          sudo sed -i 's/^deb \(http.*\)/deb [arch=amd64] \1/' /etc/apt/sources.list
-          for f in /etc/apt/sources.list.d/*.list; do sudo sed -i 's/^deb \(http.*\)/deb [arch=amd64] \1/' "$f"; done
+          if [ -f /etc/apt/sources.list ]; then
+            sudo sed -i 's/^deb \(http.*\)/deb [arch=amd64] \1/' /etc/apt/sources.list
+          fi
+          for f in /etc/apt/sources.list.d/*.list; do
+            sudo sed -i 's/^deb \(http.*\)/deb [arch=amd64] \1/' "$f"
+          done
+          for f in /etc/apt/sources.list.d/*.sources; do
+            sudo grep -q '^Architectures:' "$f" || sudo sed -i '/^Types: deb$/a Architectures: amd64' "$f"
+          done
           # Add Ubuntu ports repository for ARM packages
           sudo tee /etc/apt/sources.list.d/ubuntu-ports.list >/dev/null <<'EOF'
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse
