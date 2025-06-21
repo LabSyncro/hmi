@@ -31,7 +31,6 @@ ENV RUST_LOG=info \
     DISPLAY=:0 \
     WAYLAND_DISPLAY=wayland-0 \
     XDG_RUNTIME_DIR=/run/user/1000 \
-    DEBIAN_RELEASE=bookworm
 
 HEALTHCHECK --interval=60s --timeout=10s --start-period=5s --retries=3 \
   CMD pgrep hmi > /dev/null || exit 1
