@@ -112,6 +112,13 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          shared-key: arm64
+          cache-on-failure: true
+
 
       - name: Install frontend dependencies and build
         run: |
@@ -170,8 +177,8 @@ jobs:
         run: |
           docker run --rm \
             -v $PWD:/project \
-            -v $HOME/.cargo/registry:/root/.cargo/registry \
-            -v $HOME/.cargo/git:/root/.cargo/git \
+            -v $HOME/.cargo/registry:/usr/local/cargo/registry \
+            -v $HOME/.cargo/git:/usr/local/cargo/git \
             -v $PWD/src-tauri/target:/project/src-tauri/target \
             -v $PWD/node_modules:/project/node_modules \
             -e TAURI_SKIP_BUILD=true \
