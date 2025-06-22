@@ -126,7 +126,8 @@ jobs:
             build-essential \
             curl \
             wget \
-            file
+            file \
+            pkg-config
 
       - name: Install ARM64 cross-compilation tools
         run: |
@@ -137,7 +138,6 @@ jobs:
 
       - name: Setup ARM64 package sources
         run: |
-          sudo rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list
           sudo dpkg --add-architecture arm64
           . /etc/os-release
           CODENAME=${UBUNTU_CODENAME:-$(lsb_release -sc)}
@@ -156,8 +156,7 @@ jobs:
             libssl-dev:arm64 \
             libayatana-appindicator3-dev:arm64 \
             librsvg2-dev:arm64 \
-            libxdo-dev:arm64 \
-            libc6-dev:arm64
+            libxdo-dev:arm64
 
       - name: Install frontend dependencies
         run: bun install
@@ -177,7 +176,8 @@ jobs:
       - name: Build Tauri App for ARM64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Cross-compilation toolchain setup
+          
+          # Cross-compilation toolchain setup for target
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
           CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
           AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
@@ -187,21 +187,26 @@ jobs:
           # PKG config for cross-compilation
           PKG_CONFIG_ALLOW_CROSS: '1'
           PKG_CONFIG_aarch64_unknown_linux_gnu: aarch64-linux-gnu-pkg-config
-          PKG_CONFIG_PATH_aarch64_unknown_linux_gnu: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
-          PKG_CONFIG_LIBDIR_aarch64_unknown_linux_gnu: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
-          PKG_CONFIG_SYSROOT_DIR_aarch64_unknown_linux_gnu: /usr/aarch64-linux-gnu
           
-          # Bindgen configuration
+          # Bindgen configuration for target
           BINDGEN_EXTRA_CLANG_ARGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu -I/usr/aarch64-linux-gnu/include'
           
-          # Ensure build scripts use host toolchain
+          # CRITICAL: Ensure build scripts use host (x86_64) toolchain
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: gcc
           CC_x86_64_unknown_linux_gnu: gcc
           CXX_x86_64_unknown_linux_gnu: g++
+          AR_x86_64_unknown_linux_gnu: ar
+          STRIP_x86_64_unknown_linux_gnu: strip
           
-          # Additional flags for proper cross-compilation
+          # Target-specific flags
           CFLAGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu'
           CXXFLAGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu'
+          
+          # Ensure host toolchain for build scripts
+          CC: gcc
+          CXX: g++
+          AR: ar
+          STRIP: strip
           
         run: |
           # Clean any previous builds
