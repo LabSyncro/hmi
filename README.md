@@ -20,7 +20,7 @@ You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/
 This project uses [cross](https://github.com/cross-rs/cross) and the accompanying `Cross.toml` configuration to build ARM binaries on CI. You can build locally with:
 
 ```bash
-cargo install --git https://github.com/cross-rs/cross --locked --package cross
+cargo install --git https://github.com/cross-rs/cross --locked cross
 rustup target add aarch64-unknown-linux-gnu
 cargo clean --manifest-path src-tauri/Cargo.toml
 PKG_CONFIG_ALLOW_CROSS=1 \

@@ -109,7 +109,7 @@ jobs:
           path: tauri-amd64.tar.gz
 
       - name: Install cross
-        run: cargo install --git https://github.com/cross-rs/cross --locked --package cross
+        run: cargo install --git https://github.com/cross-rs/cross --locked cross
 
       - name: Clean build artifacts
         run: cargo clean --manifest-path src-tauri/Cargo.toml
