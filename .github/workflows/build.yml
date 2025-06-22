@@ -182,7 +182,6 @@ jobs:
               -v $PWD/src-tauri/target:/project/src-tauri/target \
               -v $PWD/node_modules:/project/node_modules \
               -e CARGO_HOME=/usr/local/cargo \
-              -e PATH="/usr/local/cargo/bin:$PATH" \
               -e TAURI_SKIP_BUILD=true \
               -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
               tauri-cross \
