@@ -203,8 +203,6 @@ jobs:
           CFLAGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu'
           CXXFLAGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu'
           
-          # Rust flags
-          RUSTFLAGS: '-C linker=aarch64-linux-gnu-gcc'
         run: |
           # Clean any previous builds
           cd src-tauri && cargo clean
