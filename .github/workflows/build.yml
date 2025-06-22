@@ -49,6 +49,7 @@ jobs:
 
       - name: Install Tauri dependencies for Debian
         run: |
+          sudo rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list
           . /etc/os-release
           CODENAME=${UBUNTU_CODENAME:-$(lsb_release -sc)}
           sudo tee /etc/apt/sources.list.d/ubuntu-amd64.list >/dev/null <<EOF
