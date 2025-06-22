@@ -21,7 +21,14 @@ ARG TARGETARCH
 COPY docker-artifacts/${TARGETARCH}/tauri-${TARGETARCH}.tar.gz /tmp/app.tar.gz
 RUN tar -xzf /tmp/app.tar.gz -C /app && rm /tmp/app.tar.gz
 
-# Copy static icons
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        mv /app/artifacts/hmi-amd64 /app/hmi; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        mv /app/artifacts/hmi-arm64 /app/hmi; \
+    fi && \
+    chmod +x /app/hmi && \
+    rm -rf /app/artifacts
+
 COPY src-tauri/icons/ /app/icons/
 
 RUN chown -R appuser:appuser /app
@@ -30,7 +37,7 @@ USER appuser
 ENV RUST_LOG=info \
     DISPLAY=:0 \
     WAYLAND_DISPLAY=wayland-0 \
-    XDG_RUNTIME_DIR=/run/user/1000 \
+    XDG_RUNTIME_DIR=/run/user/1000
 
 HEALTHCHECK --interval=60s --timeout=10s --start-period=5s --retries=3 \
   CMD pgrep hmi > /dev/null || exit 1
