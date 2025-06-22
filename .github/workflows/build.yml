@@ -172,7 +172,9 @@ jobs:
             -v $PWD:/project \
             -v $HOME/.cargo/registry:/root/.cargo/registry \
             -v $HOME/.cargo/git:/root/.cargo/git \
+            -v $PWD/src-tauri/target:/project/src-tauri/target \
             -v $PWD/node_modules:/project/node_modules \
+            -e TAURI_SKIP_BUILD=true \
             -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
             tauri-cross \
             bash -c "
