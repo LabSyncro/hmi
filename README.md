@@ -14,3 +14,25 @@ Since TypeScript cannot handle type information for `.vue` imports, they are shi
 2. Reload the VS Code window by running `Developer: Reload Window` from the command palette.
 
 You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
+
+## Cross compilation
+
+This project uses [cross](https://github.com/cross-rs/cross) and the accompanying `Cross.toml` configuration to build ARM binaries on CI. You can build locally with:
+
+```bash
+cargo install --git https://github.com/cross-rs/cross --locked cross
+rustup target add aarch64-unknown-linux-gnu
+sudo apt-get install pkgconf pkg-config-aarch64-linux-gnu
+PKG_CONFIG_ALLOW_CROSS=1 \
+CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++ \
+CARGO=cross TAURI_FCARGO=cross \
+PKG_CONFIG=aarch64-linux-gnu-pkg-config \
+PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig \
+PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig \
+  bun run tauri build --target aarch64-unknown-linux-gnu
+```
+
+The `Cross.toml` file installs the GTK and WebKit ARM64 dependencies inside the
+cross container. It uses `dpkg --add-architecture arm64` to enable installing
+packages such as `libgtk-3-dev:arm64`.
