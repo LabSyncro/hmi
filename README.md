@@ -21,7 +21,7 @@ To build for Raspberry Pi&nbsp;4 (ARM64) install the target and required package
 
 ```bash
 rustup target add aarch64-unknown-linux-gnu
-sudo apt-get install gcc-aarch64-linux-gnu pkg-config-aarch64-linux-gnu
+sudo apt-get install gcc-aarch64-linux-gnu pkgconf-aarch64-linux-gnu
 ```
 
 Add the following to `.cargo/config.toml`:
