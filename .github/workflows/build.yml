@@ -170,32 +170,15 @@ jobs:
           WORKDIR /project
           EOF
 
-      - name: Build cross-compilation Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile.cross
-          tags: tauri-cross:latest
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Warm ARM64 cargo cache
+      - name: Build ARM64 app in Docker
         run: |
-          docker run --rm \
-            --user $(id -u):$(id -g) \
-            -v $PWD:/project \
-            -v $HOME/.cargo/registry:/usr/local/cargo/registry \
-            -v $HOME/.cargo/git:/usr/local/cargo/git \
-            -v $PWD/src-tauri/target:/project/src-tauri/target \
-            tauri-cross \
-            bash -c "\
-              cd /project/src-tauri && \
-              cargo build --release --target aarch64-unknown-linux-gnu \
-            "
-
-      - name: Build Tauri App for ARM64 using Docker
-        run: |
+          docker buildx build \
+            --load \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            -t tauri-cross:latest \
+            -f Dockerfile.cross \
+            .
           docker run --rm \
             --user $(id -u):$(id -g) \
             -v $PWD:/project \
@@ -208,10 +191,11 @@ jobs:
             -e TAURI_SKIP_BUILD=true \
             -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
             tauri-cross \
-            bash -c "
-                cd /project/src-tauri &&
-                cargo tauri build --target aarch64-unknown-linux-gnu --verbose
-              "
+            bash -c "\
+              cd /project/src-tauri && \
+              cargo build --release --target aarch64-unknown-linux-gnu && \
+              cargo tauri build --target aarch64-unknown-linux-gnu --verbose \
+            "
 
       - name: Archive ARM64 build
         run: |
