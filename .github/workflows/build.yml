@@ -126,17 +126,13 @@ jobs:
             build-essential \
             curl \
             wget \
-            file \
-            pkg-config \
-            libc6-dev \
-            gcc-multilib
+            file
 
       - name: Install ARM64 cross-compilation tools
         run: |
           sudo apt-get install -y \
             gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu \
-            libc6-dev-arm64-cross
+            g++-aarch64-linux-gnu
 
       - name: Setup ARM64 package sources
         run: |
@@ -164,51 +160,19 @@ jobs:
       - name: Install frontend dependencies
         run: bun install
 
-      - name: Setup cross-compilation environment
-        run: |
-          # Create a wrapper script for pkg-config
-          sudo tee /usr/local/bin/aarch64-linux-gnu-pkg-config >/dev/null <<'EOF'
-          #!/bin/bash
-          export PKG_CONFIG_DIR=
-          export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
-          export PKG_CONFIG_SYSROOT_DIR=/usr/aarch64-linux-gnu
-          exec pkg-config "$@"
-          EOF
-          sudo chmod +x /usr/local/bin/aarch64-linux-gnu-pkg-config
-
       - name: Build Tauri App for ARM64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-          # Cross-compilation toolchain setup for target
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
           CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
           AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
-          STRIP_aarch64_unknown_linux_gnu: aarch64-linux-gnu-strip
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          
-          # PKG config for cross-compilation
           PKG_CONFIG_ALLOW_CROSS: '1'
-          PKG_CONFIG_aarch64_unknown_linux_gnu: aarch64-linux-gnu-pkg-config
-          
-          # Bindgen configuration for target
-          BINDGEN_EXTRA_CLANG_ARGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu -I/usr/aarch64-linux-gnu/include'
-          
-          # Target-specific flags
-          CFLAGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu'
-          CXXFLAGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu'
-          
+          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+          PKG_CONFIG_LIBDIR: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+          PKG_CONFIG_SYSROOT_DIR: /usr/aarch64-linux-gnu/
+          BINDGEN_EXTRA_CLANG_ARGS: '--sysroot=/usr/aarch64-linux-gnu'
         run: |
-          # Clean any previous builds
-          cd src-tauri && cargo clean
-          
-          # Verify host toolchain is available
-          which gcc
-          gcc --version
-          ls -la /usr/lib/x86_64-linux-gnu/Scrt1.o || echo "Scrt1.o not found"
-          ls -la /usr/lib/x86_64-linux-gnu/crti.o || echo "crti.o not found"
-          
-          # Build with verbose output for debugging
           bun run tauri build --target aarch64-unknown-linux-gnu -- --verbose
 
       - name: Archive ARM64 build
