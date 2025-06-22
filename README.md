@@ -22,7 +22,8 @@ This project uses [cross](https://github.com/cross-rs/cross) and the accompanyin
 ```bash
 cargo install --git https://github.com/cross-rs/cross --locked cross
 rustup target add aarch64-unknown-linux-gnu
-CARGO=cross bun run tauri build --target aarch64-unknown-linux-gnu
+PKG_CONFIG_ALLOW_CROSS=1 CARGO=cross TAURI_FCARGO=cross \
+  bun run tauri build --target aarch64-unknown-linux-gnu
 ```
 
 The `Cross.toml` file installs the GTK and WebKit dependencies required for
