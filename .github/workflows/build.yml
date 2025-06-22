@@ -127,7 +127,9 @@ jobs:
             curl \
             wget \
             file \
-            pkg-config
+            pkg-config \
+            libc6-dev \
+            gcc-multilib
 
       - name: Install ARM64 cross-compilation tools
         run: |
@@ -192,26 +194,19 @@ jobs:
           # Bindgen configuration for target
           BINDGEN_EXTRA_CLANG_ARGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu -I/usr/aarch64-linux-gnu/include'
           
-          # CRITICAL: Ensure build scripts use host (x86_64) toolchain
-          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: gcc
-          CC_x86_64_unknown_linux_gnu: gcc
-          CXX_x86_64_unknown_linux_gnu: g++
-          AR_x86_64_unknown_linux_gnu: ar
-          STRIP_x86_64_unknown_linux_gnu: strip
-          
           # Target-specific flags
           CFLAGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu'
           CXXFLAGS_aarch64_unknown_linux_gnu: '--sysroot=/usr/aarch64-linux-gnu'
           
-          # Ensure host toolchain for build scripts
-          CC: gcc
-          CXX: g++
-          AR: ar
-          STRIP: strip
-          
         run: |
           # Clean any previous builds
           cd src-tauri && cargo clean
+          
+          # Verify host toolchain is available
+          which gcc
+          gcc --version
+          ls -la /usr/lib/x86_64-linux-gnu/Scrt1.o || echo "Scrt1.o not found"
+          ls -la /usr/lib/x86_64-linux-gnu/crti.o || echo "crti.o not found"
           
           # Build with verbose output for debugging
           bun run tauri build --target aarch64-unknown-linux-gnu -- --verbose
