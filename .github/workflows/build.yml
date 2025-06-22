@@ -92,8 +92,7 @@ jobs:
             libssl-dev:arm64 \
             libxdo-dev:arm64 \
             pkgconf \
-            pkgconf-aarch64-linux-gnu \
-            gcc-aarch64-linux-gnu \
+            build-essential \
             curl wget file xz-utils
 
       - name: Install frontend dependencies
