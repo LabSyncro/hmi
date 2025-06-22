@@ -17,17 +17,22 @@ You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/
 
 ## Cross compilation
 
-This project uses [cross](https://github.com/cross-rs/cross) and the accompanying `Cross.toml` configuration to build ARM binaries on CI. You can build locally with:
+To build for Raspberry Pi&nbsp;4 (ARM64) install the target and required packages:
 
 ```bash
-cargo install --git https://github.com/cross-rs/cross --locked cross
 rustup target add aarch64-unknown-linux-gnu
-cargo clean --manifest-path src-tauri/Cargo.toml
-CARGO=cross TAURI_FCARGO=cross \
-  bun run tauri build --target aarch64-unknown-linux-gnu
+sudo apt-get install gcc-aarch64-linux-gnu pkgconf-aarch64-linux-gnu
 ```
 
-The `Cross.toml` file installs the GTK and WebKit ARM64 dependencies along with
-`pkgconf` and `pkg-config-aarch64-linux-gnu` inside the cross container. It uses
-`dpkg --add-architecture arm64` so the required packages like
-`libgtk-3-dev:arm64` can be installed.
+Add the following to `.cargo/config.toml`:
+
+```toml
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+```
+
+Then build with:
+
+```bash
+bun run tauri build --target aarch64-unknown-linux-gnu
+```
