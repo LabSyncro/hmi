@@ -132,7 +132,8 @@ jobs:
         run: |
           sudo apt-get install -y \
             gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu
+            g++-aarch64-linux-gnu \
+            libc6-dev-arm64-cross
 
       - name: Setup ARM64 package sources
         run: |
@@ -155,7 +156,8 @@ jobs:
             libssl-dev:arm64 \
             libayatana-appindicator3-dev:arm64 \
             librsvg2-dev:arm64 \
-            libxdo-dev:arm64
+            libxdo-dev:arm64 \
+            libc6-dev:arm64
 
       - name: Install frontend dependencies
         run: bun install
