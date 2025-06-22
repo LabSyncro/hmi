@@ -171,8 +171,14 @@ jobs:
           EOF
 
       - name: Build cross-compilation Docker image
-        run: |
-          docker build -t tauri-cross -f Dockerfile.cross .
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.cross
+          tags: tauri-cross:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build Tauri App for ARM64 using Docker
         run: |
