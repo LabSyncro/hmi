@@ -170,7 +170,7 @@ jobs:
         run: |
           docker run --rm \
             -v $PWD:/project \
-            -v /project/node_modules \
+            -v $PWD/node_modules:/project/node_modules \
             -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
             tauri-cross \
             bash -c "
