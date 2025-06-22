@@ -49,15 +49,6 @@ jobs:
 
       - name: Install Tauri dependencies for Debian
         run: |
-          sudo rm -f /etc/apt/sources.list.d/* /etc/apt/sources.list /etc/apt/apt-mirrors.txt
-          . /etc/os-release
-          CODENAME=${UBUNTU_CODENAME:-$(lsb_release -sc)}
-          sudo tee /etc/apt/sources.list.d/ubuntu-amd64.list >/dev/null <<EOF
-          deb [arch=amd64] http://archive.ubuntu.com/ubuntu $CODENAME main restricted universe multiverse
-          deb [arch=amd64] http://archive.ubuntu.com/ubuntu $CODENAME-updates main restricted universe multiverse
-          deb [arch=amd64] http://archive.ubuntu.com/ubuntu $CODENAME-backports main restricted universe multiverse
-          deb [arch=amd64] http://security.ubuntu.com/ubuntu $CODENAME-security main restricted universe multiverse
-          EOF
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
@@ -77,14 +68,6 @@ jobs:
       - name: Install ARM64 dependencies
         run: |
           sudo dpkg --add-architecture arm64
-          . /etc/os-release
-          CODENAME=${UBUNTU_CODENAME:-$(lsb_release -sc)}
-          sudo tee /etc/apt/sources.list.d/ubuntu-arm64.list >/dev/null <<EOF
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $CODENAME main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $CODENAME-updates main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $CODENAME-backports main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $CODENAME-security main restricted universe multiverse
-          EOF
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libwebkit2gtk-4.1-dev:arm64 \
