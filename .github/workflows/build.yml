@@ -138,6 +138,7 @@ jobs:
 
       - name: Setup ARM64 package sources
         run: |
+          sudo rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list
           sudo dpkg --add-architecture arm64
           . /etc/os-release
           CODENAME=${UBUNTU_CODENAME:-$(lsb_release -sc)}
