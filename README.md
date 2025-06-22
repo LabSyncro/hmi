@@ -22,8 +22,11 @@ This project uses [cross](https://github.com/cross-rs/cross) and the accompanyin
 ```bash
 cargo install --git https://github.com/cross-rs/cross --locked --package cross
 rustup target add aarch64-unknown-linux-gnu
+cargo clean --manifest-path src-tauri/Cargo.toml
 PKG_CONFIG_ALLOW_CROSS=1 \
 CARGO=cross TAURI_FCARGO=cross \
+CC=aarch64-linux-gnu-gcc AR=aarch64-linux-gnu-ar \
+CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
   bun run tauri build --target aarch64-unknown-linux-gnu
 ```
 
