@@ -125,54 +125,40 @@ jobs:
           bun install
           bun run build
 
-      - name: Create cross-compilation Dockerfile
+      - name: Create ARM64 build Dockerfile
         run: |
-          cat > Dockerfile.cross << 'EOF'
+          cat > Dockerfile.cross <<'EOF'
           FROM rust:bookworm
-          
-          # Install Node.js and Bun
+
+          # Install Bun
           ENV BUN_INSTALL=/usr/local/bun
           RUN curl -fsSL https://bun.sh/install | bash
           ENV PATH="${BUN_INSTALL}/bin:$PATH"
-          
-          # Add ARM64 architecture and install cross-compilation tools
-          RUN dpkg --add-architecture arm64 && \
-              apt-get update && \
+
+          # Install build tools and Tauri dependencies
+          RUN apt-get update && \
               apt-get install -y --no-install-recommends \
-                gcc-aarch64-linux-gnu \
-                g++-aarch64-linux-gnu \
-                libc6-dev-arm64-cross \
                 build-essential \
                 curl \
                 wget \
                 file \
                 libwebkit2gtk-4.1-dev \
                 libxdo-dev \
-                libssl-dev:arm64 \
+                libssl-dev \
                 libayatana-appindicator3-dev \
                 librsvg2-dev && \
               rm -rf /var/lib/apt/lists/*
-          
-          # Install Rust target and Tauri CLI
-          RUN rustup target add aarch64-unknown-linux-gnu && \
-              cargo install tauri-cli
-          
-          # Set environment variables for cross-compilation
-          ENV PKG_CONFIG_ALLOW_CROSS=1
-          ENV PKG_CONFIG_PATH=""
-          ENV PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
-          ENV PKG_CONFIG_SYSROOT_DIR="/usr/aarch64-linux-gnu"
-          ENV CC_aarch64_unknown_linux_gnu="aarch64-linux-gnu-gcc"
-          ENV CXX_aarch64_unknown_linux_gnu="aarch64-linux-gnu-g++"
-          ENV AR_aarch64_unknown_linux_gnu="aarch64-linux-gnu-ar"
-          ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gnu-gcc"
-          
+
+          # Install Tauri CLI
+          RUN cargo install tauri-cli
+
           WORKDIR /project
           EOF
 
       - name: Build ARM64 app in Docker
         run: |
           docker buildx build \
+            --platform linux/arm64 \
             --load \
             --cache-from type=gha \
             --cache-to type=gha,mode=max \
@@ -180,6 +166,7 @@ jobs:
             -f Dockerfile.cross \
             .
           docker run --rm \
+            --platform linux/arm64 \
             --user $(id -u):$(id -g) \
             -v $PWD:/project \
             -v $HOME/.cargo/registry:/usr/local/cargo/registry \
@@ -193,7 +180,6 @@ jobs:
             tauri-cross \
             bash -c "\
               cd /project/src-tauri && \
-              cargo build --release --target aarch64-unknown-linux-gnu && \
               cargo tauri build --target aarch64-unknown-linux-gnu --verbose \
             "
 
