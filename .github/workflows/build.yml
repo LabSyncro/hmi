@@ -102,100 +102,77 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Add ARM64 Rust target
-        run: rustup target add aarch64-unknown-linux-gnu
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-          cache-on-failure: true
-
-      - name: Install base dependencies
+      - name: Install frontend dependencies and build
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            curl \
-            wget \
-            file
+          bun install
+          bun run build
 
-      - name: Install ARM64 cross-compilation tools
+      - name: Create cross-compilation Dockerfile
         run: |
-          sudo apt-get install -y \
-            gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu \
-            libc6-dev-arm64-cross
-
-      - name: Setup ARM64 package sources
-        run: |
-          sudo rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*.list
-          sudo dpkg --add-architecture arm64
-          . /etc/os-release
-          CODENAME=${UBUNTU_CODENAME:-$(lsb_release -sc)}
-          sudo tee /etc/apt/sources.list.d/ubuntu-arm64.list >/dev/null <<EOF
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $CODENAME main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $CODENAME-updates main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $CODENAME-backports main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $CODENAME-security main restricted universe multiverse
+          cat > Dockerfile.cross << 'EOF'
+          FROM rust:bookworm
+          
+          # Install Node.js and Bun
+          RUN curl -fsSL https://bun.sh/install | bash
+          ENV PATH="/root/.bun/bin:$PATH"
+          
+          # Add ARM64 architecture and install cross-compilation tools
+          RUN dpkg --add-architecture arm64 && \
+              apt-get update && \
+              apt-get install -y \
+                gcc-aarch64-linux-gnu \
+                g++-aarch64-linux-gnu \
+                libc6-dev-arm64-cross \
+                libwebkit2gtk-4.1-dev:arm64 \
+                libssl-dev:arm64 \
+                libgtk-3-dev:arm64 \
+                libayatana-appindicator3-dev:arm64 \
+                librsvg2-dev:arm64 \
+                libxdo-dev:arm64
+          
+          # Install Rust target and Tauri CLI
+          RUN rustup target add aarch64-unknown-linux-gnu && \
+              cargo install tauri-cli
+          
+          # Set environment variables for cross-compilation
+          ENV PKG_CONFIG_ALLOW_CROSS=1
+          ENV PKG_CONFIG_PATH=""
+          ENV PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+          ENV PKG_CONFIG_SYSROOT_DIR="/usr/aarch64-linux-gnu"
+          ENV CC_aarch64_unknown_linux_gnu="aarch64-linux-gnu-gcc"
+          ENV CXX_aarch64_unknown_linux_gnu="aarch64-linux-gnu-g++"
+          ENV AR_aarch64_unknown_linux_gnu="aarch64-linux-gnu-ar"
+          ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gnu-gcc"
+          
+          WORKDIR /project
           EOF
-          sudo apt-get update
 
-      - name: Install ARM64 dependencies
+      - name: Build cross-compilation Docker image
         run: |
-          sudo apt-get install -y --no-install-recommends \
-            libwebkit2gtk-4.1-dev:arm64 \
-            libssl-dev:arm64 \
-            libayatana-appindicator3-dev:arm64 \
-            librsvg2-dev:arm64 \
-            libxdo-dev:arm64 \
-            libgtk-3-dev:arm64 \
-            libc6-dev:arm64 \
-            libgcc-s1:arm64
+          docker build -t tauri-cross -f Dockerfile.cross .
 
-      - name: Install frontend dependencies
-        run: bun install
-        
-      - name: Setup cross-compilation environment
+      - name: Build Tauri App for ARM64 using Docker
         run: |
-          # Create cargo config if it doesn't exist
-          mkdir -p src-tauri/.cargo
-          
-          # Set up pkg-config for cross-compilation
-          export PKG_CONFIG_ALLOW_CROSS=1
-          export PKG_CONFIG_PATH=""
-          export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
-          export PKG_CONFIG_SYSROOT_DIR="/usr/aarch64-linux-gnu"
-          
-          # Verify cross-compiler is available
-          aarch64-linux-gnu-gcc --version
-
-      - name: Build Tauri App for ARM64
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
-          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
-          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          PKG_CONFIG_ALLOW_CROSS: '1'
-          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
-          PKG_CONFIG_LIBDIR: /usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
-          PKG_CONFIG_SYSROOT_DIR: /usr/aarch64-linux-gnu/
-          BINDGEN_EXTRA_CLANG_ARGS: '--sysroot=/usr/aarch64-linux-gnu'
-          RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc -L/usr/aarch64-linux-gnu/lib"
-        run: |
-          # Verify the target is installed
-          rustup target list --installed | grep aarch64
-          
-          bun run tauri build --target aarch64-unknown-linux-gnu -- --verbose
+          docker run --rm \
+            -v $PWD:/project \
+            -v /project/node_modules \
+            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+            tauri-cross \
+            bash -c "
+              cd /project/src-tauri && 
+              cargo tauri build --target aarch64-unknown-linux-gnu --verbose
+            "
 
       - name: Archive ARM64 build
         run: |
