@@ -112,6 +112,13 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          shared-key: arm64
+          cache-on-failure: true
+
 
       - name: Install frontend dependencies and build
         run: |
@@ -130,16 +137,20 @@ jobs:
           # Add ARM64 architecture and install cross-compilation tools
           RUN dpkg --add-architecture arm64 && \
               apt-get update && \
-              apt-get install -y \
+              apt-get install -y --no-install-recommends \
                 gcc-aarch64-linux-gnu \
                 g++-aarch64-linux-gnu \
                 libc6-dev-arm64-cross \
-                libwebkit2gtk-4.1-dev:arm64 \
+                build-essential \
+                curl \
+                wget \
+                file \
+                libwebkit2gtk-4.1-dev \
+                libxdo-dev \
                 libssl-dev:arm64 \
-                libgtk-3-dev:arm64 \
-                libayatana-appindicator3-dev:arm64 \
-                librsvg2-dev:arm64 \
-                libxdo-dev:arm64
+                libayatana-appindicator3-dev \
+                librsvg2-dev && \
+              rm -rf /var/lib/apt/lists/*
           
           # Install Rust target and Tauri CLI
           RUN rustup target add aarch64-unknown-linux-gnu && \
@@ -164,15 +175,20 @@ jobs:
 
       - name: Build Tauri App for ARM64 using Docker
         run: |
-          docker run --rm \
-            -v $PWD:/project \
-            -v /project/node_modules \
-            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
-            tauri-cross \
-            bash -c "
-              cd /project/src-tauri && 
-              cargo tauri build --target aarch64-unknown-linux-gnu --verbose
-            "
+            docker run --rm \
+              -v $PWD:/project \
+              -v $HOME/.cargo/registry:/usr/local/cargo/registry \
+              -v $HOME/.cargo/git:/usr/local/cargo/git \
+              -v $PWD/src-tauri/target:/project/src-tauri/target \
+              -v $PWD/node_modules:/project/node_modules \
+              -e CARGO_HOME=/usr/local/cargo \
+              -e TAURI_SKIP_BUILD=true \
+              -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+              tauri-cross \
+              bash -c "
+                cd /project/src-tauri &&
+                cargo tauri build --target aarch64-unknown-linux-gnu --verbose
+              "
 
       - name: Archive ARM64 build
         run: |
