@@ -26,5 +26,6 @@ PKG_CONFIG_ALLOW_CROSS=1 CARGO=cross TAURI_FCARGO=cross \
   bun run tauri build --target aarch64-unknown-linux-gnu
 ```
 
-The `Cross.toml` file installs the GTK and WebKit dependencies required for
-Tauri's Linux build inside the cross container.
+The `Cross.toml` file installs the GTK and WebKit ARM64 dependencies inside the
+cross container. It uses `dpkg --add-architecture arm64` to enable installing
+packages such as `libgtk-3-dev:arm64`.
