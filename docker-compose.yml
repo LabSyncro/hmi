@@ -2,61 +2,122 @@ version: "3.8"
 
 services:
   app:
-    image: ghcr.io/${GITHUB_REPOSITORY:-yourusername/tauri-app}/app:${APP_VERSION:-debian12-latest}
-    container_name: tauri-app-debian12
+    image: ghcr.io/${GITHUB_REPOSITORY:-yourusername/hmi}/app:${APP_VERSION:-latest}
+    container_name: hmi-app
     restart: unless-stopped
     environment:
+      # Display and GUI environment
       - DISPLAY=${DISPLAY:-:0}
       - WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0}
       - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000}
       - PULSE_SERVER=${PULSE_SERVER:-/run/user/1000/pulse/native}
+      
+      # Application environment
+      - RUST_LOG=${RUST_LOG:-info}
       - DEBIAN_RELEASE=bookworm
+      
+      # Database configuration (from build.yml secrets)
       - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_MAX_CONNECTIONS=${POSTGRES_MAX_CONNECTIONS:-5}
+      
+      # API configuration
       - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    
     volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix
-      - ${XDG_RUNTIME_DIR:-/run/user/1000}:${XDG_RUNTIME_DIR:-/run/user/1000}
+      # X11 and Wayland display
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}:${XDG_RUNTIME_DIR:-/run/user/1000}:rw
+      
+      # Application data and configuration
       - ./data:/app/data
       - ./config:/app/config
+      
+      # Optional: Application logs
+      - ./logs:/app/logs
+    
+    # Use host network for easier GUI access
     network_mode: host
+    
+    # Device access for GUI and input
     devices:
-      - /dev/input:/dev/input
-      - /dev/dri:/dev/dri
-      - /dev/fb0:/dev/fb0
+      - /dev/input:/dev/input  # Input devices
+      - /dev/dri:/dev/dri      # GPU acceleration
+      - /dev/fb0:/dev/fb0      # Framebuffer (if needed)
+    
+    # Security settings
     cap_drop:
       - ALL
     cap_add:
-      - SYS_PTRACE
+      - SYS_PTRACE  # May be needed for debugging
     security_opt:
       - no-new-privileges:true
+    
+    # Resource limits
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
+          cpus: '2.0'
         reservations:
           memory: 512M
+          cpus: '0.5'
+    
+    # Health check
     healthcheck:
-      test: CMD pgrep app > /dev/null || exit 1
+      test: ["CMD", "pgrep", "hmi"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
+    
+    # Depends on database if running locally
+    # depends_on:
+    #   - postgres
 
+  # Optional: Local PostgreSQL database
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: hmi-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     - POSTGRES_DB=${POSTGRES_DB:-hmi}
+  #     - POSTGRES_USER=${POSTGRES_USER:-hmi_user}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./init:/docker-entrypoint-initdb.d
+  #   ports:
+  #     - "${POSTGRES_PORT:-5432}:5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hmi_user} -d ${POSTGRES_DB:-hmi}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # Watchtower for automatic updates
   watchtower:
     image: containrrr/watchtower
-    container_name: watchtower
+    container_name: hmi-watchtower
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 86400 --cleanup tauri-app-debian12
     environment:
       - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=86400  # Check daily
+      - WATCHTOWER_INCLUDE_STOPPED=true
+    command: --interval 86400 --cleanup hmi-app
 
+# Optional: Networks for better isolation
 networks:
   default:
     driver: bridge
+    name: hmi-network
+
+# Optional: Volumes for persistent data
+# volumes:
+#   postgres_data:
+#     driver: local
